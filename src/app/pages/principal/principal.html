@@ -1,0 +1,20 @@
+<div class="flex flex-col items-center justify-center min-h-[60vh] px-4 py-8">
+  @if (!authService.isAuthenticated()) {
+    <button
+      (click)="goToLogin()"
+      class="px-8 py-3 bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-bold rounded-lg shadow-lg transition-all duration-200 cursor-pointer text-lg tracking-wide">
+      login
+    </button>
+  } @else {
+    <div class="flex flex-col items-center gap-4">
+      <button
+        (click)="logout()"
+        class="px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg transition-all duration-200 cursor-pointer text-lg tracking-wide">
+        logout
+      </button>
+      <div class="text-gray-300 text-base font-medium">
+        {{ authService.currentUser()?.rol }}
+      </div>
+    </div>
+  }
+</div>
