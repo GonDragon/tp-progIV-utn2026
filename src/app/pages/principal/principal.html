@@ -1,20 +1,157 @@
-<div class="flex flex-col items-center justify-center min-h-[60vh] px-4 py-8">
-  @if (!authService.isAuthenticated()) {
-    <button
-      (click)="goToLogin()"
-      class="px-8 py-3 bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-bold rounded-lg shadow-lg transition-all duration-200 cursor-pointer text-lg tracking-wide">
-      login
-    </button>
-  } @else {
-    <div class="flex flex-col items-center gap-4">
-      <button
-        (click)="logout()"
-        class="px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg transition-all duration-200 cursor-pointer text-lg tracking-wide">
-        logout
-      </button>
-      <div class="text-gray-300 text-base font-medium">
-        {{ authService.currentUser()?.rol }}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+
+  <!-- Header / Auth Bar -->
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-neutral-800/60 border border-neutral-700/60 backdrop-blur-md">
+    <div class="flex items-center gap-3 text-center sm:text-left">
+      <div class="p-2.5 rounded-xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z" />
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold text-white tracking-wide">
+          Cartelera y Funciones de CineIV
+        </h1>
+        <p class="text-xs text-gray-400">
+          Encuentra tus películas favoritas, consulta horarios y asegura tus entradas
+        </p>
       </div>
     </div>
-  }
+
+    <!-- Auth Controls -->
+    <div class="flex items-center gap-3">
+      @if (!authService.isAuthenticated()) {
+        <button
+          type="button"
+          (click)="goToLogin()"
+          class="px-5 py-2.5 bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+          </svg>
+          Iniciar Sesión
+        </button>
+      } @else {
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-gray-300 font-medium px-3 py-1 rounded-lg bg-neutral-900 border border-neutral-700">
+            Rol: <span class="text-[#D4AF37] uppercase font-bold">{{ authService.currentUser()?.rol }}</span>
+          </span>
+          <button
+            type="button"
+            (click)="logout()"
+            class="px-4 py-2 bg-red-600/90 hover:bg-red-600 text-white font-semibold text-xs rounded-xl shadow transition-all duration-200 cursor-pointer flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Cerrar Sesión
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- 1. Highlighted Movies Section (Top 3 most sold) -->
+  <app-highlighted-movies
+    [movies]="movieService.topSellingMovies()"
+    (scheduleSelected)="onScheduleSelected($event)"
+  />
+
+  <!-- 2. Movie Search & Multi-Genre Filter -->
+  <app-movie-filter
+    [genres]="movieService.allGenres"
+    [selectedGenres]="movieService.selectedGenres()"
+    [searchQuery]="movieService.searchQuery()"
+    (searchChange)="onSearchChange($event)"
+    (genreToggled)="onGenreToggled($event)"
+    (clearFilters)="onClearFilters()"
+  />
+
+  <!-- 3. Available Movies Billboard Section -->
+  <section class="w-full">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <span class="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+          </svg>
+        </span>
+        <div>
+          <h2 class="text-xl md:text-2xl font-bold text-white tracking-wide flex items-center gap-2">
+            Todas las Películas en Cartelera
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+              {{ movieService.filteredMovies().length }} disponibles
+            </span>
+          </h2>
+          <p class="text-xs text-gray-400">Horarios, formatos (2D/3D/4D/5D) e idiomas disponibles</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Movies List -->
+    @if (movieService.filteredMovies().length > 0) {
+      <div class="space-y-4">
+        @for (movie of movieService.filteredMovies(); track movie.id) {
+          <app-movie-card
+            [movie]="movie"
+            (scheduleSelected)="onScheduleSelected($event)"
+          />
+        }
+      </div>
+    } @else {
+      <!-- Empty state when no movies match filter -->
+      <div class="flex flex-col items-center justify-center py-16 px-4 bg-neutral-800/40 rounded-2xl border border-neutral-700/60 text-center">
+        <div class="p-4 rounded-full bg-neutral-800 text-gray-400 mb-3">
+          <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-1">No se encontraron películas</h3>
+        <p class="text-sm text-gray-400 max-w-md mb-4">
+          No hay resultados para la búsqueda o los géneros seleccionados. Prueba cambiando los filtros.
+        </p>
+        <button
+          type="button"
+          (click)="onClearFilters()"
+          class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-bold text-xs rounded-xl shadow cursor-pointer">
+          Restablecer todos los filtros
+        </button>
+      </div>
+    }
+  </section>
+
+  <!-- 4. "Próximamente" Section (Upcoming releases with alert toggles) -->
+  <app-upcoming-movies
+    [upcomingMovies]="movieService.upcomingMovies()"
+    (alertToggled)="onToggleUpcomingAlert($event)"
+  />
+
 </div>
+
+<!-- Schedule Selection Toast Notification -->
+@if (selectedScheduleToast()) {
+  <div class="fixed bottom-20 right-4 sm:right-6 z-50 max-w-sm w-full bg-neutral-900 border border-[#D4AF37] rounded-2xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div class="flex items-start justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <div class="p-2 rounded-xl bg-amber-500/20 text-[#D4AF37]">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div>
+          <h4 class="text-xs font-bold text-[#D4AF37] uppercase tracking-wider">Función Seleccionada</h4>
+          <p class="text-sm font-bold text-white">{{ selectedScheduleToast()!.movieTitle }}</p>
+          <p class="text-xs text-gray-300">
+            Horario: <span class="text-white font-semibold">{{ selectedScheduleToast()!.time }}</span> •
+            <span class="text-amber-400 font-semibold">{{ selectedScheduleToast()!.format }}</span> •
+            {{ selectedScheduleToast()!.room }}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        (click)="closeToast()"
+        class="text-gray-400 hover:text-white text-lg leading-none cursor-pointer">
+        ×
+      </button>
+    </div>
+  </div>
+}

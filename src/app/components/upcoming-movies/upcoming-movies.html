@@ -1,0 +1,111 @@
+<section class="w-full mt-10">
+  <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center gap-2">
+      <span class="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </span>
+      <div>
+        <h2 class="text-xl md:text-2xl font-bold text-white tracking-wide flex items-center gap-2">
+          Próximamente
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+            Estrenos
+          </span>
+        </h2>
+        <p class="text-xs text-gray-400">Activa la campana para recibir un aviso cuando las entradas salgan a la venta</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    @for (movie of upcomingMovies(); track movie.id) {
+      <div class="flex flex-col bg-neutral-800/80 rounded-2xl border border-neutral-700/80 shadow-lg overflow-hidden hover:border-purple-500/50 hover:shadow-purple-500/10 hover:shadow-xl transition-all duration-300 group">
+
+        <!-- Release Date Badge & Age Badge -->
+        <div class="relative">
+          <div class="absolute top-2.5 left-2.5 z-10 px-2.5 py-1 rounded-full bg-neutral-900/90 backdrop-blur-md border border-purple-500/40 text-purple-300 font-semibold text-[11px] shadow-md flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {{ movie.releaseDate }}
+          </div>
+
+          <div class="absolute top-2.5 right-2.5 z-10 px-2 py-0.5 rounded-md text-[11px] font-bold shadow-md"
+               [class.bg-emerald-600]="movie.ageRestriction === 'ATP'"
+               [class.text-white]="movie.ageRestriction === 'ATP'"
+               [class.bg-amber-600]="movie.ageRestriction === '+13'"
+               [class.text-white]="movie.ageRestriction === '+13'"
+               [class.bg-rose-600]="movie.ageRestriction === '+18'"
+               [class.text-white]="movie.ageRestriction === '+18'">
+            {{ movie.ageRestriction }}
+          </div>
+
+          <!-- Solid Color Placeholder Image -->
+          <div class="relative w-full aspect-[4/3] flex flex-col items-center justify-center p-5 text-center select-none shadow-inner"
+               [style.background-color]="movie.placeholderColor">
+            <div class="p-3 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 mb-2 group-hover:scale-110 transition-transform">
+              <svg class="w-6 h-6 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <span class="text-white font-bold text-sm md:text-base tracking-wide drop-shadow px-2 line-clamp-1">
+              {{ movie.title }}
+            </span>
+            <span class="text-[11px] text-white/80 font-medium mt-0.5">
+              {{ movie.duration }} min
+            </span>
+          </div>
+        </div>
+
+        <!-- Details -->
+        <div class="p-4 flex flex-col flex-1 justify-between">
+          <div>
+            <!-- Genres -->
+            <div class="flex flex-wrap gap-1 mb-2">
+              @for (genre of movie.genres; track genre) {
+                <span class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-neutral-900/90 text-gray-300 border border-neutral-700">
+                  {{ genre }}
+                </span>
+              }
+            </div>
+
+            <h3 class="text-base font-bold text-white mb-1.5 line-clamp-1 group-hover:text-purple-300 transition-colors">
+              {{ movie.title }}
+            </h3>
+
+            <p class="text-xs text-gray-400 line-clamp-2 mb-4 leading-relaxed">
+              {{ movie.synopsis }}
+            </p>
+          </div>
+
+          <!-- Notification Alert Toggle Button -->
+          <div class="pt-2 border-t border-neutral-700/60">
+            <button
+              type="button"
+              (click)="onToggleAlert(movie.id)"
+              [class]="movie.notificationSubscribed
+                ? 'w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer'
+                : 'w-full py-2.5 px-3 rounded-xl bg-neutral-900 hover:bg-neutral-700 text-gray-300 hover:text-white font-semibold text-xs flex items-center justify-center gap-1.5 border border-neutral-700 hover:border-purple-400 transition-all cursor-pointer'">
+              @if (movie.notificationSubscribed) {
+                <!-- Bell Active Icon -->
+                <svg class="w-4 h-4 text-neutral-950 animate-bounce" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                </svg>
+                <span>¡Alerta Activada!</span>
+              } @else {
+                <!-- Bell Inactive Icon -->
+                <svg class="w-4 h-4 text-gray-400 group-hover:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span>Avisarme cuando esté disponible</span>
+              }
+            </button>
+          </div>
+        </div>
+
+      </div>
+    }
+  </div>
+</section>
