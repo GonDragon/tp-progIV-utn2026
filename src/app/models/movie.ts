@@ -19,8 +19,14 @@ export interface Movie {
   ticketsSold: number;
   isHighlighted?: boolean;
   isUpcoming?: boolean;
+  isVisibleOnHome?: boolean;
   releaseDate?: string;
   notificationSubscribed?: boolean;
   placeholderColor: string; // solid color for placeholder image
+  regularPrice?: number;
+  isPresaleEnabled?: boolean;
+  presalePrice?: number;
+  presaleStartDate?: string;
+  presaleEndDate?: string;
   schedules?: Schedule[];
 }

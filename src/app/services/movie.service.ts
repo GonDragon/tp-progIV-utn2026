@@ -1,5 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { Movie } from '../models/movie';
+import { Movie, Schedule } from '../models/movie';
 import { MOCK_MOVIES, MOCK_UPCOMING_MOVIES, ALL_GENRES } from '../data/mock-movies';
 
 @Injectable({
@@ -66,6 +66,78 @@ export class MovieService {
           ? { ...movie, notificationSubscribed: !movie.notificationSubscribed }
           : movie
       )
+    );
+  }
+
+  addMovie(movie: Movie): void {
+    this._movies.update(current => [movie, ...current]);
+  }
+
+  updateMovie(updatedMovie: Movie): void {
+    this._movies.update(current =>
+      current.map(m => m.id === updatedMovie.id ? { ...m, ...updatedMovie } : m)
+    );
+  }
+
+  deleteMovie(movieId: string): void {
+    this._movies.update(current => current.filter(m => m.id !== movieId));
+  }
+
+  toggleMovieVisibility(movieId: string): void {
+    this._movies.update(current =>
+      current.map(m =>
+        m.id === movieId
+          ? { ...m, isVisibleOnHome: m.isVisibleOnHome === false ? true : false }
+          : m
+      )
+    );
+  }
+
+  addSchedule(movieId: string, schedule: Schedule): void {
+    this._movies.update(current =>
+      current.map(m => {
+        if (m.id === movieId) {
+          const schedules = m.schedules ? [...m.schedules, schedule] : [schedule];
+          return { ...m, schedules };
+        }
+        return m;
+      })
+    );
+  }
+
+  removeSchedule(movieId: string, scheduleId: string): void {
+    this._movies.update(current =>
+      current.map(m => {
+        if (m.id === movieId && m.schedules) {
+          return { ...m, schedules: m.schedules.filter(s => s.id !== scheduleId) };
+        }
+        return m;
+      })
+    );
+  }
+
+  updatePresale(
+    movieId: string,
+    config: {
+      isPresaleEnabled: boolean;
+      presalePrice?: number;
+      presaleStartDate?: string;
+      presaleEndDate?: string;
+    }
+  ): void {
+    this._movies.update(current =>
+      current.map(m => {
+        if (m.id === movieId) {
+          return {
+            ...m,
+            isPresaleEnabled: config.isPresaleEnabled,
+            presalePrice: config.presalePrice ?? m.presalePrice ?? 4500,
+            presaleStartDate: config.presaleStartDate ?? m.presaleStartDate,
+            presaleEndDate: config.presaleEndDate ?? m.presaleEndDate
+          };
+        }
+        return m;
+      })
     );
   }
 }

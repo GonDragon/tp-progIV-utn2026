@@ -1,12 +1,147 @@
-<div class="flex flex-col items-center justify-center min-h-[60vh] px-4 py-8">
-  <div class="flex flex-col items-center gap-4">
-    <button
-      (click)="logout()"
-      class="px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg transition-all duration-200 cursor-pointer text-lg tracking-wide">
-      logout
-    </button>
-    <div class="text-gray-300 text-base font-medium">
-      {{ authService.currentUser()?.rol }}
+<div class="min-h-screen bg-neutral-900 text-gray-100 pb-16">
+
+  <!-- TOP BANNER & USER BAR -->
+  <div class="bg-neutral-800/95 border-b border-neutral-700/80 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-18">
+
+        <!-- Left: Brand / Title -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#D4AF37] to-amber-700 flex items-center justify-center text-neutral-950 font-black text-lg shadow-md">
+            🎦
+          </div>
+          <div>
+            <h1 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              Panel Administrativo
+              <span
+                class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase"
+                [class]="authService.currentUser()?.rol === 'administrador' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40' : 'bg-blue-500/20 text-blue-400 border border-blue-500/40'">
+                {{ authService.currentUser()?.rol }}
+              </span>
+            </h1>
+            <p class="text-xs text-gray-400 hidden sm:block">
+              Gestión integral de cartelera, salas, candy bar, promociones, métricas y validaciones
+            </p>
+          </div>
+        </div>
+
+        <!-- Right: User Info & Logout -->
+        <div class="flex items-center gap-3">
+          <div class="hidden sm:flex flex-col text-right">
+            <span class="text-xs font-bold text-white">
+              {{ authService.currentUser()?.nombre }} {{ authService.currentUser()?.apellido }}
+            </span>
+            <span class="text-[11px] text-gray-400 font-mono">
+              {{ authService.currentUser()?.email }}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            (click)="logout()"
+            class="px-3.5 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer flex items-center gap-1.5 shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Cerrar Sesión</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- NAVIGATION TABS -->
+      <div class="flex items-center gap-2 overflow-x-auto py-2.5 border-t border-neutral-700/60 no-scrollbar">
+
+        <!-- Cartelera & Salas -->
+        @if (authService.currentUser()?.rol === 'administrador') {
+          <button
+            type="button"
+            (click)="setTab('movies')"
+            class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer border"
+            [class]="currentTab() === 'movies' ? 'bg-[#D4AF37] text-neutral-950 border-[#D4AF37] shadow-md' : 'bg-neutral-800 text-gray-300 border-neutral-700 hover:border-gray-500'">
+            <span>🎬</span> Películas & Funciones
+          </button>
+        }
+
+        <!-- Candy Bar & Combos -->
+        @if (authService.currentUser()?.rol === 'administrador') {
+          <button
+            type="button"
+            (click)="setTab('candy')"
+            class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer border"
+            [class]="currentTab() === 'candy' ? 'bg-[#D4AF37] text-neutral-950 border-[#D4AF37] shadow-md' : 'bg-neutral-800 text-gray-300 border-neutral-700 hover:border-gray-500'">
+            <span>🍿</span> Candy Bar & Combos
+          </button>
+        }
+
+        <!-- Promociones & Preventas -->
+        @if (authService.currentUser()?.rol === 'administrador') {
+          <button
+            type="button"
+            (click)="setTab('promotions')"
+            class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer border"
+            [class]="currentTab() === 'promotions' ? 'bg-[#D4AF37] text-neutral-950 border-[#D4AF37] shadow-md' : 'bg-neutral-800 text-gray-300 border-neutral-700 hover:border-gray-500'">
+            <span>🎟️</span> Cupones & Preventas
+          </button>
+        }
+
+        <!-- Reportes & Estadísticas -->
+        @if (authService.currentUser()?.rol === 'administrador') {
+          <button
+            type="button"
+            (click)="setTab('reports')"
+            class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer border"
+            [class]="currentTab() === 'reports' ? 'bg-[#D4AF37] text-neutral-950 border-[#D4AF37] shadow-md' : 'bg-neutral-800 text-gray-300 border-neutral-700 hover:border-gray-500'">
+            <span>📊</span> Reportes & Analíticas
+          </button>
+        }
+
+        <!-- Auditoría -->
+        @if (authService.currentUser()?.rol === 'administrador') {
+          <button
+            type="button"
+            (click)="setTab('audit')"
+            class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer border"
+            [class]="currentTab() === 'audit' ? 'bg-[#D4AF37] text-neutral-950 border-[#D4AF37] shadow-md' : 'bg-neutral-800 text-gray-300 border-neutral-700 hover:border-gray-500'">
+            <span>📜</span> Auditoría & Logs
+          </button>
+        }
+
+        <!-- Validación QR (Both Employee and Admin) -->
+        <button
+          type="button"
+          (click)="setTab('validation')"
+          class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer border"
+          [class]="currentTab() === 'validation' ? 'bg-[#D4AF37] text-neutral-950 border-[#D4AF37] shadow-md' : 'bg-neutral-800 text-gray-300 border-neutral-700 hover:border-gray-500'">
+          <span>📱</span> Validación Boletos (QR)
+        </button>
+
+      </div>
     </div>
   </div>
+
+  <!-- MAIN TAB CONTENT CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+    @switch (currentTab()) {
+      @case ('movies') {
+        <app-admin-movies />
+      }
+      @case ('candy') {
+        <app-admin-candy />
+      }
+      @case ('promotions') {
+        <app-admin-promotions />
+      }
+      @case ('reports') {
+        <app-admin-reports />
+      }
+      @case ('audit') {
+        <app-admin-audit />
+      }
+      @case ('validation') {
+        <app-admin-validation />
+      }
+    }
+  </main>
+
 </div>

@@ -1,0 +1,239 @@
+<div class="space-y-6">
+  <!-- Header Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700">
+    <div>
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">
+        <span class="text-[#D4AF37]">📊</span> Reportes de Facturación & Analíticas
+      </h2>
+      <p class="text-xs text-gray-400 mt-0.5">
+        Reporte diario de ingresos y entradas vendidas (exportable a Excel y PDF) y estadísticas de consumo.
+      </p>
+    </div>
+
+    <!-- Export Action Buttons -->
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        (click)="exportExcel()"
+        class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition-all cursor-pointer flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Exportar Excel (.xls)
+      </button>
+
+      <button
+        type="button"
+        (click)="exportCsv()"
+        class="px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-gray-200 text-xs font-bold rounded-xl shadow transition-all cursor-pointer flex items-center gap-1.5">
+        CSV
+      </button>
+
+      <button
+        type="button"
+        (click)="exportPdf()"
+        class="px-3.5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl shadow transition-all cursor-pointer flex items-center gap-1.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+        </svg>
+        Imprimir / PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI SUMMARY CARDS -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="p-5 rounded-2xl bg-neutral-800/90 border border-neutral-700 shadow-lg">
+      <div class="flex items-center justify-between text-gray-400 text-xs font-semibold mb-1">
+        <span>TOTAL FACTURADO (7 DÍAS)</span>
+        <span class="text-emerald-400 text-sm">💰</span>
+      </div>
+      <div class="text-2xl font-black text-white">
+        ${{ totalIncomePeriod.toLocaleString('es-AR') }}
+      </div>
+      <p class="text-[11px] text-emerald-400 mt-1">↑ +14.8% vs semana anterior</p>
+    </div>
+
+    <div class="p-5 rounded-2xl bg-neutral-800/90 border border-neutral-700 shadow-lg">
+      <div class="flex items-center justify-between text-gray-400 text-xs font-semibold mb-1">
+        <span>ENTRADAS VENDIDAS</span>
+        <span class="text-amber-400 text-sm">🎟️</span>
+      </div>
+      <div class="text-2xl font-black text-[#D4AF37]">
+        {{ totalTicketsPeriod.toLocaleString('es-AR') }} boletos
+      </div>
+      <p class="text-[11px] text-gray-400 mt-1">Promedio: {{ Math.round(totalTicketsPeriod / 7) }} entradas/día</p>
+    </div>
+
+    <div class="p-5 rounded-2xl bg-neutral-800/90 border border-neutral-700 shadow-lg">
+      <div class="flex items-center justify-between text-gray-400 text-xs font-semibold mb-1">
+        <span>ITEMS CANDY BAR</span>
+        <span class="text-rose-400 text-sm">🍿</span>
+      </div>
+      <div class="text-2xl font-black text-rose-300">
+        {{ totalCandyPeriod.toLocaleString('es-AR') }} snacks
+      </div>
+      <p class="text-[11px] text-gray-400 mt-1">73% de compradores añadieron Candy</p>
+    </div>
+  </div>
+
+  <!-- CHARTS SECTION -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- CHART 1: Most Viewed Movies (Weekly vs Monthly) -->
+    <div class="p-5 rounded-2xl bg-neutral-800/90 border border-neutral-700 shadow-lg space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <span>🎬</span> Películas Más Vistas
+          </h3>
+          <p class="text-xs text-gray-400">Distribución de espectadores y venta de entradas</p>
+        </div>
+
+        <div class="flex items-center bg-neutral-900 p-1 rounded-xl border border-neutral-700 text-xs font-bold">
+          <button
+            type="button"
+            (click)="movieChartTimeframe.set('weekly')"
+            class="px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+            [class.bg-[#D4AF37]]="movieChartTimeframe() === 'weekly'"
+            [class.text-neutral-950]="movieChartTimeframe() === 'weekly'"
+            [class.text-gray-400]="movieChartTimeframe() !== 'weekly'">
+            Por Semana
+          </button>
+          <button
+            type="button"
+            (click)="movieChartTimeframe.set('monthly')"
+            class="px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+            [class.bg-[#D4AF37]]="movieChartTimeframe() === 'monthly'"
+            [class.text-neutral-950]="movieChartTimeframe() === 'monthly'"
+            [class.text-gray-400]="movieChartTimeframe() !== 'monthly'">
+            Por Mes
+          </button>
+        </div>
+      </div>
+
+      <!-- Bars -->
+      <div class="space-y-3.5 pt-2">
+        @for (item of adminService.movieStats; track item.movieId) {
+          <div class="space-y-1">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white truncate max-w-[200px]">{{ item.movieTitle }}</span>
+              <span class="text-amber-400 font-semibold">
+                @if (movieChartTimeframe() === 'weekly') {
+                  {{ item.viewsWeekly.toLocaleString('es-AR') }} vistas ({{ item.percentageWeekly }}%)
+                } @else {
+                  {{ item.viewsMonthly.toLocaleString('es-AR') }} vistas ({{ item.percentageMonthly }}%)
+                }
+              </span>
+            </div>
+
+            <div class="w-full bg-neutral-900 h-3 rounded-full overflow-hidden border border-neutral-700/60 flex">
+              <div
+                class="bg-gradient-to-r from-amber-600 to-[#D4AF37] h-full rounded-full transition-all duration-500"
+                [style.width.%]="movieChartTimeframe() === 'weekly' ? item.percentageWeekly : item.percentageMonthly">
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- CHART 2: Top Selling Candy Bar Products -->
+    <div class="p-5 rounded-2xl bg-neutral-800/90 border border-neutral-700 shadow-lg space-y-4">
+      <div>
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>🍿</span> Productos de Candy Bar Más Vendidos
+        </h3>
+        <p class="text-xs text-gray-400">Ranking histórico de unidades despachadas</p>
+      </div>
+
+      <div class="space-y-3.5 pt-2">
+        @for (prod of adminService.candyProducts(); track prod.id; let i = $index) {
+          <div class="space-y-1">
+            <div class="flex justify-between items-center text-xs">
+              <div class="flex items-center gap-2 truncate">
+                <span class="font-bold text-neutral-400">#{{ i + 1 }}</span>
+                <span class="font-bold text-white truncate">{{ prod.name }}</span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded bg-neutral-900 text-gray-400 font-mono">{{ prod.category }}</span>
+              </div>
+              <span class="text-emerald-400 font-semibold shrink-0">
+                {{ prod.salesCount.toLocaleString('es-AR') }} u.
+              </span>
+            </div>
+
+            <div class="w-full bg-neutral-900 h-3 rounded-full overflow-hidden border border-neutral-700/60 flex">
+              <div
+                class="bg-gradient-to-r from-rose-600 via-amber-500 to-emerald-500 h-full rounded-full transition-all duration-500"
+                [style.width.%]="(prod.salesCount / 2200) * 100">
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DAILY BILLING REPORT TABLE -->
+  <div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-5 shadow-lg space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 class="text-base font-bold text-white flex items-center gap-2">
+        <span>📅</span> Reporte Diario Detallado de Facturación
+      </h3>
+      <span class="text-xs text-gray-400 font-mono">Últimos 7 días registrados</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-gray-300">
+        <thead class="bg-neutral-900/90 text-gray-400 uppercase tracking-wider text-[11px] border-b border-neutral-700">
+          <tr>
+            <th class="py-3 px-4 font-bold text-white">Fecha</th>
+            <th class="py-3 px-4 font-bold text-white text-center">Entradas Vendidas</th>
+            <th class="py-3 px-4 font-bold text-white text-center">Items Candy</th>
+            <th class="py-3 px-4 font-bold text-white text-right">Recaudación Taquilla</th>
+            <th class="py-3 px-4 font-bold text-white text-right">Recaudación Candy</th>
+            <th class="py-3 px-4 font-bold text-[#D4AF37] text-right">Facturación Total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutral-700/60 font-medium">
+          @for (row of adminService.dailyReports; track row.date) {
+            <tr class="hover:bg-neutral-700/30 transition-colors">
+              <td class="py-3.5 px-4 font-mono font-bold text-white">{{ row.date }}</td>
+              <td class="py-3.5 px-4 text-center">
+                <span class="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 font-bold border border-amber-500/20">
+                  {{ row.ticketsCount }}
+                </span>
+              </td>
+              <td class="py-3.5 px-4 text-center">
+                <span class="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-300 font-bold border border-rose-500/20">
+                  {{ row.candyCount }}
+                </span>
+              </td>
+              <td class="py-3.5 px-4 text-right">${{ row.ticketsIncome.toLocaleString('es-AR') }}</td>
+              <td class="py-3.5 px-4 text-right">${{ row.candyIncome.toLocaleString('es-AR') }}</td>
+              <td class="py-3.5 px-4 text-right font-bold text-[#D4AF37] text-sm">
+                ${{ row.totalIncome.toLocaleString('es-AR') }}
+              </td>
+            </tr>
+          }
+        </tbody>
+        <tfoot class="bg-neutral-900/90 border-t-2 border-[#D4AF37] font-bold text-white">
+          <tr>
+            <td class="py-3 px-4 text-amber-400">TOTALES DEL PERÍODO</td>
+            <td class="py-3 px-4 text-center text-amber-400">{{ totalTicketsPeriod.toLocaleString('es-AR') }}</td>
+            <td class="py-3 px-4 text-center text-amber-400">{{ totalCandyPeriod.toLocaleString('es-AR') }}</td>
+            <td class="py-3 px-4 text-right">
+              ${{ (adminService.dailyReports.reduce((s, r) => s + r.ticketsIncome, 0)).toLocaleString('es-AR') }}
+            </td>
+            <td class="py-3 px-4 text-right">
+              ${{ (adminService.dailyReports.reduce((s, r) => s + r.candyIncome, 0)).toLocaleString('es-AR') }}
+            </td>
+            <td class="py-3 px-4 text-right text-base text-[#D4AF37]">
+              ${{ totalIncomePeriod.toLocaleString('es-AR') }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
