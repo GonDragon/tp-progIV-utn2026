@@ -48,4 +48,18 @@ export class Login {
       this.errorMessage.set('Credenciales inválidas. Por favor intente nuevamente.');
     }
   }
+
+  fillCredentials(role: 'admin' | 'empleado' | 'cliente'): void {
+    this.errorMessage.set(null);
+    if (role === 'admin') {
+      this.email.set('admin@example.com');
+      this.password.set('admin123');
+    } else if (role === 'empleado') {
+      this.email.set('empleado@example.com');
+      this.password.set('emp123');
+    } else if (role === 'cliente') {
+      this.email.set('cliente@example.com');
+      this.password.set('cli123');
+    }
+  }
 }

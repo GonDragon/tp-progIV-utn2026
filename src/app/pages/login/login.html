@@ -43,5 +43,29 @@
         Iniciar Sesión
       </button>
     </form>
+
+    <div class="mt-6 pt-5 border-t border-neutral-700">
+      <p class="text-xs text-gray-400 text-center mb-3 font-medium uppercase tracking-wider">Cuentas de prueba</p>
+      <div class="grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          (click)="fillCredentials('admin')"
+          class="px-3 py-2 bg-neutral-900 hover:bg-neutral-700 border border-neutral-700 hover:border-[#D4AF37] text-gray-200 text-sm font-semibold rounded-lg transition-colors cursor-pointer text-center">
+          Admin
+        </button>
+        <button
+          type="button"
+          (click)="fillCredentials('empleado')"
+          class="px-3 py-2 bg-neutral-900 hover:bg-neutral-700 border border-neutral-700 hover:border-[#D4AF37] text-gray-200 text-sm font-semibold rounded-lg transition-colors cursor-pointer text-center">
+          Empleado
+        </button>
+        <button
+          type="button"
+          (click)="fillCredentials('cliente')"
+          class="px-3 py-2 bg-neutral-900 hover:bg-neutral-700 border border-neutral-700 hover:border-[#D4AF37] text-gray-200 text-sm font-semibold rounded-lg transition-colors cursor-pointer text-center">
+          Cliente
+        </button>
+      </div>
+    </div>
   </div>
 </div>
