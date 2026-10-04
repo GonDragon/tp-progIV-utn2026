@@ -1,0 +1,68 @@
+<div class="space-y-3">
+  <label class="block text-xs font-semibold text-gray-300">
+    Póster / Imagen de Portada (Bucket: images)
+  </label>
+
+  @if (imageUrl()) {
+    <!-- Preview Box with image -->
+    <div class="relative flex items-center gap-4 p-3 bg-neutral-800/90 rounded-xl border border-neutral-700/80">
+      <div class="w-16 h-22 rounded-lg overflow-hidden shrink-0 bg-neutral-900 border border-neutral-700 shadow">
+        <img
+          [src]="imageUrl()"
+          alt="Poster preview"
+          class="w-full h-full object-cover" />
+      </div>
+
+      <div class="flex-1 min-w-0 space-y-1">
+        <div class="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+          <span>✓</span> Imagen subida con éxito
+        </div>
+        <p class="text-[11px] text-gray-400 truncate font-mono">
+          {{ imageUrl() }}
+        </p>
+        <button
+          type="button"
+          (click)="removePoster()"
+          class="text-xs text-rose-400 hover:text-rose-300 hover:underline cursor-pointer flex items-center gap-1 pt-0.5">
+          <span>🗑️</span> Quitar imagen
+        </button>
+      </div>
+    </div>
+  } @else {
+    <!-- Upload Dropzone / File Picker -->
+    <div
+      class="relative border-2 border-dashed border-neutral-700 hover:border-[#D4AF37]/70 rounded-xl p-4 text-center transition-colors bg-neutral-800/50 hover:bg-neutral-800 flex flex-col items-center justify-center gap-2 cursor-pointer group">
+
+      <input
+        type="file"
+        accept="image/*"
+        (change)="onFileSelected($event)"
+        [disabled]="isUploading()"
+        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10" />
+
+      @if (isUploading()) {
+        <div class="flex flex-col items-center gap-2 py-2">
+          <div class="w-7 h-7 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+          <span class="text-xs text-[#D4AF37] font-semibold">Subiendo poster a Supabase Storage...</span>
+        </div>
+      } @else {
+        <div class="w-10 h-10 rounded-full bg-neutral-800 group-hover:bg-[#D4AF37]/10 border border-neutral-700 group-hover:border-[#D4AF37]/30 flex items-center justify-center text-gray-400 group-hover:text-[#D4AF37] transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <div class="text-xs text-gray-300">
+          <span class="text-[#D4AF37] font-semibold underline">Haz clic para seleccionar</span> o arrastra un archivo
+        </div>
+        <p class="text-[10px] text-gray-500">Formatos compatibles: PNG, JPG, WebP (Se alojará en el bucket 'images')</p>
+      }
+    </div>
+  }
+
+  @if (uploadError()) {
+    <div class="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-1.5">
+      <span>⚠️</span>
+      <span>{{ uploadError() }}</span>
+    </div>
+  }
+</div>

@@ -1,0 +1,152 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+  <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 my-8">
+
+    <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
+      <div>
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>⏰</span> Programar Función
+        </h3>
+        @if (movie(); as m) {
+          <p class="text-xs text-amber-400 font-medium">{{ m.title }} ({{ m.duration }} min)</p>
+        }
+      </div>
+      <button
+        type="button"
+        (click)="onCancel()"
+        class="text-gray-400 hover:text-white cursor-pointer text-lg">✕</button>
+    </div>
+
+    <div class="space-y-4">
+      <!-- Showtime & Formats -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-300 mb-1">Horario de Inicio *</label>
+          <input
+            type="time"
+            [(ngModel)]="scheduleTime"
+            (ngModelChange)="runAutoRoomAllocation()"
+            class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-300 mb-1">Formato *</label>
+          <select
+            [(ngModel)]="scheduleFormat"
+            class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]">
+            <option value="2D">2D Digital</option>
+            <option value="3D">3D RealD</option>
+            <option value="4D">4D Experience</option>
+            <option value="5D">5D Sensorial</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Language & Base Price -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-300 mb-1">Idioma / Doblaje *</label>
+          <select
+            [(ngModel)]="scheduleLanguage"
+            class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]">
+            <option value="Castellano">Castellano (Doblada)</option>
+            <option value="Subtitulada">Subtitulada (Audio Original)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-300 mb-1">Precio Base ($) *</label>
+          <input
+            type="number"
+            [(ngModel)]="scheduleBasePrice"
+            min="500"
+            step="100"
+            class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
+        </div>
+      </div>
+
+      <!-- Presale checkbox -->
+      <div class="flex items-center gap-2 pt-1">
+        <input
+          type="checkbox"
+          id="isPresaleCheck"
+          [(ngModel)]="scheduleIsPresale"
+          class="w-4 h-4 rounded text-[#D4AF37] bg-neutral-800 border-neutral-700 focus:ring-[#D4AF37] focus:ring-1" />
+        <label for="isPresaleCheck" class="text-xs text-gray-300 font-medium cursor-pointer">
+          Habilitar como función de preventa exclusiva
+        </label>
+      </div>
+
+      <!-- AUTOMATIC ROOM ALLOCATION STATUS BOX -->
+      <div class="p-4 rounded-xl bg-neutral-800/80 border border-neutral-700 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+            <span>🤖</span> Asignación Automática de Sala
+          </span>
+          <button
+            type="button"
+            (click)="runAutoRoomAllocation()"
+            class="text-[11px] text-[#D4AF37] hover:underline cursor-pointer">
+            Recomputar
+          </button>
+        </div>
+
+        <p class="text-[11px] text-gray-400">
+          El algoritmo analiza todas las salas garantizando <strong>sin superposición</strong> y con un <strong>margen mínimo de 30 minutos</strong> entre funciones.
+        </p>
+
+        @if (assignedRoom) {
+          <div class="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+            <span class="text-base">✅</span>
+            <div>
+              <div class="font-bold">Sala Asignada: {{ assignedRoom }}</div>
+              <div class="text-[10px] text-emerald-400/80">Cumple margen de 30 min y sin solapamiento de horario.</div>
+            </div>
+          </div>
+        } @else if (allocationError) {
+          <div class="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+            <span class="text-base">⚠️</span>
+            <div>
+              <div class="font-bold">{{ allocationError }}</div>
+              <div class="text-[10px] text-rose-400/80">Puedes ajustar el horario o forzar una sala manualmente debajo.</div>
+            </div>
+          </div>
+
+          <!-- Manual override fallback -->
+          <div class="pt-2">
+            <label class="block text-[11px] font-semibold text-gray-300 mb-1">Selección manual de sala (Excepción):</label>
+            <select
+              [(ngModel)]="manualRoomChoice"
+              class="w-full px-3 py-1.5 bg-neutral-900 border border-neutral-700 rounded-lg text-white text-xs">
+              @for (r of adminService.availableRooms; track r) {
+                <option [value]="r">{{ r }}</option>
+              }
+            </select>
+          </div>
+        }
+      </div>
+
+      <div class="flex justify-end gap-3 pt-3 border-t border-neutral-800">
+        <button
+          type="button"
+          (click)="onCancel()"
+          [disabled]="isSaving()"
+          class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-sm font-semibold rounded-xl cursor-pointer disabled:opacity-50">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          (click)="onConfirm()"
+          [disabled]="(!assignedRoom && !manualRoomChoice) || isSaving()"
+          class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2">
+          @if (isSaving()) {
+            <div class="w-4 h-4 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></div>
+            <span>Guardando función...</span>
+          } @else {
+            <span>Confirmar Función</span>
+          }
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>

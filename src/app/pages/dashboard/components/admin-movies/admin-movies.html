@@ -1,400 +1,108 @@
 <div class="space-y-6">
+
   <!-- Header Bar -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700 shadow-lg">
     <div>
       <h2 class="text-xl font-bold text-white flex items-center gap-2">
         <span class="text-[#D4AF37]">🎬</span> Gestión de Películas & Cartelera
       </h2>
       <p class="text-xs text-gray-400 mt-0.5">
-        Configura películas, duración, géneros, restricciones de edad, control de visibilidad en Inicio y asignación de salas.
+        Administración integral de películas, posters (almacenados en Supabase Storage), restricciones y funciones en salas.
       </p>
     </div>
-    <button
-      type="button"
-      (click)="openNewMovieForm()"
-      class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer shrink-0">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-      </svg>
-      Nueva Película
-    </button>
-  </div>
 
-  <!-- Movies List Table / Cards -->
-  <div class="grid grid-cols-1 gap-4">
-    @for (movie of movieService.movies(); track movie.id) {
-      <div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-5 shadow-lg flex flex-col lg:flex-row gap-5 items-start lg:items-center justify-between">
-
-        <!-- Left: Image & Details -->
-        <div class="flex items-start gap-4 flex-1">
-          <!-- Poster Placeholder -->
-          <div
-            class="w-16 h-22 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-md border border-white/10 text-center p-1"
-            [style.background-color]="movie.placeholderColor">
-            <span class="line-clamp-2">{{ movie.title }}</span>
-          </div>
-
-          <div class="space-y-1.5 flex-1 min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <h3 class="text-lg font-bold text-white truncate">{{ movie.title }}</h3>
-
-              <!-- Age Badge -->
-              <span
-                class="text-[10px] font-bold px-2 py-0.5 rounded-md"
-                [class.bg-emerald-600]="movie.ageRestriction === 'ATP'"
-                [class.text-white]="movie.ageRestriction === 'ATP'"
-                [class.bg-amber-600]="movie.ageRestriction === '+13'"
-                [class.text-white]="movie.ageRestriction === '+13'"
-                [class.bg-rose-600]="movie.ageRestriction === '+18'"
-                [class.text-white]="movie.ageRestriction === '+18'">
-                {{ movie.ageRestriction }}
-              </span>
-
-              <!-- Visibility Badge -->
-              @if (movie.isVisibleOnHome !== false) {
-                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Visible en Inicio
-                </span>
-              } @else {
-                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-neutral-700 text-gray-400">
-                  Oculta
-                </span>
-              }
-
-              <!-- Presale Badge -->
-              @if (movie.isPresaleEnabled) {
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40">
-                  Preventa Activa (${{ movie.presalePrice }})
-                </span>
-              }
-            </div>
-
-            <p class="text-xs text-gray-300 line-clamp-2 leading-relaxed">
-              {{ movie.synopsis }}
-            </p>
-
-            <div class="flex flex-wrap items-center gap-3 text-xs text-gray-400">
-              <span class="flex items-center gap-1">
-                ⏱️ {{ movie.duration }} min
-              </span>
-              <span>•</span>
-              <span class="flex items-center gap-1">
-                🏷️ {{ movie.genres.join(', ') }}
-              </span>
-              <span>•</span>
-              <span class="text-amber-400 font-medium">
-                ★ {{ movie.rating.toFixed(1) }} ({{ movie.ticketsSold }} entradas vendidas)
-              </span>
-            </div>
-
-            <!-- Existing Schedules List -->
-            <div class="pt-2">
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mr-2">Funciones programadas:</span>
-              <div class="inline-flex flex-wrap gap-1.5 mt-1">
-                @if (movie.schedules && movie.schedules.length > 0) {
-                  @for (sched of movie.schedules; track sched.id) {
-                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-neutral-900 border border-neutral-700 text-xs text-gray-300">
-                      <strong class="text-white">{{ sched.time }}</strong>
-                      <span class="text-[10px] px-1 rounded bg-neutral-800 text-amber-300 font-semibold">{{ sched.format }}</span>
-                      <span class="text-[10px] text-gray-400">{{ sched.language === 'Castellano' ? 'ESP' : 'SUB' }}</span>
-                      <span class="text-[10px] text-gray-400">({{ sched.room }})</span>
-                      <button
-                        type="button"
-                        (click)="removeSchedule(movie, sched)"
-                        title="Eliminar función"
-                        class="text-red-400 hover:text-red-300 ml-1 cursor-pointer">
-                        ✕
-                      </button>
-                    </span>
-                  }
-                } @else {
-                  <span class="text-xs text-gray-400 italic">Sin funciones programadas</span>
-                }
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right: Actions -->
-        <div class="flex flex-wrap lg:flex-col gap-2 shrink-0 w-full lg:w-auto border-t lg:border-t-0 pt-3 lg:pt-0 border-neutral-700">
-          <button
-            type="button"
-            (click)="openScheduleModal(movie)"
-            class="flex-1 lg:flex-none px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-[#D4AF37] border border-[#D4AF37]/40 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5">
-            <span>⏰</span> Programar Función
-          </button>
-
-          <div class="flex gap-2 flex-1 lg:flex-none">
-            <button
-              type="button"
-              (click)="toggleVisibility(movie)"
-              class="flex-1 px-2.5 py-1.5 bg-neutral-700/80 hover:bg-neutral-700 text-xs text-gray-200 rounded-lg transition-all cursor-pointer"
-              [title]="movie.isVisibleOnHome === false ? 'Mostrar en Inicio' : 'Ocultar de Inicio'">
-              {{ movie.isVisibleOnHome === false ? '👁️ Mostrar' : '🙈 Ocultar' }}
-            </button>
-            <button
-              type="button"
-              (click)="openEditMovieForm(movie)"
-              class="px-2.5 py-1.5 bg-neutral-700/80 hover:bg-neutral-700 text-xs text-gray-200 rounded-lg transition-all cursor-pointer"
-              title="Editar datos">
-              ✏️ Editar
-            </button>
-            <button
-              type="button"
-              (click)="deleteMovie(movie)"
-              class="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs rounded-lg transition-all cursor-pointer"
-              title="Eliminar película">
-              🗑️
-            </button>
-          </div>
-        </div>
-
+    <!-- Quick Stats -->
+    <div class="flex items-center gap-3 shrink-0">
+      <div class="px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-700 text-center">
+        <span class="text-[10px] text-gray-400 uppercase font-bold block">Películas</span>
+        <span class="text-sm font-bold text-white">{{ movieService.movies().length }}</span>
       </div>
-    }
+      <div class="px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-700 text-center">
+        <span class="text-[10px] text-gray-400 uppercase font-bold block">Funciones</span>
+        <span class="text-sm font-bold text-amber-400">{{ totalSchedulesCount() }}</span>
+      </div>
+      <button
+        type="button"
+        (click)="openNewMovieForm()"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer shrink-0">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+        </svg>
+        <span>Nueva Película</span>
+      </button>
+    </div>
   </div>
 
-  <!-- MOVIE ABM MODAL -->
+  <!-- Search & Filter Controls -->
+  <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-neutral-800/50 p-4 rounded-xl border border-neutral-700/60">
+    <div class="relative w-full sm:w-72">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
+      <input
+        type="text"
+        [ngModel]="filterQuery()"
+        (ngModelChange)="filterQuery.set($event)"
+        placeholder="Buscar por título o sinopsis..."
+        class="w-full pl-9 pr-3 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]" />
+    </div>
+
+    <div class="flex items-center gap-2 w-full sm:w-auto">
+      <label class="text-xs text-gray-400 whitespace-nowrap">Género:</label>
+      <select
+        [ngModel]="filterGenre()"
+        (ngModelChange)="filterGenre.set($event)"
+        class="w-full sm:w-48 px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]">
+        <option value="Todos">Todos los géneros</option>
+        @for (g of availableGenreNames(); track g) {
+          <option [value]="g">{{ g }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading Indicator -->
+  @if (movieService.isLoading()) {
+    <div class="flex flex-col items-center justify-center p-12 bg-neutral-800/40 rounded-2xl border border-neutral-700/60">
+      <div class="w-8 h-8 border-3 border-[#D4AF37] border-t-transparent rounded-full animate-spin mb-3"></div>
+      <p class="text-sm text-gray-400 font-medium">Cargando catálogo desde Supabase...</p>
+    </div>
+  } @else {
+    <!-- Movies List -->
+    <div class="grid grid-cols-1 gap-4">
+      @for (movie of adminMoviesList(); track movie.id) {
+        <app-movie-list-item
+          [movie]="movie"
+          (schedule)="openScheduleModal($event)"
+          (edit)="openEditMovieForm($event)"
+          (delete)="handleDeleteMovie($event)"
+          (toggleVisibility)="handleToggleVisibility($event)"
+          (removeSchedule)="handleRemoveSchedule($event)" />
+      } @empty {
+        <div class="text-center p-12 bg-neutral-800/40 rounded-2xl border border-dashed border-neutral-700 space-y-3">
+          <div class="text-3xl">🎬</div>
+          <p class="text-gray-300 font-semibold">No se encontraron películas</p>
+          <p class="text-xs text-gray-500">Prueba ajustando los filtros o agrega una nueva película con el botón superior.</p>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Movie Form Modal (Create / Edit + Poster Upload to Supabase bucket 'images') -->
   @if (showMovieForm()) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 my-8">
-
-        <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
-          <h3 class="text-lg font-bold text-white flex items-center gap-2">
-            <span>🎬</span> {{ editingMovieId() ? 'Editar Película' : 'Nueva Película' }}
-          </h3>
-          <button (click)="closeMovieForm()" class="text-gray-400 hover:text-white cursor-pointer text-lg">✕</button>
-        </div>
-
-        <form (ngSubmit)="saveMovie()" class="space-y-4">
-          <!-- Title -->
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Nombre / Título *</label>
-            <input
-              type="text"
-              name="title"
-              [(ngModel)]="movieTitle"
-              required
-              placeholder="Ej. Interstellar 2"
-              class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-          </div>
-
-          <!-- Synopsis -->
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Sinopsis *</label>
-            <textarea
-              name="synopsis"
-              [(ngModel)]="movieSynopsis"
-              rows="3"
-              placeholder="Breve resumen de la trama..."
-              class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]"></textarea>
-          </div>
-
-          <!-- Duration & Age Rating -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Duración (minutos) *</label>
-              <input
-                type="number"
-                name="duration"
-                [(ngModel)]="movieDuration"
-                min="30"
-                max="300"
-                class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Restricción de Edad *</label>
-              <select
-                name="ageRestriction"
-                [(ngModel)]="movieAgeRestriction"
-                class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]">
-                <option value="ATP">ATP (Apta para Todo Público)</option>
-                <option value="+13">+13 (Mayores de 13 años)</option>
-                <option value="+18">+18 (Exclusiva Mayores de 18 años)</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Genres Selection -->
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1.5">Géneros (selección múltiple)</label>
-            <div class="flex flex-wrap gap-1.5">
-              @for (genre of movieService.allGenres; track genre) {
-                <button
-                  type="button"
-                  (click)="toggleGenreSelection(genre)"
-                  class="px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer border"
-                  [class.bg-[#D4AF37]]="selectedGenres.includes(genre)"
-                  [class.text-neutral-950]="selectedGenres.includes(genre)"
-                  [class.border-[#D4AF37]]="selectedGenres.includes(genre)"
-                  [class.bg-neutral-800]="!selectedGenres.includes(genre)"
-                  [class.text-gray-300]="!selectedGenres.includes(genre)"
-                  [class.border-neutral-700]="!selectedGenres.includes(genre)">
-                  {{ genre }}
-                </button>
-              }
-            </div>
-          </div>
-
-          <!-- Color Placeholder -->
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1.5">Color del Póster / Imagen Placeholder</label>
-            <div class="flex flex-wrap items-center gap-3">
-              @for (color of colorOptions; track color.value) {
-                <button
-                  type="button"
-                  (click)="moviePlaceholderColor = color.value"
-                  class="w-8 h-8 rounded-full border-2 transition-transform cursor-pointer flex items-center justify-center"
-                  [style.background-color]="color.value"
-                  [class.border-white]="moviePlaceholderColor === color.value"
-                  [class.scale-125]="moviePlaceholderColor === color.value"
-                  [class.border-transparent]="moviePlaceholderColor !== color.value"
-                  [title]="color.name">
-                  @if (moviePlaceholderColor === color.value) {
-                    <span class="text-white text-xs">✓</span>
-                  }
-                </button>
-              }
-            </div>
-          </div>
-
-          <div class="flex justify-end gap-3 pt-3 border-t border-neutral-800">
-            <button
-              type="button"
-              (click)="closeMovieForm()"
-              class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-sm font-semibold rounded-xl cursor-pointer">
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              [disabled]="!movieTitle.trim()"
-              class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50">
-              Guardar Película
-            </button>
-          </div>
-        </form>
-
-      </div>
-    </div>
+    <app-movie-form-modal
+      [movie]="editingMovie()"
+      [availableGenres]="availableGenreNames()"
+      [isSaving]="isSavingMovie()"
+      (save)="handleSaveMovie($event)"
+      (close)="closeMovieForm()" />
   }
 
-  <!-- SHOWTIME & AUTOMATIC ROOM ALLOCATION MODAL -->
-  @if (showScheduleModal() && selectedMovieForSchedule) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 my-8">
-
-        <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
-          <div>
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-              <span>⏰</span> Programar Función
-            </h3>
-            <p class="text-xs text-amber-400 font-medium">{{ selectedMovieForSchedule.title }} ({{ selectedMovieForSchedule.duration }} min)</p>
-          </div>
-          <button (click)="closeScheduleModal()" class="text-gray-400 hover:text-white cursor-pointer text-lg">✕</button>
-        </div>
-
-        <div class="space-y-4">
-          <!-- Showtime & Formats -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Horario de Inicio</label>
-              <input
-                type="time"
-                [(ngModel)]="scheduleTime"
-                (ngModelChange)="runAutoRoomAllocation()"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Formato</label>
-              <select
-                [(ngModel)]="scheduleFormat"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]">
-                <option value="2D">2D Digital</option>
-                <option value="3D">3D RealD</option>
-                <option value="4D">4D Experience</option>
-                <option value="5D">5D Sensorial</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Idioma / Doblaje</label>
-            <select
-              [(ngModel)]="scheduleLanguage"
-              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]">
-              <option value="Castellano">Castellano (Doblada)</option>
-              <option value="Subtitulada">Subtitulada (Audio Original)</option>
-            </select>
-          </div>
-
-          <!-- AUTOMATIC ROOM ALLOCATION STATUS BOX -->
-          <div class="p-4 rounded-xl bg-neutral-800/80 border border-neutral-700 space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-gray-300 flex items-center gap-1.5">
-                <span>🤖</span> Asignación Automática de Sala
-              </span>
-              <button
-                type="button"
-                (click)="runAutoRoomAllocation()"
-                class="text-[11px] text-[#D4AF37] hover:underline cursor-pointer">
-                Recomputar
-              </button>
-            </div>
-
-            <p class="text-[11px] text-gray-400">
-              El algoritmo analiza todas las salas garantizando <strong>sin superposición</strong> y con un <strong>margen mínimo de 30 minutos</strong> entre funciones.
-            </p>
-
-            @if (assignedRoom) {
-              <div class="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
-                <span class="text-base">✅</span>
-                <div>
-                  <div class="font-bold">Sala Asignada: {{ assignedRoom }}</div>
-                  <div class="text-[10px] text-emerald-400/80">Cumple margen de 30 min y sin solapamiento de horario.</div>
-                </div>
-              </div>
-            } @else if (allocationError) {
-              <div class="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                <span class="text-base">⚠️</span>
-                <div>
-                  <div class="font-bold">{{ allocationError }}</div>
-                  <div class="text-[10px] text-rose-400/80">Puedes ajustar el horario o forzar una sala manualmente debajo.</div>
-                </div>
-              </div>
-
-              <!-- Manual override fallback -->
-              <div class="pt-2">
-                <label class="block text-[11px] font-semibold text-gray-300 mb-1">Selección manual de sala (Excepción):</label>
-                <select
-                  [(ngModel)]="manualRoomChoice"
-                  class="w-full px-3 py-1.5 bg-neutral-900 border border-neutral-700 rounded-lg text-white text-xs">
-                  @for (r of adminService.availableRooms; track r) {
-                    <option [value]="r">{{ r }}</option>
-                  }
-                </select>
-              </div>
-            }
-          </div>
-
-          <div class="flex justify-end gap-3 pt-3 border-t border-neutral-800">
-            <button
-              type="button"
-              (click)="closeScheduleModal()"
-              class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-sm font-semibold rounded-xl cursor-pointer">
-              Cancelar
-            </button>
-            <button
-              type="button"
-              (click)="confirmAddSchedule()"
-              [disabled]="!assignedRoom && !manualRoomChoice"
-              class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50">
-              Confirmar Función
-            </button>
-          </div>
-        </div>
-
-      </div>
-    </div>
+  <!-- Showtime & Room Allocation Modal -->
+  @if (showScheduleModal()) {
+    <app-schedule-modal
+      [movie]="selectedMovieForSchedule()"
+      [isSaving]="isSavingSchedule()"
+      (save)="handleSaveSchedule($event)"
+      (close)="closeScheduleModal()" />
   }
+
 </div>

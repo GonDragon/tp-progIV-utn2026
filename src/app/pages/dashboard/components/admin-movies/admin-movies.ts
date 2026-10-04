@@ -1,13 +1,21 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MovieService } from '../../../../services/movie.service';
 import { AdminService } from '../../../../services/admin.service';
 import { Movie, Schedule } from '../../../../models/movie';
+import { MovieListItem } from './components/movie-list-item/movie-list-item';
+import { MovieFormModal, MovieFormData } from './components/movie-form-modal/movie-form-modal';
+import { ScheduleModal, ScheduleFormData } from './components/schedule-modal/schedule-modal';
 
 @Component({
   selector: 'app-admin-movies',
   standalone: true,
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    MovieListItem,
+    MovieFormModal,
+    ScheduleModal
+  ],
   templateUrl: './admin-movies.html',
   styleUrl: './admin-movies.css'
 })
@@ -15,130 +23,123 @@ export class AdminMovies {
   readonly movieService = inject(MovieService);
   readonly adminService = inject(AdminService);
 
-  // Modal / Form state for Movie ABM
+  // Search & Filter state
+  readonly filterQuery = signal<string>('');
+  readonly filterGenre = signal<string>('Todos');
+
+  // Modal states
   readonly showMovieForm = signal(false);
-  readonly editingMovieId = signal<string | null>(null);
+  readonly editingMovie = signal<Movie | null>(null);
+  readonly isSavingMovie = signal(false);
 
-  movieTitle = '';
-  movieSynopsis = '';
-  movieDuration = 120;
-  movieAgeRestriction: 'ATP' | '+13' | '+18' = 'ATP';
-  selectedGenres: string[] = ['Acción'];
-  moviePlaceholderColor = '#1e3a8a';
-  movieRegularPrice = 5500;
-
-  // Showtimes / Schedule assignment state
   readonly showScheduleModal = signal(false);
-  selectedMovieForSchedule: Movie | null = null;
-  scheduleTime = '16:00';
-  scheduleFormat: '2D' | '3D' | '4D' | '5D' = '2D';
-  scheduleLanguage: 'Castellano' | 'Subtitulada' = 'Castellano';
-  assignedRoom: string | null = null;
-  allocationError: string | null = null;
-  manualRoomChoice = '';
+  readonly selectedMovieForSchedule = signal<Movie | null>(null);
+  readonly isSavingSchedule = signal(false);
 
-  readonly colorOptions = [
-    { name: 'Azul Noche', value: '#1e3a8a' },
-    { name: 'Rojo Carmesí', value: '#7f1d1d' },
-    { name: 'Verde Esmeralda', value: '#065f46' },
-    { name: 'Púrpura Profundo', value: '#581c87' },
-    { name: 'Ámbar Cálido', value: '#b45309' },
-    { name: 'Cian Océano', value: '#0e7490' },
-    { name: 'Gris Carbón', value: '#374151' }
-  ];
+  // Dynamic available genres list from DB or defaults
+  readonly availableGenreNames = computed(() => {
+    const dbGenres = this.movieService.genres().map(g => g.nombre);
+    if (dbGenres.length > 0) return dbGenres;
+    return this.movieService.allGenres;
+  });
+
+  // Filtered movies for the admin dashboard list
+  readonly adminMoviesList = computed(() => {
+    const q = this.filterQuery().trim().toLowerCase();
+    const g = this.filterGenre();
+    const movies = this.movieService.movies();
+
+    return movies.filter(movie => {
+      const matchesQ = !q || movie.title.toLowerCase().includes(q) || movie.synopsis.toLowerCase().includes(q);
+      const matchesG = g === 'Todos' || movie.genres.includes(g);
+      return matchesQ && matchesG;
+    });
+  });
+
+  // Total scheduled showtimes counter
+  readonly totalSchedulesCount = computed(() => {
+    return this.movieService.movies().reduce((acc, m) => acc + (m.schedules?.length || 0), 0);
+  });
 
   openNewMovieForm(): void {
-    this.editingMovieId.set(null);
-    this.movieTitle = '';
-    this.movieSynopsis = '';
-    this.movieDuration = 120;
-    this.movieAgeRestriction = 'ATP';
-    this.selectedGenres = ['Acción'];
-    this.moviePlaceholderColor = '#1e3a8a';
-    this.movieRegularPrice = 5500;
+    this.editingMovie.set(null);
     this.showMovieForm.set(true);
   }
 
   openEditMovieForm(movie: Movie): void {
-    this.editingMovieId.set(movie.id);
-    this.movieTitle = movie.title;
-    this.movieSynopsis = movie.synopsis;
-    this.movieDuration = movie.duration;
-    this.movieAgeRestriction = movie.ageRestriction;
-    this.selectedGenres = [...movie.genres];
-    this.moviePlaceholderColor = movie.placeholderColor;
-    this.movieRegularPrice = movie.regularPrice || 5500;
+    this.editingMovie.set(movie);
     this.showMovieForm.set(true);
   }
 
   closeMovieForm(): void {
     this.showMovieForm.set(false);
-    this.editingMovieId.set(null);
+    this.editingMovie.set(null);
+    this.isSavingMovie.set(false);
   }
 
-  toggleGenreSelection(genre: string): void {
-    if (this.selectedGenres.includes(genre)) {
-      if (this.selectedGenres.length > 1) {
-        this.selectedGenres = this.selectedGenres.filter(g => g !== genre);
-      }
-    } else {
-      this.selectedGenres = [...this.selectedGenres, genre];
-    }
-  }
-
-  saveMovie(): void {
-    if (!this.movieTitle.trim()) return;
-
-    if (this.editingMovieId()) {
-      const existing = this.movieService.movies().find(m => m.id === this.editingMovieId());
-      if (existing) {
+  async handleSaveMovie(formData: MovieFormData): Promise<void> {
+    this.isSavingMovie.set(true);
+    try {
+      if (formData.id) {
+        // Edit existing movie
+        const existing = this.movieService.movies().find(m => m.id === formData.id);
         const updated: Movie = {
           ...existing,
-          title: this.movieTitle.trim(),
-          synopsis: this.movieSynopsis.trim(),
-          duration: Number(this.movieDuration) || 120,
-          ageRestriction: this.movieAgeRestriction,
-          genres: this.selectedGenres,
-          placeholderColor: this.moviePlaceholderColor,
-          regularPrice: Number(this.movieRegularPrice) || 5500
+          id: formData.id,
+          title: formData.title,
+          synopsis: formData.synopsis,
+          duration: formData.duration,
+          ageRestriction: formData.ageRestriction,
+          genres: formData.genres,
+          imageUrl: formData.imageUrl || undefined,
+          regularPrice: formData.regularPrice,
+          rating: existing?.rating ?? 5.0,
+          reviewsCount: existing?.reviewsCount ?? 1,
+          ticketsSold: existing?.ticketsSold ?? 0,
+          isVisibleOnHome: existing?.isVisibleOnHome ?? true,
+          schedules: existing?.schedules ?? []
         };
-        this.movieService.updateMovie(updated);
+        await this.movieService.updateMovie(updated);
         this.adminService.addAuditLog(
           'modificar_pelicula',
           'Películas',
           `Actualizó los datos de la película "${updated.title}".`
         );
+      } else {
+        // Create new movie
+        const newMovie: Movie = {
+          id: `m-${Date.now()}`,
+          title: formData.title,
+          synopsis: formData.synopsis,
+          duration: formData.duration,
+          ageRestriction: formData.ageRestriction,
+          genres: formData.genres,
+          imageUrl: formData.imageUrl || undefined,
+          regularPrice: formData.regularPrice,
+          rating: 5.0,
+          reviewsCount: 1,
+          ticketsSold: 0,
+          isVisibleOnHome: true,
+          schedules: []
+        };
+        await this.movieService.addMovie(newMovie);
+        this.adminService.addAuditLog(
+          'crear_pelicula',
+          'Películas',
+          `Agregó una nueva película "${newMovie.title}" (${newMovie.duration} min, ${newMovie.ageRestriction}).`
+        );
       }
-    } else {
-      const newMovie: Movie = {
-        id: `m-${Date.now()}`,
-        title: this.movieTitle.trim(),
-        synopsis: this.movieSynopsis.trim() || 'Sin sinopsis disponible.',
-        duration: Number(this.movieDuration) || 120,
-        ageRestriction: this.movieAgeRestriction,
-        genres: this.selectedGenres,
-        rating: 5.0,
-        reviewsCount: 1,
-        ticketsSold: 0,
-        placeholderColor: this.moviePlaceholderColor,
-        regularPrice: Number(this.movieRegularPrice) || 5500,
-        isVisibleOnHome: true,
-        schedules: []
-      };
-      this.movieService.addMovie(newMovie);
-      this.adminService.addAuditLog(
-        'crear_pelicula',
-        'Películas',
-        `Agregó una nueva película "${newMovie.title}" (${newMovie.duration} min, ${newMovie.ageRestriction}).`
-      );
+      this.closeMovieForm();
+    } catch (err) {
+      console.error('Error al guardar película:', err);
+    } finally {
+      this.isSavingMovie.set(false);
     }
-
-    this.closeMovieForm();
   }
 
-  deleteMovie(movie: Movie): void {
+  async handleDeleteMovie(movie: Movie): Promise<void> {
     if (confirm(`¿Estás seguro de eliminar la película "${movie.title}"?`)) {
-      this.movieService.deleteMovie(movie.id);
+      await this.movieService.deleteMovie(movie.id);
       this.adminService.addAuditLog(
         'eliminar_pelicula',
         'Películas',
@@ -147,7 +148,7 @@ export class AdminMovies {
     }
   }
 
-  toggleVisibility(movie: Movie): void {
+  handleToggleVisibility(movie: Movie): void {
     this.movieService.toggleMovieVisibility(movie.id);
     const newStatus = movie.isVisibleOnHome === false ? 'visible' : 'oculta';
     this.adminService.addAuditLog(
@@ -157,73 +158,54 @@ export class AdminMovies {
     );
   }
 
-  // --- Showtimes & Auto-Room Allocation ---
+  // --- Schedule management ---
   openScheduleModal(movie: Movie): void {
-    this.selectedMovieForSchedule = movie;
-    this.scheduleTime = '17:00';
-    this.scheduleFormat = '2D';
-    this.scheduleLanguage = 'Castellano';
-    this.assignedRoom = null;
-    this.allocationError = null;
-    this.manualRoomChoice = this.adminService.availableRooms[0];
+    this.selectedMovieForSchedule.set(movie);
     this.showScheduleModal.set(true);
-
-    // Run auto allocation initially
-    this.runAutoRoomAllocation();
   }
 
   closeScheduleModal(): void {
     this.showScheduleModal.set(false);
-    this.selectedMovieForSchedule = null;
+    this.selectedMovieForSchedule.set(null);
+    this.isSavingSchedule.set(false);
   }
 
-  runAutoRoomAllocation(): void {
-    if (!this.selectedMovieForSchedule) return;
+  async handleSaveSchedule(formData: ScheduleFormData): Promise<void> {
+    const movie = this.selectedMovieForSchedule();
+    if (!movie) return;
 
-    this.allocationError = null;
-    const result = this.adminService.allocateAutomaticRoom(
-      this.scheduleTime,
-      this.selectedMovieForSchedule.duration
-    );
+    this.isSavingSchedule.set(true);
+    try {
+      const newSchedule: Schedule = {
+        id: `s-${Date.now()}`,
+        time: formData.time,
+        format: formData.format,
+        language: formData.language,
+        room: formData.room,
+        basePrice: formData.basePrice,
+        isPresale: formData.isPresale
+      };
 
-    if (result.success && result.room) {
-      this.assignedRoom = result.room;
-    } else {
-      this.assignedRoom = null;
-      this.allocationError = result.reason || 'No se pudo asignar sala automáticamente sin solapamiento.';
+      await this.movieService.addSchedule(movie.id, newSchedule);
+      this.adminService.addAuditLog(
+        'crear_funcion',
+        'Funciones',
+        `Asignó función para "${movie.title}" a las ${newSchedule.time} (${newSchedule.format} - ${newSchedule.language}) en ${newSchedule.room}.`
+      );
+      this.closeScheduleModal();
+    } catch (err) {
+      console.error('Error al programar función:', err);
+    } finally {
+      this.isSavingSchedule.set(false);
     }
   }
 
-  confirmAddSchedule(): void {
-    if (!this.selectedMovieForSchedule) return;
-
-    const roomToUse = this.assignedRoom || this.manualRoomChoice;
-    if (!roomToUse) return;
-
-    const newSchedule: Schedule = {
-      id: `s-${Date.now()}`,
-      time: this.scheduleTime,
-      format: this.scheduleFormat,
-      language: this.scheduleLanguage,
-      room: roomToUse
-    };
-
-    this.movieService.addSchedule(this.selectedMovieForSchedule.id, newSchedule);
+  async handleRemoveSchedule(event: { movie: Movie; schedule: Schedule }): Promise<void> {
+    await this.movieService.removeSchedule(event.movie.id, event.schedule.id);
     this.adminService.addAuditLog(
       'crear_funcion',
       'Funciones',
-      `Asignó función para "${this.selectedMovieForSchedule.title}" a las ${newSchedule.time} (${newSchedule.format} - ${newSchedule.language}) en ${newSchedule.room}.`
-    );
-
-    this.closeScheduleModal();
-  }
-
-  removeSchedule(movie: Movie, schedule: Schedule): void {
-    this.movieService.removeSchedule(movie.id, schedule.id);
-    this.adminService.addAuditLog(
-      'crear_funcion',
-      'Funciones',
-      `Eliminó la función de las ${schedule.time} en ${schedule.room} para "${movie.title}".`
+      `Eliminó la función de las ${event.schedule.time} en ${event.schedule.room} para "${event.movie.title}".`
     );
   }
 }

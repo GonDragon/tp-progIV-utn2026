@@ -40,20 +40,35 @@
           {{ movie.ageRestriction }}
         </div>
 
-        <!-- Solid Color Placeholder Image / Poster -->
-        <div class="relative w-full aspect-[16/9] md:aspect-[4/3] flex flex-col items-center justify-center p-6 text-center select-none shadow-inner"
-             [style.background-color]="movie.placeholderColor">
-          <div class="p-3.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 mb-2 group-hover:scale-110 transition-transform">
-            <svg class="w-8 h-8 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-            </svg>
-          </div>
-          <span class="text-white font-bold text-base md:text-lg tracking-wide drop-shadow-md px-2 line-clamp-1">
-            {{ movie.title }}
-          </span>
-          <span class="text-xs text-white/80 font-medium mt-1">
-            {{ movie.duration }} min
-          </span>
+        <!-- Poster / Placeholder -->
+        <div class="relative w-full aspect-[16/9] md:aspect-[4/3] flex flex-col items-center justify-center p-6 text-center select-none shadow-inner overflow-hidden bg-neutral-900">
+          @if (movie.imageUrl) {
+            <img
+              [src]="movie.imageUrl"
+              [alt]="movie.title"
+              class="w-full h-full object-cover absolute inset-0 group-hover:scale-105 transition-transform duration-500" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+            <div class="absolute bottom-3 left-3 right-3 z-10 text-left">
+              <span class="text-white font-bold text-base md:text-lg tracking-wide drop-shadow-md line-clamp-1 block">
+                {{ movie.title }}
+              </span>
+              <span class="text-xs text-white/80 font-medium">
+                {{ movie.duration }} min
+              </span>
+            </div>
+          } @else {
+            <div class="p-3.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 mb-2 group-hover:scale-110 transition-transform">
+              <svg class="w-8 h-8 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+              </svg>
+            </div>
+            <span class="text-white font-bold text-base md:text-lg tracking-wide drop-shadow-md px-2 line-clamp-1">
+              {{ movie.title }}
+            </span>
+            <span class="text-xs text-white/80 font-medium mt-1">
+              {{ movie.duration }} min
+            </span>
+          }
         </div>
 
         <!-- Body Info -->
