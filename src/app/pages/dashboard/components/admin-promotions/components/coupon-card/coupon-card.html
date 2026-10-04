@@ -1,0 +1,58 @@
+<div class="bg-neutral-800/90 rounded-2xl border border-neutral-700/80 p-5 shadow-lg flex flex-col justify-between hover:border-neutral-600 transition-all duration-200 group">
+  <div>
+    <!-- Header: Code badge & ID -->
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">{{ getRestrictionIcon(coupon().tipo_restriccion) }}</span>
+        <span class="text-sm font-mono font-black px-3 py-1 rounded-xl bg-neutral-900 border border-neutral-700 text-[#D4AF37] tracking-wider shadow-inner">
+          {{ coupon().codigo }}
+        </span>
+      </div>
+      <span class="text-[10px] font-mono text-gray-500 bg-neutral-900/60 px-2 py-0.5 rounded border border-neutral-700/50 shrink-0">
+        #{{ coupon().id }}
+      </span>
+    </div>
+
+    <!-- Discount info -->
+    <div class="my-3">
+      <div class="flex items-baseline gap-1.5">
+        <span class="text-3xl font-black text-white">{{ coupon().porcentaje_descuento | number:'1.0-2' }}%</span>
+        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Descuento</span>
+      </div>
+
+      <!-- Restriction Badge -->
+      <div class="mt-2.5">
+        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border"
+              [ngClass]="getRestrictionBadgeClass(coupon().tipo_restriccion)">
+          {{ coupon().tipo_restriccion }}
+        </span>
+      </div>
+
+      <p class="text-xs text-gray-400 mt-2 line-clamp-2">
+        {{ getRestrictionDescription(coupon().tipo_restriccion) }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Footer Actions -->
+  <div class="pt-3 border-t border-neutral-700/80 flex items-center justify-between gap-3 mt-3">
+    <span class="text-[11px] text-gray-500 font-mono">Cupón activo</span>
+
+    <div class="flex items-center gap-1.5 shrink-0">
+      <button
+        type="button"
+        (click)="edit.emit(coupon())"
+        class="p-2 bg-neutral-700/80 hover:bg-neutral-600 text-gray-200 hover:text-white text-xs rounded-xl transition-all cursor-pointer shadow-sm"
+        title="Editar cupón">
+        ✏️
+      </button>
+      <button
+        type="button"
+        (click)="delete.emit(coupon())"
+        class="p-2 bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 text-xs rounded-xl transition-all cursor-pointer border border-rose-500/20"
+        title="Eliminar cupón">
+        🗑️
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,162 +1,171 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AdminService } from '../../../../services/admin.service';
-import { MovieService } from '../../../../services/movie.service';
-import { DiscountCoupon } from '../../../../models/admin';
-import { Movie } from '../../../../models/movie';
+import { CouponService } from '../../../../services/coupon.service';
+import { Coupon } from '../../../../models/coupon';
+import { CouponCard } from './components/coupon-card/coupon-card';
+import { CouponModal } from './components/coupon-modal/coupon-modal';
+import { WelcomeDiscountCard } from './components/welcome-discount-card/welcome-discount-card';
 
 @Component({
   selector: 'app-admin-promotions',
   standalone: true,
-  imports: [FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    CouponCard,
+    CouponModal,
+    WelcomeDiscountCard
+  ],
   templateUrl: './admin-promotions.html',
   styleUrl: './admin-promotions.css'
 })
 export class AdminPromotions {
-  readonly adminService = inject(AdminService);
-  readonly movieService = inject(MovieService);
+  readonly couponService = inject(CouponService);
 
-  readonly activeSubTab = signal<'coupons' | 'presales'>('coupons');
+  readonly searchQuery = signal<string>('');
+  readonly selectedRestriction = signal<string>('all');
 
-  // Welcome coupon percentage quick update
-  welcomePercent = 20;
+  readonly restrictions = ['all', 'Ninguna', 'Primera Compra', 'Mayores 50'];
 
-  // New/edit coupon modal
+  // Welcome coupon
+  readonly welcomeCoupon = computed<Coupon | null>(() => {
+    return this.couponService.coupons().find(c =>
+      c.tipo_restriccion.toLowerCase().includes('primera') ||
+      c.tipo_restriccion.toLowerCase().includes('bienvenida')
+    ) || null;
+  });
+
+  // Modal State
   readonly showCouponModal = signal(false);
-  readonly editingCouponId = signal<string | null>(null);
-  couponCode = '';
-  couponDiscount = 15;
-  couponType: DiscountCoupon['type'] = 'general';
-  couponMinAge = 50;
-  couponDescription = '';
-  couponIsActive = true;
+  readonly editingCoupon = signal<Coupon | null>(null);
+  readonly isSavingCoupon = signal(false);
+  readonly isSavingWelcome = signal(false);
 
-  // Presale configuration modal
-  readonly showPresaleModal = signal(false);
-  selectedMovieForPresale: Movie | null = null;
-  presaleEnabled = true;
-  presaleSpecialPrice = 4500;
-  presaleStartDate = '';
-  presaleEndDate = '';
+  // Delete State
+  readonly couponToDelete = signal<Coupon | null>(null);
+  readonly isDeleting = signal(false);
 
-  constructor() {
-    const welcome = this.adminService.discountCoupons().find(c => c.type === 'primera_compra');
-    if (welcome) {
-      this.welcomePercent = welcome.discountPercent;
-    }
+  // Toast
+  readonly toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
+  private toastTimer: any = null;
+
+  // Filtered coupons
+  readonly filteredCoupons = computed(() => {
+    const list = this.couponService.coupons();
+    const query = this.searchQuery().trim().toLowerCase();
+    const restriction = this.selectedRestriction();
+
+    return list.filter(coupon => {
+      const matchRestriction =
+        restriction === 'all' ||
+        coupon.tipo_restriccion.toLowerCase() === restriction.toLowerCase();
+
+      const matchQuery =
+        !query ||
+        coupon.codigo.toLowerCase().includes(query) ||
+        coupon.tipo_restriccion.toLowerCase().includes(query) ||
+        String(coupon.id).includes(query) ||
+        String(coupon.porcentaje_descuento).includes(query);
+
+      return matchRestriction && matchQuery;
+    });
+  });
+
+  private showToastMessage(message: string, type: 'success' | 'error' = 'success'): void {
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toast.set({ message, type });
+    this.toastTimer = setTimeout(() => {
+      this.toast.set(null);
+    }, 4000);
   }
 
-  updateWelcomeCoupon(): void {
-    this.adminService.updateWelcomeDiscountPercent(Number(this.welcomePercent) || 20);
-    alert('¡Porcentaje de primera compra actualizado con éxito!');
+  reload(): void {
+    this.couponService.loadCoupons();
   }
 
-  // --- Coupon CRUD ---
+  // --- Coupon Modal Handlers ---
   openNewCouponModal(): void {
-    this.editingCouponId.set(null);
-    this.couponCode = '';
-    this.couponDiscount = 15;
-    this.couponType = 'general';
-    this.couponMinAge = 50;
-    this.couponDescription = '';
-    this.couponIsActive = true;
+    this.editingCoupon.set(null);
     this.showCouponModal.set(true);
   }
 
-  openEditCouponModal(coupon: DiscountCoupon): void {
-    this.editingCouponId.set(coupon.id);
-    this.couponCode = coupon.code;
-    this.couponDiscount = coupon.discountPercent;
-    this.couponType = coupon.type;
-    this.couponMinAge = coupon.minAge || 50;
-    this.couponDescription = coupon.description;
-    this.couponIsActive = coupon.isActive;
+  openEditCouponModal(coupon: Coupon): void {
+    this.editingCoupon.set(coupon);
     this.showCouponModal.set(true);
   }
 
   closeCouponModal(): void {
     this.showCouponModal.set(false);
-    this.editingCouponId.set(null);
+    this.editingCoupon.set(null);
   }
 
-  saveCoupon(): void {
-    if (!this.couponCode.trim()) return;
+  async saveCoupon(data: {
+    codigo: string;
+    porcentaje_descuento: number;
+    tipo_restriccion: string;
+  }): Promise<void> {
+    this.isSavingCoupon.set(true);
+    const editing = this.editingCoupon();
 
-    if (this.editingCouponId()) {
-      const existing = this.adminService.discountCoupons().find(c => c.id === this.editingCouponId());
-      if (existing) {
-        this.adminService.updateCoupon({
-          ...existing,
-          code: this.couponCode.trim().toUpperCase(),
-          discountPercent: Number(this.couponDiscount) || 10,
-          type: this.couponType,
-          minAge: this.couponType === 'mayores_50' ? Number(this.couponMinAge) : undefined,
-          description: this.couponDescription.trim(),
-          isActive: this.couponIsActive
-        });
+    if (editing) {
+      const success = await this.couponService.updateCoupon(editing.id, data);
+      this.isSavingCoupon.set(false);
+      if (success) {
+        this.closeCouponModal();
+        this.showToastMessage(`Cupón "${data.codigo}" actualizado correctamente.`);
+      } else {
+        this.showToastMessage(this.couponService.error() || 'Error al actualizar cupón.', 'error');
       }
     } else {
-      const newCoupon: DiscountCoupon = {
-        id: `dc-${Date.now()}`,
-        code: this.couponCode.trim().toUpperCase(),
-        discountPercent: Number(this.couponDiscount) || 10,
-        type: this.couponType,
-        minAge: this.couponType === 'mayores_50' ? Number(this.couponMinAge) : undefined,
-        description: this.couponDescription.trim(),
-        isActive: this.couponIsActive,
-        usageCount: 0
-      };
-      this.adminService.addCoupon(newCoupon);
-    }
-
-    this.closeCouponModal();
-  }
-
-  deleteCoupon(coupon: DiscountCoupon): void {
-    if (confirm(`¿Eliminar cupón "${coupon.code}"?`)) {
-      this.adminService.deleteCoupon(coupon.id);
+      const created = await this.couponService.createCoupon(data);
+      this.isSavingCoupon.set(false);
+      if (created) {
+        this.closeCouponModal();
+        this.showToastMessage(`Cupón "${data.codigo}" creado exitosamente.`);
+      } else {
+        this.showToastMessage(this.couponService.error() || 'Error al crear cupón.', 'error');
+      }
     }
   }
 
-  // --- Movie Presales (7 days prior with special price) ---
-  openPresaleModal(movie: Movie): void {
-    this.selectedMovieForPresale = movie;
-    this.presaleEnabled = movie.isPresaleEnabled ?? false;
-    this.presaleSpecialPrice = movie.presalePrice ?? 4500;
-
-    // Calculate default 7-day prior dates
-    const today = new Date();
-    const futureDate = new Date();
-    futureDate.setDate(today.getDate() + 7);
-
-    this.presaleStartDate = movie.presaleStartDate || today.toISOString().slice(0, 10);
-    this.presaleEndDate = movie.presaleEndDate || futureDate.toISOString().slice(0, 10);
-
-    this.showPresaleModal.set(true);
+  // --- Delete Handlers ---
+  confirmDeleteCoupon(coupon: Coupon): void {
+    this.couponToDelete.set(coupon);
   }
 
-  closePresaleModal(): void {
-    this.showPresaleModal.set(false);
-    this.selectedMovieForPresale = null;
+  cancelDelete(): void {
+    if (!this.isDeleting()) {
+      this.couponToDelete.set(null);
+    }
   }
 
-  savePresale(): void {
-    if (!this.selectedMovieForPresale) return;
+  async executeDelete(): Promise<void> {
+    const item = this.couponToDelete();
+    if (!item) return;
 
-    this.movieService.updatePresale(this.selectedMovieForPresale.id, {
-      isPresaleEnabled: this.presaleEnabled,
-      presalePrice: Number(this.presaleSpecialPrice) || 4500,
-      presaleStartDate: this.presaleStartDate,
-      presaleEndDate: this.presaleEndDate
-    });
+    this.isDeleting.set(true);
+    const success = await this.couponService.deleteCoupon(item.id);
+    this.isDeleting.set(false);
 
-    const statusText = this.presaleEnabled ? 'activada' : 'desactivada';
-    this.adminService.addAuditLog(
-      'modificar_precio',
-      'Preventas',
-      `Configuración de Preventa ${statusText} para "${this.selectedMovieForPresale.title}": Precio promocional $${this.presaleSpecialPrice} (Ventana: ${this.presaleStartDate} a ${this.presaleEndDate}).`
-    );
+    if (success) {
+      this.couponToDelete.set(null);
+      this.showToastMessage(`Cupón "${item.codigo}" eliminado correctamente.`);
+    } else {
+      this.showToastMessage(this.couponService.error() || 'Error al eliminar cupón.', 'error');
+    }
+  }
 
-    this.closePresaleModal();
+  // --- Welcome Discount Handler ---
+  async saveWelcomeDiscount(percent: number): Promise<void> {
+    this.isSavingWelcome.set(true);
+    const success = await this.couponService.setWelcomeDiscountPercent(percent);
+    this.isSavingWelcome.set(false);
+
+    if (success) {
+      this.showToastMessage(`Porcentaje de primera compra establecido al ${percent}%.`);
+    } else {
+      this.showToastMessage(this.couponService.error() || 'Error al guardar descuento de primera compra.', 'error');
+    }
   }
 }

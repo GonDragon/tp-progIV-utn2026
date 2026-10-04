@@ -1,0 +1,48 @@
+<div class="p-5 rounded-2xl bg-neutral-800/90 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+  <div class="space-y-1.5">
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="text-xl">🎁</span>
+      <h3 class="text-sm font-bold text-white">Descuento de Primera Compra para Nuevos Usuarios</h3>
+      <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+        Automático al registrarse
+      </span>
+    </div>
+    <p class="text-xs text-gray-300">
+      Beneficio automático aplicado a la cuenta del usuario para su primera compra de entradas tras registrarse en el sistema.
+    </p>
+    @if (welcomeCoupon()) {
+      <div class="text-[11px] text-gray-400 font-mono flex items-center gap-2 pt-0.5">
+        <span>Código asignado: <strong class="text-amber-400">{{ welcomeCoupon()?.codigo }}</strong></span>
+        <span>•</span>
+        <span>ID: #{{ welcomeCoupon()?.id }}</span>
+      </div>
+    }
+    @if (validationError()) {
+      <p class="text-xs text-rose-400 font-semibold">{{ validationError() }}</p>
+    }
+  </div>
+
+  <div class="flex items-center gap-3 shrink-0">
+    <div class="flex items-center gap-1.5 bg-neutral-900 px-3.5 py-2 rounded-xl border border-neutral-700">
+      <span class="text-xs text-gray-400 font-medium">Porcentaje:</span>
+      <input
+        type="number"
+        [ngModel]="discountPercent()"
+        (ngModelChange)="discountPercent.set($event)"
+        min="1"
+        max="100"
+        class="w-14 bg-transparent text-white font-black text-center focus:outline-none" />
+      <span class="text-sm font-bold text-[#D4AF37]">%</span>
+    </div>
+    <button
+      type="button"
+      (click)="onSave()"
+      [disabled]="isSaving()"
+      class="px-5 py-2.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2">
+      @if (isSaving()) {
+        <span class="inline-block w-3 h-3 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></span>
+      }
+      <span>{{ isSaving() ? 'Guardando...' : 'Guardar' }}</span>
+    </button>
+  </div>
+</div>

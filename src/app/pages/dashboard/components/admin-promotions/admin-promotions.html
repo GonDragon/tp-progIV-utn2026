@@ -1,379 +1,187 @@
 <div class="space-y-6">
+
+  <!-- Toast Notification -->
+  @if (toast(); as t) {
+    <div
+      class="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 transition-all animate-bounce"
+      [class]="t.type === 'success' ? 'bg-emerald-950/90 border-emerald-500 text-emerald-200' : 'bg-rose-950/90 border-rose-500 text-rose-200'">
+      <span class="text-lg">{{ t.type === 'success' ? '✅' : '❌' }}</span>
+      <span class="text-xs font-semibold">{{ t.message }}</span>
+    </div>
+  }
+
   <!-- Header Bar -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700 shadow-md">
     <div>
       <h2 class="text-xl font-bold text-white flex items-center gap-2">
-        <span class="text-[#D4AF37]">🎟️</span> Cupones, Descuentos & Preventas
+        <span class="text-[#D4AF37]">🎟️</span> Cupones & Descuentos
       </h2>
       <p class="text-xs text-gray-400 mt-0.5">
-        Configura el cupón de primera compra para registrados, beneficios para mayores de 50 años y ventanas de preventa con precio promocional.
+        Configura cupones de descuento, beneficio de primera compra para registrados y promociones por edad conectados a Supabase.
       </p>
     </div>
 
-    <!-- Sub-tabs switch -->
-    <div class="flex items-center gap-1.5 p-1 bg-neutral-900 rounded-xl border border-neutral-700">
+    <!-- Actions / Refresh -->
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 px-3 py-1.5 bg-neutral-900 rounded-xl border border-neutral-700 text-xs font-bold text-gray-300">
+        <span>🎟️ Total Cupones:</span>
+        <span class="text-[#D4AF37] font-black">{{ couponService.coupons().length }}</span>
+      </div>
+
       <button
         type="button"
-        (click)="activeSubTab.set('coupons')"
-        class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
-        [class.bg-[#D4AF37]]="activeSubTab() === 'coupons'"
-        [class.text-neutral-950]="activeSubTab() === 'coupons'"
-        [class.text-gray-400]="activeSubTab() !== 'coupons'">
-        Cupones & Beneficios
-      </button>
-      <button
-        type="button"
-        (click)="activeSubTab.set('presales')"
-        class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
-        [class.bg-[#D4AF37]]="activeSubTab() === 'presales'"
-        [class.text-neutral-950]="activeSubTab() === 'presales'"
-        [class.text-gray-400]="activeSubTab() !== 'presales'">
-        Preventas (Ventana 7 días)
+        (click)="reload()"
+        [disabled]="couponService.isLoading()"
+        class="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white rounded-xl border border-neutral-700 cursor-pointer transition-all disabled:opacity-50"
+        title="Recargar cupones de Supabase">
+        <span [class.animate-spin]="couponService.isLoading()">🔄</span>
       </button>
     </div>
   </div>
 
-  <!-- SUBTAB 1: COUPONS -->
-  @if (activeSubTab() === 'coupons') {
-    <div class="space-y-6">
-
-      <!-- Quick Box: First Purchase Discount Config -->
-      <div class="p-5 rounded-2xl bg-neutral-800/90 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="space-y-1">
-          <div class="flex items-center gap-2">
-            <span class="text-lg">🎁</span>
-            <h3 class="text-sm font-bold text-white">Descuento de Primera Compra para Nuevos Usuarios</h3>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              Automático al registrarse
-            </span>
-          </div>
-          <p class="text-xs text-gray-300">
-            Se asigna automáticamente a la cuenta del cliente tras completar el formulario de registro.
-          </p>
-        </div>
-
-        <div class="flex items-center gap-3 shrink-0">
-          <div class="flex items-center gap-1.5 bg-neutral-900 px-3 py-1.5 rounded-xl border border-neutral-700">
-            <span class="text-xs text-gray-400">Porcentaje:</span>
-            <input
-              type="number"
-              [(ngModel)]="welcomePercent"
-              min="5"
-              max="100"
-              class="w-14 bg-transparent text-white font-bold text-center focus:outline-none" />
-            <span class="text-sm font-bold text-[#D4AF37]">%</span>
-          </div>
-          <button
-            type="button"
-            (click)="updateWelcomeCoupon()"
-            class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl shadow transition-all cursor-pointer">
-            Guardar
-          </button>
-        </div>
+  <!-- Error Alert -->
+  @if (couponService.error(); as err) {
+    <div class="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center justify-between text-xs text-rose-300 shadow-md">
+      <div class="flex items-center gap-2">
+        <span class="text-base">⚠️</span>
+        <span>{{ err }}</span>
       </div>
-
-      <!-- Coupons list -->
-      <div class="space-y-4">
-        <div class="flex justify-between items-center">
-          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Todos los Cupones de Descuento</span>
-          <button
-            type="button"
-            (click)="openNewCouponModal()"
-            class="px-3.5 py-1.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5">
-            <span>+</span> Crear Cupón
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          @for (coupon of adminService.discountCoupons(); track coupon.id) {
-            <div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-5 shadow-lg flex flex-col justify-between relative overflow-hidden">
-              <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-neutral-900 border border-neutral-700 text-[#D4AF37]">
-                    {{ coupon.code }}
-                  </span>
-                  <span
-                    class="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                    [class]="coupon.isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-700 text-gray-400'">
-                    {{ coupon.isActive ? 'Activo' : 'Inactivo' }}
-                  </span>
-                </div>
-
-                <div class="flex items-baseline gap-1">
-                  <span class="text-2xl font-black text-white">{{ coupon.discountPercent }}%</span>
-                  <span class="text-xs text-gray-400 font-semibold uppercase">Descuento</span>
-                </div>
-
-                @if (coupon.type === 'mayores_50') {
-                  <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-300 text-[11px] font-medium">
-                    <span>👴</span> Exclusivo Usuarios >50 Años
-                  </div>
-                } @else if (coupon.type === 'primera_compra') {
-                  <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-medium">
-                    <span>🎉</span> Primera Compra
-                  </div>
-                }
-
-                <p class="text-xs text-gray-300 line-clamp-2">
-                  {{ coupon.description }}
-                </p>
-              </div>
-
-              <div class="pt-3 mt-3 border-t border-neutral-700/80 flex items-center justify-between text-xs text-gray-400">
-                <span>{{ coupon.usageCount }} usos</span>
-                <div class="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    (click)="openEditCouponModal(coupon)"
-                    class="p-2 bg-neutral-700 hover:bg-neutral-600 text-gray-200 text-xs rounded-lg transition-all cursor-pointer"
-                    title="Editar">
-                    ✏️
-                  </button>
-                  <button
-                    type="button"
-                    (click)="deleteCoupon(coupon)"
-                    class="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs rounded-lg transition-all cursor-pointer"
-                    title="Eliminar">
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            </div>
-          }
-        </div>
-      </div>
+      <button
+        (click)="reload()"
+        class="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg font-bold cursor-pointer">
+        Reintentar
+      </button>
     </div>
   }
 
-  <!-- SUBTAB 2: PRESALES -->
-  @if (activeSubTab() === 'presales') {
-    <div class="space-y-4">
-      <div class="p-4 rounded-xl bg-neutral-800/80 border border-neutral-700 text-xs text-gray-300">
-        💡 <strong>Sistema de Preventas:</strong> Permite abrir la venta anticipada de boletos 7 días antes del estreno con un precio especial promocional. Una vez finalizado el periodo de preventa, el precio se restablece automáticamente a la tarifa estándar.
+  <!-- Quick Card: First Purchase Discount -->
+  <app-welcome-discount-card
+    [welcomeCoupon]="welcomeCoupon()"
+    [isSaving]="isSavingWelcome()"
+    (saveWelcomeDiscount)="saveWelcomeDiscount($event)" />
+
+  <!-- Coupons Section -->
+  <div class="space-y-4">
+
+    <!-- Toolbar: Search, Filters & Add Button -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-850 p-3 rounded-2xl border border-neutral-750">
+
+      <!-- Search bar -->
+      <div class="relative flex-1 max-w-md">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none text-xs">
+          🔍
+        </span>
+        <input
+          type="text"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          placeholder="Buscar cupón por código o tipo..."
+          class="w-full pl-9 pr-4 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]" />
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        @for (movie of movieService.movies(); track movie.id) {
-          <div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-5 shadow-lg flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <div
-                class="w-12 h-16 rounded-lg bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white font-bold text-xs shrink-0 p-1 text-center">
-                <span class="line-clamp-2">{{ movie.title }}</span>
-              </div>
-              <div class="space-y-1">
-                <h4 class="text-sm font-bold text-white">{{ movie.title }}</h4>
-                <div class="text-xs text-gray-400">
-                  Precio Regular: <strong class="text-white">${{ movie.regularPrice || 5500 }}</strong>
-                </div>
-                @if (movie.isPresaleEnabled) {
-                  <div class="text-xs text-emerald-400 font-bold flex items-center gap-1">
-                    <span>⚡ Preventa Activa:</span> ${{ movie.presalePrice }}
-                  </div>
-                  <div class="text-[10px] text-gray-400">
-                    Ventana: {{ movie.presaleStartDate }} al {{ movie.presaleEndDate }}
-                  </div>
-                } @else {
-                  <div class="text-xs text-gray-400 italic">
-                    Sin preventa activa
-                  </div>
-                }
-              </div>
-            </div>
+      <!-- Add Button -->
+      <button
+        type="button"
+        (click)="openNewCouponModal()"
+        class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5 shrink-0">
+        <span>+</span>
+        <span>Nuevo Cupón</span>
+      </button>
+    </div>
 
-            <button
-              type="button"
-              (click)="openPresaleModal(movie)"
-              class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0"
-              [class.bg-[#D4AF37]]="movie.isPresaleEnabled"
-              [class.text-neutral-950]="movie.isPresaleEnabled"
-              [class.bg-neutral-700]="!movie.isPresaleEnabled"
-              [class.text-gray-200]="!movie.isPresaleEnabled">
-              {{ movie.isPresaleEnabled ? '⚙️ Ajustar' : '⚡ Habilitar' }}
-            </button>
-          </div>
+    <!-- Restriction Filter Chips -->
+    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+      @for (r of restrictions; track r) {
+        <button
+          type="button"
+          (click)="selectedRestriction.set(r)"
+          class="px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border"
+          [class]="selectedRestriction() === r ? 'bg-neutral-700 text-[#D4AF37] border-[#D4AF37]/50 shadow-sm' : 'bg-neutral-800/80 text-gray-400 border-neutral-700 hover:text-gray-200'">
+          {{ r === 'all' ? 'Todos los cupones' : r }}
+        </button>
+      }
+    </div>
+
+    <!-- Coupons Grid -->
+    @if (couponService.isLoading() && couponService.coupons().length === 0) {
+      <div class="flex flex-col items-center justify-center py-16 text-center bg-neutral-800/40 rounded-2xl border border-neutral-700/60">
+        <span class="text-3xl animate-spin mb-3">🔄</span>
+        <p class="text-sm font-semibold text-gray-300">Cargando cupones desde Supabase...</p>
+      </div>
+    } @else if (filteredCoupons().length > 0) {
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (coupon of filteredCoupons(); track coupon.id) {
+          <app-coupon-card
+            [coupon]="coupon"
+            (edit)="openEditCouponModal($event)"
+            (delete)="confirmDeleteCoupon($event)" />
         }
       </div>
-    </div>
-  }
-
-  <!-- COUPON MODAL -->
-  @if (showCouponModal()) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
-        <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
-          <h3 class="text-lg font-bold text-white">
-            {{ editingCouponId() ? 'Editar Cupón' : 'Nuevo Cupón de Descuento' }}
-          </h3>
-          <button (click)="closeCouponModal()" class="text-gray-400 hover:text-white cursor-pointer text-lg">✕</button>
-        </div>
-
-        <form (ngSubmit)="saveCoupon()" class="space-y-3">
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Código del Cupón *</label>
-            <input
-              type="text"
-              [(ngModel)]="couponCode"
-              name="cpCode"
-              required
-              placeholder="Ej. VERANO30"
-              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white uppercase font-mono text-sm focus:outline-none focus:border-[#D4AF37]" />
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Tipo de Cupón</label>
-              <select
-                [(ngModel)]="couponType"
-                name="cpType"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]">
-                <option value="general">General</option>
-                <option value="mayores_50">Exclusivo >50 Años</option>
-                <option value="primera_compra">Primera Compra</option>
-                <option value="especial">Especial</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Descuento (%) *</label>
-              <input
-                type="number"
-                [(ngModel)]="couponDiscount"
-                name="cpDisc"
-                min="1"
-                max="100"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-            </div>
-          </div>
-
-          @if (couponType === 'mayores_50') {
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Edad Mínima Requerida</label>
-              <input
-                type="number"
-                [(ngModel)]="couponMinAge"
-                name="cpAge"
-                min="50"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-            </div>
+    } @else {
+      <!-- Empty State -->
+      <div class="flex flex-col items-center justify-center py-16 text-center bg-neutral-800/40 rounded-2xl border border-neutral-700/60 p-6">
+        <span class="text-4xl mb-3">🎟️</span>
+        <h3 class="text-base font-bold text-white mb-1">No se encontraron cupones</h3>
+        <p class="text-xs text-gray-400 max-w-sm mb-4">
+          @if (searchQuery() || selectedRestriction() !== 'all') {
+            No hay cupones que coincidan con los filtros aplicados.
+          } @else {
+            Aún no hay cupones registrados en la base de datos de Supabase.
           }
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Descripción</label>
-            <textarea
-              [(ngModel)]="couponDescription"
-              name="cpDesc"
-              rows="2"
-              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]"></textarea>
-          </div>
-
-          <div class="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="couponActiveCheck"
-              [(ngModel)]="couponIsActive"
-              name="cpActive"
-              class="rounded bg-neutral-800 border-neutral-700 text-[#D4AF37] focus:ring-0" />
-            <label for="couponActiveCheck" class="text-xs text-gray-300 font-medium cursor-pointer">Cupón Activo y disponible para canjear</label>
-          </div>
-
-          <div class="flex justify-end gap-2 pt-3 border-t border-neutral-800">
-            <button
-              type="button"
-              (click)="closeCouponModal()"
-              class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-bold rounded-xl cursor-pointer">
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              [disabled]="!couponCode.trim()"
-              class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl shadow cursor-pointer disabled:opacity-50">
-              Guardar Cupón
-            </button>
-          </div>
-        </form>
+        </p>
+        <button
+          type="button"
+          (click)="openNewCouponModal()"
+          class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer">
+          + Crear Primer Cupón
+        </button>
       </div>
-    </div>
-  }
+    }
 
-  <!-- PRESALE MODAL -->
-  @if (showPresaleModal() && selectedMovieForPresale) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
-        <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
-          <div>
-            <h3 class="text-lg font-bold text-white">Configurar Preventa</h3>
-            <p class="text-xs text-amber-400">{{ selectedMovieForPresale.title }}</p>
-          </div>
-          <button (click)="closePresaleModal()" class="text-gray-400 hover:text-white cursor-pointer text-lg">✕</button>
+  </div>
+
+  <!-- Coupon Form Modal -->
+  <app-coupon-modal
+    [isOpen]="showCouponModal()"
+    [coupon]="editingCoupon()"
+    [isSaving]="isSavingCoupon()"
+    (closeModal)="closeCouponModal()"
+    (save)="saveCoupon($event)" />
+
+  <!-- Delete Confirmation Modal -->
+  @if (couponToDelete(); as item) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+        <div class="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-2xl mx-auto">
+          🗑️
         </div>
-
-        <form (ngSubmit)="savePresale()" class="space-y-4">
-          <div class="flex items-center gap-2 p-3 bg-neutral-800 rounded-xl">
-            <input
-              type="checkbox"
-              id="presaleActiveCheck"
-              [(ngModel)]="presaleEnabled"
-              name="psEnabled"
-              class="rounded text-[#D4AF37]" />
-            <label for="presaleActiveCheck" class="text-xs text-white font-bold cursor-pointer">Habilitar Sistema de Preventa</label>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Precio Preventa ($) *</label>
-              <input
-                type="number"
-                [(ngModel)]="presaleSpecialPrice"
-                name="psPrice"
-                min="0"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Precio Regular ($)</label>
-              <input
-                type="text"
-                disabled
-                [value]="selectedMovieForPresale.regularPrice || 5500"
-                class="w-full px-3 py-2 bg-neutral-800/50 border border-neutral-800 rounded-xl text-gray-400 text-sm" />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Fecha Apertura (7 días)</label>
-              <input
-                type="date"
-                [(ngModel)]="presaleStartDate"
-                name="psStart"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Fecha Fin Preventa</label>
-              <input
-                type="date"
-                [(ngModel)]="presaleEndDate"
-                name="psEnd"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-            </div>
-          </div>
-
-          <div class="flex justify-end gap-2 pt-3 border-t border-neutral-800">
-            <button
-              type="button"
-              (click)="closePresaleModal()"
-              class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-bold rounded-xl cursor-pointer">
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl shadow cursor-pointer">
-              Guardar Configuración
-            </button>
-          </div>
-        </form>
+        <div class="text-center space-y-1">
+          <h3 class="text-base font-bold text-white">¿Eliminar cupón?</h3>
+          <p class="text-xs text-gray-400">
+            Estás a punto de eliminar el cupón <strong class="text-white font-mono">{{ item.codigo }}</strong> (ID: #{{ item.id }}). Esta acción no se puede deshacer en Supabase.
+          </p>
+        </div>
+        <div class="flex items-center gap-3 pt-2">
+          <button
+            type="button"
+            (click)="cancelDelete()"
+            [disabled]="isDeleting()"
+            class="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            (click)="executeDelete()"
+            [disabled]="isDeleting()"
+            class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+            @if (isDeleting()) {
+              <span class="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            }
+            <span>{{ isDeleting() ? 'Eliminando...' : 'Eliminar' }}</span>
+          </button>
+        </div>
       </div>
     </div>
   }
+
 </div>

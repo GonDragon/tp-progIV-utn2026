@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { AuthService } from './auth';
 import { MovieService } from './movie.service';
 import { CandyService } from './candy.service';
+import { CouponService } from './coupon.service';
 import {
   CandyProduct,
   SpecialCombo,
@@ -21,6 +22,7 @@ export class AdminService {
   private readonly authService = inject(AuthService);
   private readonly movieService = inject(MovieService);
   private readonly candyService = inject(CandyService);
+  private readonly couponService = inject(CouponService);
 
   // Available Rooms in the Cinema
   readonly availableRooms = [
@@ -61,38 +63,23 @@ export class AdminService {
     }));
   });
 
-  // Discount Coupons & Promotions
-  private readonly _discountCoupons = signal<DiscountCoupon[]>([
-    {
-      id: 'dc1',
-      code: 'BIENVENIDA20',
-      discountPercent: 20,
-      type: 'primera_compra',
-      isActive: true,
-      description: 'Descuento automático asignado a nuevos usuarios en su primera compra',
-      usageCount: 314
-    },
-    {
-      id: 'dc2',
-      code: 'SENIOR50PLUS',
-      discountPercent: 35,
-      type: 'mayores_50',
-      minAge: 50,
-      isActive: true,
-      description: 'Beneficio exclusivo para usuarios mayores de 50 años verificado por fecha de nacimiento',
-      usageCount: 142
-    },
-    {
-      id: 'dc3',
-      code: 'MIERCOLESDEESTRENO',
-      discountPercent: 25,
-      type: 'general',
-      isActive: true,
-      description: 'Descuento general para funciones de mitad de semana',
-      usageCount: 89
-    }
-  ]);
-  readonly discountCoupons = this._discountCoupons.asReadonly();
+  // Discount Coupons & Promotions (Synced live with CouponService and Supabase)
+  readonly discountCoupons = computed<DiscountCoupon[]>(() => {
+    return this.couponService.coupons().map(c => {
+      const isWelcome = c.tipo_restriccion.toLowerCase().includes('primera') || c.tipo_restriccion.toLowerCase().includes('bienvenida');
+      const isSenior = c.tipo_restriccion.toLowerCase().includes('mayores') || c.tipo_restriccion.toLowerCase().includes('50');
+      return {
+        id: String(c.id),
+        code: c.codigo,
+        discountPercent: c.porcentaje_descuento,
+        type: isWelcome ? 'primera_compra' : (isSenior ? 'mayores_50' : 'general'),
+        minAge: isSenior ? 50 : undefined,
+        isActive: true,
+        description: isWelcome ? 'Descuento para nuevos usuarios en primera compra' : (isSenior ? 'Beneficio exclusivo mayores de 50 años' : `Restricción: ${c.tipo_restriccion}`),
+        usageCount: 0
+      };
+    });
+  });
 
   // Loyalty Rewards
   private readonly _loyaltyRewards = signal<LoyaltyReward[]>([
@@ -508,31 +495,40 @@ export class AdminService {
 
   // --- COUPONS ABM ---
   addCoupon(coupon: DiscountCoupon): void {
-    this._discountCoupons.update(curr => [coupon, ...curr]);
-    this.addAuditLog('crear_cupon', 'Promociones', `Creó cupón "${coupon.code}" con ${coupon.discountPercent}% de descuento.`);
+    const restriction = coupon.type === 'primera_compra'
+      ? 'Primera Compra'
+      : (coupon.type === 'mayores_50' ? 'Mayores 50' : 'Ninguna');
+    this.couponService.createCoupon({
+      codigo: coupon.code,
+      porcentaje_descuento: coupon.discountPercent,
+      tipo_restriccion: restriction
+    });
   }
 
   updateCoupon(coupon: DiscountCoupon): void {
-    this._discountCoupons.update(curr =>
-      curr.map(c => c.id === coupon.id ? { ...c, ...coupon } : c)
-    );
-    this.addAuditLog('crear_cupon', 'Promociones', `Actualizó configuración del cupón "${coupon.code}" (${coupon.discountPercent}%).`);
+    const numId = Number(coupon.id);
+    if (!isNaN(numId)) {
+      const restriction = coupon.type === 'primera_compra'
+        ? 'Primera Compra'
+        : (coupon.type === 'mayores_50' ? 'Mayores 50' : 'Ninguna');
+      this.couponService.updateCoupon(numId, {
+        codigo: coupon.code,
+        porcentaje_descuento: coupon.discountPercent,
+        tipo_restriccion: restriction
+      });
+    }
   }
 
   deleteCoupon(id: string): void {
-    const c = this._discountCoupons().find(item => item.id === id);
-    this._discountCoupons.update(curr => curr.filter(item => item.id !== id));
-    if (c) {
-      this.addAuditLog('crear_cupon', 'Promociones', `Eliminó el cupón "${c.code}".`);
+    const numId = Number(id);
+    if (!isNaN(numId)) {
+      this.couponService.deleteCoupon(numId);
     }
   }
 
   // Update Welcome coupon percentage
   updateWelcomeDiscountPercent(newPercent: number): void {
-    this._discountCoupons.update(curr =>
-      curr.map(c => c.type === 'primera_compra' ? { ...c, discountPercent: newPercent } : c)
-    );
-    this.addAuditLog('crear_cupon', 'Promociones', `Actualizó el porcentaje de descuento de primera compra al ${newPercent}%.`);
+    this.couponService.setWelcomeDiscountPercent(newPercent);
   }
 
   // --- LOYALTY REWARDS ABM ---
