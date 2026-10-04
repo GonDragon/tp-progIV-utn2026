@@ -1,6 +1,5 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { Movie, Schedule, Genre, Sala } from '../models/movie';
-import { ALL_GENRES } from '../data/mock-movies';
 import { SupabaseService } from './supabase';
 
 @Injectable({
@@ -17,7 +16,28 @@ export class MovieService {
   private readonly _salas = signal<Sala[]>([]);
   private readonly _isLoading = signal<boolean>(false);
 
-  readonly allGenres = ALL_GENRES;
+  get allGenres(): string[] {
+    const dbGenres = this._genres();
+    if (dbGenres.length > 0) {
+      return dbGenres.map(g => g.nombre);
+    }
+    return [
+      'Acción',
+      'Animación',
+      'Aventura',
+      'Ciencia Ficción',
+      'Comedia',
+      'Crimen',
+      'Documental',
+      'Drama',
+      'Fantasía',
+      'Misterio',
+      'Musical',
+      'Romance',
+      'Suspenso',
+      'Terror'
+    ];
+  }
   readonly genres = this._genres.asReadonly();
   readonly salas = this._salas.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
