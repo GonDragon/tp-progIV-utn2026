@@ -3,6 +3,7 @@ import { AuthService } from './auth';
 import { MovieService } from './movie.service';
 import { CandyService } from './candy.service';
 import { CouponService } from './coupon.service';
+import { ReportsService } from './reports.service';
 import {
   CandyProduct,
   SpecialCombo,
@@ -23,6 +24,7 @@ export class AdminService {
   private readonly movieService = inject(MovieService);
   private readonly candyService = inject(CandyService);
   private readonly couponService = inject(CouponService);
+  private readonly reportsService = inject(ReportsService);
 
   // Available Rooms in the Cinema
   readonly availableRooms = [
@@ -215,119 +217,14 @@ export class AdminService {
   ]);
   readonly tickets = this._tickets.asReadonly();
 
-  // Daily Reports Data (last 7 days)
-  readonly dailyReports: DailyReportItem[] = [
-    {
-      date: '2026-09-22',
-      ticketsCount: 420,
-      candyCount: 310,
-      ticketsIncome: 2310000,
-      candyIncome: 1240000,
-      totalIncome: 3550000
-    },
-    {
-      date: '2026-09-21',
-      ticketsCount: 380,
-      candyCount: 295,
-      ticketsIncome: 2090000,
-      candyIncome: 1180000,
-      totalIncome: 3270000
-    },
-    {
-      date: '2026-09-20',
-      ticketsCount: 650,
-      candyCount: 520,
-      ticketsIncome: 3575000,
-      candyIncome: 2080000,
-      totalIncome: 5655000
-    },
-    {
-      date: '2026-09-19',
-      ticketsCount: 710,
-      candyCount: 590,
-      ticketsIncome: 3905000,
-      candyIncome: 2360000,
-      totalIncome: 6265000
-    },
-    {
-      date: '2026-09-18',
-      ticketsCount: 490,
-      candyCount: 370,
-      ticketsIncome: 2695000,
-      candyIncome: 1480000,
-      totalIncome: 4175000
-    },
-    {
-      date: '2026-09-17',
-      ticketsCount: 310,
-      candyCount: 220,
-      ticketsIncome: 1705000,
-      candyIncome: 880000,
-      totalIncome: 2585000
-    },
-    {
-      date: '2026-09-16',
-      ticketsCount: 290,
-      candyCount: 210,
-      ticketsIncome: 1595000,
-      candyIncome: 840000,
-      totalIncome: 2435000
-    }
-  ];
+  // Daily Reports & Movie Stats (Live from Supabase via ReportsService)
+  get dailyReports(): DailyReportItem[] {
+    return this.reportsService.dailyReports();
+  }
 
-  // Movie views and ranking statistics
-  readonly movieStats: MovieViewStat[] = [
-    {
-      movieId: 'm1',
-      movieTitle: 'Duna: Odisea Espacial',
-      viewsWeekly: 4200,
-      viewsMonthly: 18500,
-      ticketsSoldWeekly: 3850,
-      ticketsSoldMonthly: 12500,
-      percentageWeekly: 35,
-      percentageMonthly: 32
-    },
-    {
-      movieId: 'm2',
-      movieTitle: 'Guardianes del Abismo',
-      viewsWeekly: 3100,
-      viewsMonthly: 14200,
-      ticketsSoldWeekly: 2800,
-      ticketsSoldMonthly: 9800,
-      percentageWeekly: 26,
-      percentageMonthly: 25
-    },
-    {
-      movieId: 'm3',
-      movieTitle: 'Aventura en el Reino Mágico',
-      viewsWeekly: 2900,
-      viewsMonthly: 13100,
-      ticketsSoldWeekly: 2650,
-      ticketsSoldMonthly: 9200,
-      percentageWeekly: 24,
-      percentageMonthly: 23
-    },
-    {
-      movieId: 'm5',
-      movieTitle: 'Velocidad Terminal 5',
-      viewsWeekly: 1100,
-      viewsMonthly: 8900,
-      ticketsSoldWeekly: 950,
-      ticketsSoldMonthly: 6100,
-      percentageWeekly: 9,
-      percentageMonthly: 12
-    },
-    {
-      movieId: 'm4',
-      movieTitle: 'Ecos de Medianoche',
-      viewsWeekly: 700,
-      viewsMonthly: 7200,
-      ticketsSoldWeekly: 620,
-      ticketsSoldMonthly: 5400,
-      percentageWeekly: 6,
-      percentageMonthly: 8
-    }
-  ];
+  get movieStats(): MovieViewStat[] {
+    return this.reportsService.movieStats();
+  }
 
   // Log action helper
   addAuditLog(
@@ -611,74 +508,14 @@ export class AdminService {
 
   // --- EXPORT DAILY REPORTS ---
   exportDailyReportToCsv(): void {
-    const headers = ['Fecha', 'Entradas Vendidas', 'Productos Candy', 'Recaudacion Entradas ($)', 'Recaudacion Candy ($)', 'Total Facturado ($)'];
-    const rows = this.dailyReports.map(r => [
-      r.date,
-      r.ticketsCount,
-      r.candyCount,
-      r.ticketsIncome,
-      r.candyIncome,
-      r.totalIncome
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `reporte_cineiv_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    this.reportsService.exportDailyReportToCsv();
   }
 
   exportDailyReportToExcel(): void {
-    // Generate XML/HTML format that Excel natively opens
-    let tableHtml = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
-      <head><meta charset="UTF-8"></head>
-      <body>
-        <h2>Reporte de Facturación y Entradas - CineIV</h2>
-        <p>Generado el: ${new Date().toLocaleString('es-AR')}</p>
-        <table border="1">
-          <tr style="background-color: #D4AF37; color: #000; font-weight: bold;">
-            <th>Fecha</th>
-            <th>Entradas Vendidas</th>
-            <th>Productos Candy Bar</th>
-            <th>Facturación Entradas ($)</th>
-            <th>Facturación Candy Bar ($)</th>
-            <th>Total General ($)</th>
-          </tr>
-    `;
-
-    this.dailyReports.forEach(r => {
-      tableHtml += `
-        <tr>
-          <td>${r.date}</td>
-          <td>${r.ticketsCount}</td>
-          <td>${r.candyCount}</td>
-          <td>${r.ticketsIncome}</td>
-          <td>${r.candyIncome}</td>
-          <td>${r.totalIncome}</td>
-        </tr>
-      `;
-    });
-
-    tableHtml += `</table></body></html>`;
-
-    const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `reporte_facturacion_cineiv_${new Date().toISOString().slice(0, 10)}.xls`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    this.reportsService.exportDailyReportToExcel();
   }
 
   printOrDownloadPdf(): void {
-    window.print();
+    this.reportsService.printOrDownloadPdf();
   }
 }

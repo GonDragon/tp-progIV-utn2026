@@ -1,0 +1,106 @@
+<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700 shadow-md">
+  <div>
+    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+      <span class="text-[#D4AF37]">📊</span> Reportes de Facturación & Analíticas
+    </h2>
+    <p class="text-xs text-gray-400 mt-0.5">
+      Métricas en tiempo real desde Supabase: recaudación, venta de boletos, snacks de confitería y ranking de funciones.
+    </p>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-2.5">
+    <!-- Period Filter Selector -->
+    <div class="flex items-center bg-neutral-900 p-1 rounded-xl border border-neutral-700 text-xs font-semibold">
+      <button
+        type="button"
+        (click)="timeframeChange.emit('7d')"
+        class="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+        [class.bg-[#D4AF37]]="timeframe() === '7d'"
+        [class.text-neutral-950]="timeframe() === '7d'"
+        [class.text-gray-400]="timeframe() !== '7d'">
+        7 Días
+      </button>
+      <button
+        type="button"
+        (click)="timeframeChange.emit('14d')"
+        class="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+        [class.bg-[#D4AF37]]="timeframe() === '14d'"
+        [class.text-neutral-950]="timeframe() === '14d'"
+        [class.text-gray-400]="timeframe() !== '14d'">
+        14 Días
+      </button>
+      <button
+        type="button"
+        (click)="timeframeChange.emit('30d')"
+        class="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+        [class.bg-[#D4AF37]]="timeframe() === '30d'"
+        [class.text-neutral-950]="timeframe() === '30d'"
+        [class.text-gray-400]="timeframe() !== '30d'">
+        30 Días
+      </button>
+      <button
+        type="button"
+        (click)="timeframeChange.emit('all')"
+        class="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+        [class.bg-[#D4AF37]]="timeframe() === 'all'"
+        [class.text-neutral-950]="timeframe() === 'all'"
+        [class.text-gray-400]="timeframe() !== 'all'">
+        Todo
+      </button>
+    </div>
+
+    <!-- Reload Button -->
+    <button
+      type="button"
+      (click)="refresh.emit()"
+      [disabled]="isLoading()"
+      class="p-2 bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 text-gray-200 text-xs font-bold rounded-xl shadow transition-all cursor-pointer flex items-center justify-center"
+      title="Actualizar datos de Supabase">
+      <svg class="w-4 h-4" [class.animate-spin]="isLoading()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+    </button>
+
+    <!-- Register Quick Sale Button -->
+    <button
+      type="button"
+      (click)="openNewSale.emit()"
+      class="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-[#D4AF37] hover:from-amber-600 hover:to-[#c59e2b] text-neutral-950 text-xs font-bold rounded-xl shadow transition-all cursor-pointer flex items-center gap-1.5">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      Registrar Venta
+    </button>
+
+    <!-- Export Action Buttons -->
+    <button
+      type="button"
+      (click)="exportExcel.emit()"
+      class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition-all cursor-pointer flex items-center gap-1.5"
+      title="Exportar reporte a Excel (.xls)">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      Excel
+    </button>
+
+    <button
+      type="button"
+      (click)="exportCsv.emit()"
+      class="px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-gray-200 text-xs font-bold rounded-xl shadow transition-all cursor-pointer flex items-center gap-1.5"
+      title="Exportar datos a CSV">
+      CSV
+    </button>
+
+    <button
+      type="button"
+      (click)="exportPdf.emit()"
+      class="px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-gray-200 text-xs font-bold rounded-xl shadow transition-all cursor-pointer flex items-center gap-1.5"
+      title="Imprimir o guardar como PDF">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+      </svg>
+      PDF
+    </button>
+  </div>
+</div>

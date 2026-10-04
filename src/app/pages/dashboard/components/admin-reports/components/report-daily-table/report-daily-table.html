@@ -1,0 +1,76 @@
+<div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-5 shadow-lg space-y-4">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+    <div>
+      <h3 class="text-base font-bold text-white flex items-center gap-2">
+        <span>📅</span> Reporte Diario Detallado de Facturación
+      </h3>
+      <p class="text-xs text-gray-400 mt-0.5">Desglose de recaudación por boletería y confitería por fecha</p>
+    </div>
+    <span class="text-xs text-[#D4AF37] font-mono bg-neutral-900/80 px-3 py-1 rounded-xl border border-neutral-700/80">
+      {{ getTimeframeSubtitle() }}
+    </span>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-xs text-gray-300">
+      <thead class="bg-neutral-900/90 text-gray-400 uppercase tracking-wider text-[11px] border-b border-neutral-700">
+        <tr>
+          <th class="py-3 px-4 font-bold text-white">Fecha</th>
+          <th class="py-3 px-4 font-bold text-white text-center">Entradas Vendidas</th>
+          <th class="py-3 px-4 font-bold text-white text-center">Items Candy</th>
+          <th class="py-3 px-4 font-bold text-white text-right">Recaudación Taquilla</th>
+          <th class="py-3 px-4 font-bold text-white text-right">Recaudación Candy</th>
+          <th class="py-3 px-4 font-bold text-[#D4AF37] text-right">Facturación Total</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-neutral-700/60 font-medium">
+        @if (dailyReports().length === 0) {
+          <tr>
+            <td colspan="6" class="text-center py-10 text-gray-400">
+              <div class="space-y-1">
+                <span class="text-2xl block">🧾</span>
+                <p class="font-semibold text-gray-300">No se encontraron transacciones en el período seleccionado.</p>
+                <p class="text-[11px] text-gray-500">Puedes registrar una nueva venta con el botón "Registrar Venta" superior.</p>
+              </div>
+            </td>
+          </tr>
+        } @else {
+          @for (row of dailyReports(); track row.date) {
+            <tr class="hover:bg-neutral-700/30 transition-colors">
+              <td class="py-3.5 px-4 font-mono font-bold text-white">{{ row.date }}</td>
+              <td class="py-3.5 px-4 text-center">
+                <span class="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 font-bold border border-amber-500/20">
+                  {{ row.ticketsCount }}
+                </span>
+              </td>
+              <td class="py-3.5 px-4 text-center">
+                <span class="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-300 font-bold border border-rose-500/20">
+                  {{ row.candyCount }}
+                </span>
+              </td>
+              <td class="py-3.5 px-4 text-right">${{ row.ticketsIncome.toLocaleString('es-AR') }}</td>
+              <td class="py-3.5 px-4 text-right">${{ row.candyIncome.toLocaleString('es-AR') }}</td>
+              <td class="py-3.5 px-4 text-right font-bold text-[#D4AF37] text-sm">
+                ${{ row.totalIncome.toLocaleString('es-AR') }}
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+      @if (dailyReports().length > 0) {
+        <tfoot class="bg-neutral-900/90 border-t-2 border-[#D4AF37] font-bold text-white">
+          <tr>
+            <td class="py-3 px-4 text-amber-400">TOTALES DEL PERÍODO</td>
+            <td class="py-3 px-4 text-center text-amber-400">{{ summary().totalTickets.toLocaleString('es-AR') }}</td>
+            <td class="py-3 px-4 text-center text-amber-400">{{ summary().totalCandy.toLocaleString('es-AR') }}</td>
+            <td class="py-3 px-4 text-right">${{ totalTicketsIncome.toLocaleString('es-AR') }}</td>
+            <td class="py-3 px-4 text-right">${{ totalCandyIncome.toLocaleString('es-AR') }}</td>
+            <td class="py-3 px-4 text-right text-base text-[#D4AF37]">
+              ${{ summary().totalIncome.toLocaleString('es-AR') }}
+            </td>
+          </tr>
+        </tfoot>
+      }
+    </table>
+  </div>
+</div>
