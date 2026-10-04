@@ -5,7 +5,7 @@ import { AdminService } from '../../../../services/admin.service';
 import { Movie, Schedule } from '../../../../models/movie';
 import { MovieListItem } from './components/movie-list-item/movie-list-item';
 import { MovieFormModal, MovieFormData } from './components/movie-form-modal/movie-form-modal';
-import { ScheduleModal, ScheduleFormData } from './components/schedule-modal/schedule-modal';
+import { ScheduleModal } from './components/schedule-modal/schedule-modal';
 
 @Component({
   selector: 'app-admin-movies',
@@ -170,31 +170,22 @@ export class AdminMovies {
     this.isSavingSchedule.set(false);
   }
 
-  async handleSaveSchedule(formData: ScheduleFormData): Promise<void> {
+  async handleSaveSchedules(schedules: Schedule[]): Promise<void> {
     const movie = this.selectedMovieForSchedule();
-    if (!movie) return;
+    if (!movie || !schedules || schedules.length === 0) return;
 
     this.isSavingSchedule.set(true);
     try {
-      const newSchedule: Schedule = {
-        id: `s-${Date.now()}`,
-        time: formData.time,
-        format: formData.format,
-        language: formData.language,
-        room: formData.room,
-        basePrice: formData.basePrice,
-        isPresale: formData.isPresale
-      };
-
-      await this.movieService.addSchedule(movie.id, newSchedule);
+      await this.movieService.addSchedules(movie.id, schedules);
+      const roomsUsed = Array.from(new Set(schedules.map(s => s.room))).join(', ');
       this.adminService.addAuditLog(
         'crear_funcion',
         'Funciones',
-        `Asignó función para "${movie.title}" a las ${newSchedule.time} (${newSchedule.format} - ${newSchedule.language}) en ${newSchedule.room}.`
+        `Programó ${schedules.length} función(es) para "${movie.title}" en [${roomsUsed}].`
       );
       this.closeScheduleModal();
     } catch (err) {
-      console.error('Error al programar función:', err);
+      console.error('Error al programar funciones:', err);
     } finally {
       this.isSavingSchedule.set(false);
     }

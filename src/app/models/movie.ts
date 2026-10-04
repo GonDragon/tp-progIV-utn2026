@@ -6,6 +6,7 @@ export interface Schedule {
   room: string;
   isPresale?: boolean;
   basePrice?: number;
+  presalePrice?: number;
   salaId?: number;
   fechaHoraInicio?: string;
 }

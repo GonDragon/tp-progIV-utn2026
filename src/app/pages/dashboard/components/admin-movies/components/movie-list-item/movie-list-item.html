@@ -79,6 +79,9 @@
                 <span class="text-[10px] px-1 rounded bg-neutral-800 text-amber-300 font-semibold">{{ sched.format }}</span>
                 <span class="text-[10px] text-gray-400">{{ sched.language === 'Castellano' ? 'ESP' : 'SUB' }}</span>
                 <span class="text-[10px] text-gray-400">({{ sched.room }})</span>
+                @if (sched.isPresale) {
+                  <span class="text-[9px] px-1 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">Preventa</span>
+                }
                 <button
                   type="button"
                   (click)="onRemoveSchedule(sched)"

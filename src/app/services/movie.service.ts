@@ -154,6 +154,7 @@ export class MovieService {
             idioma,
             precio_base,
             en_preventa,
+            precio_preventa,
             salas (
               id,
               nombre
@@ -194,6 +195,7 @@ export class MovieService {
               room: f.salas?.nombre || `Sala ${f.sala_id}`,
               isPresale: !!f.en_preventa,
               basePrice: Number(f.precio_base) || 5500,
+              presalePrice: f.precio_preventa != null ? Number(f.precio_preventa) : undefined,
               salaId: f.sala_id,
               fechaHoraInicio: f.fecha_hora_inicio
             };
@@ -393,12 +395,15 @@ export class MovieService {
     }
   }
 
-  async addSchedule(movieId: string, schedule: Schedule): Promise<void> {
+  async addSchedules(movieId: string, schedules: Schedule[]): Promise<void> {
+    if (!schedules || schedules.length === 0) return;
+
+    // Update local state first with temp schedules
     this._movies.update(current =>
       current.map(m => {
         if (m.id === movieId) {
-          const schedules = m.schedules ? [...m.schedules, schedule] : [schedule];
-          return { ...m, schedules };
+          const existing = m.schedules || [];
+          return { ...m, schedules: [...existing, ...schedules] };
         }
         return m;
       })
@@ -407,58 +412,73 @@ export class MovieService {
     const numericMovieId = Number(movieId);
     if (!isNaN(numericMovieId)) {
       try {
-        // Find or create sala ID
-        let salaId = schedule.salaId;
-        if (!salaId) {
-          const salas = this._salas().length > 0 ? this._salas() : await this.loadSalas();
-          const found = salas.find(s => s.nombre.toLowerCase() === schedule.room.toLowerCase());
-          if (found) {
-            salaId = found.id;
-          } else {
-            // Insert sala
-            const { data: newSala } = await this.supabaseService.client
-              .from('salas')
-              .insert({ nombre: schedule.room })
-              .select()
-              .single();
-            if (newSala) {
-              salaId = newSala.id;
-              this._salas.update(curr => [...curr, newSala as Sala]);
+        let salas = this._salas().length > 0 ? this._salas() : await this.loadSalas();
+
+        // Ensure all salas exist and get their IDs
+        const rowsToInsert: any[] = [];
+        for (const s of schedules) {
+          let salaId = s.salaId;
+          if (!salaId) {
+            const found = salas.find(r => r.nombre.toLowerCase() === s.room.toLowerCase());
+            if (found) {
+              salaId = found.id;
             } else {
-              salaId = 1;
+              // Insert missing sala
+              const { data: newSala } = await this.supabaseService.client
+                .from('salas')
+                .insert({ nombre: s.room })
+                .select()
+                .single();
+              if (newSala) {
+                salaId = newSala.id;
+                this._salas.update(curr => [...curr, newSala as Sala]);
+                salas = [...salas, newSala as Sala];
+              } else {
+                salaId = 1;
+              }
             }
           }
-        }
 
-        // Build timestamp for today or schedule date + time
-        const todayStr = new Date().toISOString().split('T')[0];
-        const dateTimeStr = schedule.fechaHoraInicio || `${todayStr}T${schedule.time}:00`;
+          const todayStr = new Date().toISOString().split('T')[0];
+          const dateTimeStr = s.fechaHoraInicio || `${todayStr}T${s.time}:00`;
 
-        const { data: newFuncion, error } = await this.supabaseService.client
-          .from('funciones')
-          .insert({
+          rowsToInsert.push({
             pelicula_id: numericMovieId,
             sala_id: salaId,
             fecha_hora_inicio: dateTimeStr,
-            formato: schedule.format,
-            idioma: schedule.language,
-            precio_base: schedule.basePrice || 5500,
-            en_preventa: !!schedule.isPresale
-          })
-          .select()
-          .single();
+            formato: s.format,
+            idioma: s.language,
+            precio_base: s.basePrice || 5500,
+            en_preventa: !!s.isPresale,
+            precio_preventa: s.isPresale && s.presalePrice != null ? s.presalePrice : null
+          });
+        }
+
+        const { data: insertedData, error } = await this.supabaseService.client
+          .from('funciones')
+          .insert(rowsToInsert)
+          .select('id, pelicula_id, sala_id, fecha_hora_inicio, formato, idioma, precio_base, en_preventa, precio_preventa, salas ( id, nombre )');
 
         if (error) {
-          console.error('Error insertando función en Supabase:', error);
-        } else if (newFuncion) {
-          // Update schedule ID
-          const newSchedId = String(newFuncion.id);
+          console.error('Error insertando funciones en Supabase:', error);
+        } else if (insertedData && insertedData.length > 0) {
+          // Sync IDs from DB
+          const insertedMap = new Map<string, string>();
+          insertedData.forEach((row: any, idx: number) => {
+            if (schedules[idx]) {
+              insertedMap.set(schedules[idx].id, String(row.id));
+            }
+          });
+
           this._movies.update(current =>
             current.map(m => {
               if (m.id === movieId && m.schedules) {
                 return {
                   ...m,
-                  schedules: m.schedules.map(s => s.id === schedule.id ? { ...s, id: newSchedId } : s)
+                  schedules: m.schedules.map(s => {
+                    const dbId = insertedMap.get(s.id);
+                    return dbId ? { ...s, id: dbId } : s;
+                  })
                 };
               }
               return m;
@@ -466,9 +486,13 @@ export class MovieService {
           );
         }
       } catch (e) {
-        console.error('Error al guardar función en Supabase:', e);
+        console.error('Error al guardar funciones en Supabase:', e);
       }
     }
+  }
+
+  async addSchedule(movieId: string, schedule: Schedule): Promise<void> {
+    await this.addSchedules(movieId, [schedule]);
   }
 
   async removeSchedule(movieId: string, scheduleId: string): Promise<void> {

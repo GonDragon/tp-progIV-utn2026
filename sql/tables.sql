@@ -143,3 +143,8 @@ CREATE TABLE log_actividad (
                              fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
+-- 8. HOT-FIXES
+
+ALTER TABLE funciones
+ADD COLUMN precio_preventa DECIMAL(10, 2);
