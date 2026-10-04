@@ -17,16 +17,22 @@ export class Login {
   email = signal('');
   password = signal('');
   errorMessage = signal<string | null>(null);
+  isLoading = signal(false);
 
   constructor() {
     effect(() => {
       if (this.authService.isAuthenticated()) {
-        this.router.navigate(['/']);
+        const user = this.authService.currentUser();
+        if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+          this.router.navigate(['/dashboard']);
+        } else {
+          this.router.navigate(['/']);
+        }
       }
     });
   }
 
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
     this.errorMessage.set(null);
     const emailVal = this.email().trim();
     const passwordVal = this.password();
@@ -36,16 +42,23 @@ export class Login {
       return;
     }
 
-    const success = this.authService.login(emailVal, passwordVal);
-    if (success) {
-      const user = this.authService.currentUser();
-      if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
-        this.router.navigate(['/dashboard']);
+    this.isLoading.set(true);
+    try {
+      const result = await this.authService.login(emailVal, passwordVal);
+      if (result.success) {
+        const user = this.authService.currentUser();
+        if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+          this.router.navigate(['/dashboard']);
+        } else {
+          this.router.navigate(['/']);
+        }
       } else {
-        this.router.navigate(['/']);
+        this.errorMessage.set(result.error || 'Credenciales inválidas. Por favor intente nuevamente.');
       }
-    } else {
-      this.errorMessage.set('Credenciales inválidas. Por favor intente nuevamente.');
+    } catch (err: any) {
+      this.errorMessage.set(err.message || 'Error al iniciar sesión. Intente nuevamente.');
+    } finally {
+      this.isLoading.set(false);
     }
   }
 
