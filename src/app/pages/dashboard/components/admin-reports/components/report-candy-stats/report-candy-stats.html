@@ -1,0 +1,47 @@
+<div class="p-5 rounded-2xl bg-neutral-800/90 border border-neutral-700 shadow-lg space-y-4 flex flex-col justify-between">
+  <div>
+    <div>
+      <h3 class="text-base font-bold text-white flex items-center gap-2">
+        <span>🍿</span> Productos de Candy Bar Más Vendidos
+      </h3>
+      <p class="text-xs text-gray-400">Ranking en tiempo real de unidades despachadas</p>
+    </div>
+
+    <div class="space-y-3.5 pt-4">
+      @if (stats().length === 0) {
+        <div class="text-center py-8 text-gray-500 text-xs">
+          <span class="text-2xl block mb-2">🥤</span>
+          No hay productos de confitería registrados en el catálogo o no registran ventas.
+        </div>
+      } @else {
+        @for (prod of stats(); track prod.id; let i = $index) {
+          <div class="space-y-1">
+            <div class="flex justify-between items-center text-xs">
+              <div class="flex items-center gap-2 truncate">
+                <span class="font-bold text-neutral-400 font-mono text-[11px]">#{{ i + 1 }}</span>
+                <span class="font-bold text-white truncate max-w-[170px]" [title]="prod.name">{{ prod.name }}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-neutral-900 text-gray-400 font-mono">{{ prod.category }}</span>
+              </div>
+              <span class="text-emerald-400 font-semibold shrink-0">
+                {{ prod.salesCount.toLocaleString('es-AR') }} u.
+                <span class="text-gray-500 text-[10px] font-normal">(${{ prod.totalIncome.toLocaleString('es-AR') }})</span>
+              </span>
+            </div>
+
+            <div class="w-full bg-neutral-900 h-3 rounded-full overflow-hidden border border-neutral-700/60 flex">
+              <div
+                class="bg-gradient-to-r from-rose-600 via-amber-500 to-emerald-500 h-full rounded-full transition-all duration-500"
+                [style.width.%]="prod.percentage">
+              </div>
+            </div>
+          </div>
+        }
+      }
+    </div>
+  </div>
+
+  <div class="pt-3 border-t border-neutral-700/60 text-[11px] text-gray-400 flex justify-between items-center">
+    <span>Incluye productos individuales y combos</span>
+    <span class="font-mono text-emerald-400">Candy Bar Live</span>
+  </div>
+</div>

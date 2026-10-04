@@ -1,0 +1,73 @@
+<div class="p-5 rounded-2xl bg-neutral-800/90 border border-neutral-700 shadow-lg space-y-4 flex flex-col justify-between">
+  <div>
+    <!-- Header with Weekly / Monthly switcher -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div>
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>🎬</span> Películas Más Vistas
+        </h3>
+        <p class="text-xs text-gray-400">Distribución de espectadores y boletos vendidos</p>
+      </div>
+
+      <div class="flex items-center bg-neutral-900 p-1 rounded-xl border border-neutral-700 text-xs font-bold">
+        <button
+          type="button"
+          (click)="timeframeChange.emit('weekly')"
+          class="px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+          [class.bg-[#D4AF37]]="movieChartTimeframe() === 'weekly'"
+          [class.text-neutral-950]="movieChartTimeframe() === 'weekly'"
+          [class.text-gray-400]="movieChartTimeframe() !== 'weekly'">
+          Por Semana
+        </button>
+        <button
+          type="button"
+          (click)="timeframeChange.emit('monthly')"
+          class="px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+          [class.bg-[#D4AF37]]="movieChartTimeframe() === 'monthly'"
+          [class.text-neutral-950]="movieChartTimeframe() === 'monthly'"
+          [class.text-gray-400]="movieChartTimeframe() !== 'monthly'">
+          Por Mes
+        </button>
+      </div>
+    </div>
+
+    <!-- Bars / List -->
+    <div class="space-y-3.5 pt-4">
+      @if (stats().length === 0) {
+        <div class="text-center py-8 text-gray-500 text-xs">
+          <span class="text-2xl block mb-2">🎞️</span>
+          No hay películas con registros en el catálogo o no se han vendido boletos aún.
+        </div>
+      } @else {
+        @for (item of stats(); track item.movieId) {
+          <div class="space-y-1">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white truncate max-w-[220px]" [title]="item.movieTitle">
+                {{ item.movieTitle }}
+              </span>
+              <span class="text-amber-400 font-semibold shrink-0">
+                @if (movieChartTimeframe() === 'weekly') {
+                  {{ item.viewsWeekly.toLocaleString('es-AR') }} vistas ({{ item.percentageWeekly }}%)
+                } @else {
+                  {{ item.viewsMonthly.toLocaleString('es-AR') }} vistas ({{ item.percentageMonthly }}%)
+                }
+              </span>
+            </div>
+
+            <div class="w-full bg-neutral-900 h-3 rounded-full overflow-hidden border border-neutral-700/60 flex">
+              <div
+                class="bg-gradient-to-r from-amber-600 to-[#D4AF37] h-full rounded-full transition-all duration-500"
+                [style.width.%]="movieChartTimeframe() === 'weekly' ? item.percentageWeekly : item.percentageMonthly">
+              </div>
+            </div>
+          </div>
+        }
+      }
+    </div>
+  </div>
+
+  <div class="pt-3 border-t border-neutral-700/60 text-[11px] text-gray-400 flex justify-between items-center">
+    <span>Calculado en base a entradas emitidas</span>
+    <span class="font-mono text-amber-400">{{ movieChartTimeframe() === 'weekly' ? 'Últimos 7 días' : 'Últimos 30 días' }}</span>
+  </div>
+</div>

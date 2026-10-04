@@ -1,0 +1,309 @@
+<div class="space-y-6">
+
+  <!-- Toast Notification -->
+  @if (toast(); as t) {
+    <div
+      class="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 transition-all animate-bounce"
+      [class]="t.type === 'success' ? 'bg-emerald-950/90 border-emerald-500 text-emerald-200' : 'bg-rose-950/90 border-rose-500 text-rose-200'">
+      <span class="text-lg">{{ t.type === 'success' ? '✅' : '❌' }}</span>
+      <span class="text-xs font-semibold">{{ t.message }}</span>
+    </div>
+  }
+
+  <!-- Header Bar -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700 shadow-md">
+    <div>
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">
+        <span class="text-[#D4AF37]">🍿</span> Candy Bar & Combos
+      </h2>
+      <p class="text-xs text-gray-400 mt-0.5">
+        Gestión en tiempo real de productos de confitería, costos de canje por puntos y combos especiales en Supabase.
+      </p>
+    </div>
+
+    <!-- Sub-tabs switch & Refresh -->
+    <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1.5 p-1 bg-neutral-900 rounded-xl border border-neutral-700">
+        <button
+          type="button"
+          (click)="activeTab.set('products')"
+          class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+          [class.bg-[#D4AF37]]="activeTab() === 'products'"
+          [class.text-neutral-950]="activeTab() === 'products'"
+          [class.text-gray-400]="activeTab() !== 'products'">
+          <span>🍿</span>
+          <span>Productos</span>
+          <span class="px-1.5 py-0.2 rounded-full text-[10px]"
+                [class]="activeTab() === 'products' ? 'bg-neutral-950 text-[#D4AF37]' : 'bg-neutral-800 text-gray-300'">
+            {{ candyService.products().length }}
+          </span>
+        </button>
+        <button
+          type="button"
+          (click)="activeTab.set('combos')"
+          class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+          [class.bg-[#D4AF37]]="activeTab() === 'combos'"
+          [class.text-neutral-950]="activeTab() === 'combos'"
+          [class.text-gray-400]="activeTab() !== 'combos'">
+          <span>🎁</span>
+          <span>Combos Fijos</span>
+          <span class="px-1.5 py-0.2 rounded-full text-[10px]"
+                [class]="activeTab() === 'combos' ? 'bg-neutral-950 text-[#D4AF37]' : 'bg-neutral-800 text-gray-300'">
+            {{ candyService.combos().length }}
+          </span>
+        </button>
+      </div>
+
+      <button
+        type="button"
+        (click)="reload()"
+        [disabled]="candyService.isLoading()"
+        class="p-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white rounded-xl border border-neutral-700 cursor-pointer transition-all disabled:opacity-50"
+        title="Recargar datos de Supabase">
+        <span [class.animate-spin]="candyService.isLoading()">🔄</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  @if (candyService.error(); as err) {
+    <div class="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center justify-between text-xs text-rose-300">
+      <div class="flex items-center gap-2">
+        <span class="text-base">⚠️</span>
+        <span>{{ err }}</span>
+      </div>
+      <button
+        (click)="reload()"
+        class="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg font-bold cursor-pointer">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  <!-- TAB 1: CANDY PRODUCTS -->
+  @if (activeTab() === 'products') {
+    <div class="space-y-4">
+      <!-- Toolbar: Search, Filters & Add Button -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-850 p-3 rounded-2xl border border-neutral-750">
+        <!-- Search bar -->
+        <div class="relative flex-1 max-w-md">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none text-xs">
+            🔍
+          </span>
+          <input
+            type="text"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+            placeholder="Buscar producto por nombre o categoría..."
+            class="w-full pl-9 pr-4 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]" />
+        </div>
+
+        <!-- Add Button -->
+        <button
+          type="button"
+          (click)="openNewProductModal()"
+          class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5 shrink-0">
+          <span>+</span>
+          <span>Nuevo Producto</span>
+        </button>
+      </div>
+
+      <!-- Category Filter Chips -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
+        @for (cat of categories; track cat) {
+          <button
+            type="button"
+            (click)="selectedCategory.set(cat)"
+            class="px-3 py-1 rounded-xl font-bold whitespace-nowrap cursor-pointer transition-all border"
+            [class]="selectedCategory() === cat ? 'bg-[#D4AF37] text-neutral-950 border-[#D4AF37]' : 'bg-neutral-800 text-gray-400 border-neutral-700 hover:text-white'">
+            {{ cat === 'all' ? 'Todos los Productos' : cat }}
+          </button>
+        }
+      </div>
+
+      <!-- Loading State -->
+      @if (candyService.isLoading() && candyService.products().length === 0) {
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (i of [1,2,3,4,5,6]; track i) {
+            <div class="bg-neutral-800/50 rounded-2xl border border-neutral-700/50 p-5 space-y-4 animate-pulse">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-neutral-700 rounded-xl"></div>
+                <div class="space-y-2 flex-1">
+                  <div class="h-3 bg-neutral-700 rounded w-1/3"></div>
+                  <div class="h-4 bg-neutral-700 rounded w-3/4"></div>
+                </div>
+              </div>
+              <div class="pt-3 border-t border-neutral-700/50 flex justify-between items-center">
+                <div class="h-4 bg-neutral-700 rounded w-1/4"></div>
+                <div class="h-8 bg-neutral-700 rounded w-16"></div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else if (filteredProducts().length === 0) {
+        <!-- Empty State -->
+        <div class="bg-neutral-850/60 rounded-2xl border border-dashed border-neutral-700 p-12 text-center space-y-3">
+          <div class="text-4xl">🍿</div>
+          <h3 class="text-base font-bold text-white">No se encontraron productos</h3>
+          <p class="text-xs text-gray-400 max-w-sm mx-auto">
+            @if (searchQuery() || selectedCategory() !== 'all') {
+              No hay productos que coincidan con la búsqueda o filtro seleccionado.
+            } @else {
+              Aún no hay productos registrados en Supabase. Haz clic en "Nuevo Producto" para añadir el primero.
+            }
+          </p>
+          @if (!searchQuery() && selectedCategory() === 'all') {
+            <button
+              type="button"
+              (click)="openNewProductModal()"
+              class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow cursor-pointer">
+              + Crear Primer Producto
+            </button>
+          }
+        </div>
+      } @else {
+        <!-- Product Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (prod of filteredProducts(); track prod.id) {
+            <app-candy-product-card
+              [product]="prod"
+              (edit)="openEditProductModal($event)"
+              (delete)="confirmDeleteProduct($event)" />
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- TAB 2: SPECIAL COMBOS -->
+  @if (activeTab() === 'combos') {
+    <div class="space-y-4">
+      <!-- Toolbar: Search & Add Button -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-850 p-3 rounded-2xl border border-neutral-750">
+        <!-- Search bar -->
+        <div class="relative flex-1 max-w-md">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none text-xs">
+            🔍
+          </span>
+          <input
+            type="text"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+            placeholder="Buscar combo por nombre o ID..."
+            class="w-full pl-9 pr-4 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]" />
+        </div>
+
+        <!-- Add Button -->
+        <button
+          type="button"
+          (click)="openNewComboModal()"
+          class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5 shrink-0">
+          <span>+</span>
+          <span>Nuevo Combo</span>
+        </button>
+      </div>
+
+      <!-- Loading State -->
+      @if (candyService.isLoading() && candyService.combos().length === 0) {
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (i of [1,2,3]; track i) {
+            <div class="bg-neutral-800/50 rounded-2xl border border-neutral-700/50 p-5 space-y-4 animate-pulse">
+              <div class="h-5 bg-neutral-700 rounded w-1/2"></div>
+              <div class="h-3 bg-neutral-700 rounded w-1/3"></div>
+              <div class="pt-4 border-t border-neutral-700/50 flex justify-between items-center">
+                <div class="h-4 bg-neutral-700 rounded w-1/4"></div>
+                <div class="h-8 bg-neutral-700 rounded w-16"></div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else if (filteredCombos().length === 0) {
+        <!-- Empty State -->
+        <div class="bg-neutral-850/60 rounded-2xl border border-dashed border-neutral-700 p-12 text-center space-y-3">
+          <div class="text-4xl">🎁</div>
+          <h3 class="text-base font-bold text-white">No se encontraron combos</h3>
+          <p class="text-xs text-gray-400 max-w-sm mx-auto">
+            @if (searchQuery()) {
+              No hay combos que coincidan con la búsqueda.
+            } @else {
+              Aún no hay combos registrados en Supabase. Haz clic en "Nuevo Combo" para crear el primero.
+            }
+          </p>
+          @if (!searchQuery()) {
+            <button
+              type="button"
+              (click)="openNewComboModal()"
+              class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow cursor-pointer">
+              + Crear Primer Combo
+            </button>
+          }
+        </div>
+      } @else {
+        <!-- Combo Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (combo of filteredCombos(); track combo.id) {
+            <app-combo-card
+              [combo]="combo"
+              (edit)="openEditComboModal($event)"
+              (delete)="confirmDeleteCombo($event)" />
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- CANDY PRODUCT MODAL -->
+  <app-candy-product-modal
+    [isOpen]="showProductModal()"
+    [product]="editingProduct()"
+    [isSaving]="isSavingProduct()"
+    (closeModal)="closeProductModal()"
+    (save)="saveProduct($event)" />
+
+  <!-- COMBO MODAL -->
+  <app-combo-modal
+    [isOpen]="showComboModal()"
+    [combo]="editingCombo()"
+    [isSaving]="isSavingCombo()"
+    (closeModal)="closeComboModal()"
+    (save)="saveCombo($event)" />
+
+  <!-- DELETE CONFIRMATION MODAL -->
+  @if (itemToDelete(); as item) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+        <div class="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-2xl mx-auto">
+          🗑️
+        </div>
+        <div class="text-center space-y-1">
+          <h3 class="text-base font-bold text-white">¿Eliminar {{ item.type === 'product' ? 'Producto' : 'Combo' }}?</h3>
+          <p class="text-xs text-gray-300">
+            Estás a punto de eliminar <span class="text-amber-400 font-semibold">"{{ item.name }}"</span> de Supabase. Esta acción no se puede deshacer.
+          </p>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button
+            type="button"
+            (click)="cancelDelete()"
+            [disabled]="isDeleting()"
+            class="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-bold rounded-xl cursor-pointer transition-colors disabled:opacity-50">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            (click)="executeDelete()"
+            [disabled]="isDeleting()"
+            class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow cursor-pointer transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
+            @if (isDeleting()) {
+              <span class="animate-spin text-xs">⏳</span>
+              <span>Eliminando...</span>
+            } @else {
+              <span>Eliminar</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

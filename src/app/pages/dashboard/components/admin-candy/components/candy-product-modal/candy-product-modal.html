@@ -1,0 +1,121 @@
+@if (isOpen()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+    <div class="bg-neutral-900 border border-neutral-700/80 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
+
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>{{ product() ? '✏️' : '🍿' }}</span>
+          <span>{{ product() ? 'Editar Producto Candy' : 'Nuevo Producto Candy' }}</span>
+        </h3>
+        <button
+          type="button"
+          (click)="onClose()"
+          [disabled]="isSaving()"
+          class="text-gray-400 hover:text-white cursor-pointer text-lg disabled:opacity-40">
+          ✕
+        </button>
+      </div>
+
+      <!-- Validation Error Banner -->
+      @if (validationError()) {
+        <div class="p-3 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-center gap-2">
+          <span>⚠️</span>
+          <span>{{ validationError() }}</span>
+        </div>
+      }
+
+      <!-- Form -->
+      <form (ngSubmit)="onSubmit()" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-300 mb-1">
+            Nombre del Producto <span class="text-amber-400">*</span>
+          </label>
+          <input
+            type="text"
+            [ngModel]="nombre()"
+            (ngModelChange)="nombre.set($event)"
+            name="nombre"
+            placeholder="Ej: Pochoclos Salados Grandes"
+            required
+            [disabled]="isSaving()"
+            class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37] placeholder-gray-500 disabled:opacity-50" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-300 mb-1">
+            Categoría <span class="text-amber-400">*</span>
+          </label>
+          <select
+            [ngModel]="categoria()"
+            (ngModelChange)="categoria.set($event)"
+            name="categoria"
+            [disabled]="isSaving()"
+            class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37] cursor-pointer disabled:opacity-50">
+            @for (cat of categories; track cat) {
+              <option [value]="cat">{{ cat }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-300 mb-1">
+              Precio ($) <span class="text-amber-400">*</span>
+            </label>
+            <input
+              type="number"
+              [ngModel]="precio()"
+              (ngModelChange)="precio.set($event)"
+              name="precio"
+              min="0"
+              step="50"
+              placeholder="0"
+              required
+              [disabled]="isSaving()"
+              class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37] placeholder-gray-500 disabled:opacity-50" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-300 mb-1">
+              Costo en Puntos (Canje)
+            </label>
+            <input
+              type="number"
+              [ngModel]="costo_puntos()"
+              (ngModelChange)="costo_puntos.set($event)"
+              name="costo_puntos"
+              min="0"
+              step="50"
+              placeholder="0"
+              [disabled]="isSaving()"
+              class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37] placeholder-gray-500 disabled:opacity-50" />
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-end gap-2 pt-4 border-t border-neutral-800">
+          <button
+            type="button"
+            (click)="onClose()"
+            [disabled]="isSaving()"
+            class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-bold rounded-xl cursor-pointer transition-colors disabled:opacity-50">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="isSaving() || !nombre().trim()"
+            class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl shadow cursor-pointer transition-all disabled:opacity-50 flex items-center gap-1.5">
+            @if (isSaving()) {
+              <span class="animate-spin text-sm">⏳</span>
+              <span>Guardando...</span>
+            } @else {
+              <span>💾</span>
+              <span>{{ product() ? 'Actualizar Producto' : 'Guardar Producto' }}</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

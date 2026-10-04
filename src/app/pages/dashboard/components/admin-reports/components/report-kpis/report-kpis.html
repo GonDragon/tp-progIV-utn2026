@@ -1,0 +1,71 @@
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <!-- Card 1: Total Facturado -->
+  <div class="p-5 rounded-2xl bg-neutral-800/90 border border-neutral-700 shadow-lg flex flex-col justify-between">
+    <div>
+      <div class="flex items-center justify-between text-gray-400 text-xs font-semibold mb-1">
+        <span>TOTAL FACTURADO ({{ getTimeframeLabel() }})</span>
+        <span class="text-emerald-400 text-base">💰</span>
+      </div>
+      <div class="text-2xl font-black text-white">
+        ${{ summary().totalIncome.toLocaleString('es-AR') }}
+      </div>
+    </div>
+
+    <div class="mt-3 pt-3 border-t border-neutral-700/60 flex items-center justify-between text-[11px]">
+      @if (timeframe() !== 'all') {
+        @if (summary().growthPercentage >= 0) {
+          <span class="text-emerald-400 font-semibold flex items-center gap-1">
+            ↑ +{{ summary().growthPercentage }}% vs período anterior
+          </span>
+        } @else {
+          <span class="text-rose-400 font-semibold flex items-center gap-1">
+            ↓ {{ summary().growthPercentage }}% vs período anterior
+          </span>
+        }
+      } @else {
+        <span class="text-gray-400">Total acumulado registrado</span>
+      }
+      <span class="text-gray-400 font-mono">{{ summary().totalTransactionsCount }} transacciones</span>
+    </div>
+  </div>
+
+  <!-- Card 2: Entradas Vendidas -->
+  <div class="p-5 rounded-2xl bg-neutral-800/90 border border-neutral-700 shadow-lg flex flex-col justify-between">
+    <div>
+      <div class="flex items-center justify-between text-gray-400 text-xs font-semibold mb-1">
+        <span>ENTRADAS VENDIDAS</span>
+        <span class="text-amber-400 text-base">🎟️</span>
+      </div>
+      <div class="text-2xl font-black text-[#D4AF37]">
+        {{ summary().totalTickets.toLocaleString('es-AR') }} boletos
+      </div>
+    </div>
+
+    <div class="mt-3 pt-3 border-t border-neutral-700/60 flex items-center justify-between text-[11px]">
+      <span class="text-gray-300">
+        Promedio: <strong class="text-amber-400">{{ summary().averageTicketsPerDay }}</strong> entradas / día
+      </span>
+      <span class="text-gray-400">Taquilla cine</span>
+    </div>
+  </div>
+
+  <!-- Card 3: Items Candy Bar -->
+  <div class="p-5 rounded-2xl bg-neutral-800/90 border border-neutral-700 shadow-lg flex flex-col justify-between">
+    <div>
+      <div class="flex items-center justify-between text-gray-400 text-xs font-semibold mb-1">
+        <span>ITEMS CANDY BAR</span>
+        <span class="text-rose-400 text-base">🍿</span>
+      </div>
+      <div class="text-2xl font-black text-rose-300">
+        {{ summary().totalCandy.toLocaleString('es-AR') }} snacks
+      </div>
+    </div>
+
+    <div class="mt-3 pt-3 border-t border-neutral-700/60 flex items-center justify-between text-[11px]">
+      <span class="text-rose-300 font-semibold">
+        {{ summary().candyAttachmentRate }}% de compras incluyeron Candy
+      </span>
+      <span class="text-gray-400">Confitería</span>
+    </div>
+  </div>
+</div>

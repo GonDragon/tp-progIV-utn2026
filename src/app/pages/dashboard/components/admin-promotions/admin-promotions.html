@@ -1,0 +1,187 @@
+<div class="space-y-6">
+
+  <!-- Toast Notification -->
+  @if (toast(); as t) {
+    <div
+      class="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 transition-all animate-bounce"
+      [class]="t.type === 'success' ? 'bg-emerald-950/90 border-emerald-500 text-emerald-200' : 'bg-rose-950/90 border-rose-500 text-rose-200'">
+      <span class="text-lg">{{ t.type === 'success' ? '✅' : '❌' }}</span>
+      <span class="text-xs font-semibold">{{ t.message }}</span>
+    </div>
+  }
+
+  <!-- Header Bar -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700 shadow-md">
+    <div>
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">
+        <span class="text-[#D4AF37]">🎟️</span> Cupones & Descuentos
+      </h2>
+      <p class="text-xs text-gray-400 mt-0.5">
+        Configura cupones de descuento, beneficio de primera compra para registrados y promociones por edad conectados a Supabase.
+      </p>
+    </div>
+
+    <!-- Actions / Refresh -->
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 px-3 py-1.5 bg-neutral-900 rounded-xl border border-neutral-700 text-xs font-bold text-gray-300">
+        <span>🎟️ Total Cupones:</span>
+        <span class="text-[#D4AF37] font-black">{{ couponService.coupons().length }}</span>
+      </div>
+
+      <button
+        type="button"
+        (click)="reload()"
+        [disabled]="couponService.isLoading()"
+        class="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white rounded-xl border border-neutral-700 cursor-pointer transition-all disabled:opacity-50"
+        title="Recargar cupones de Supabase">
+        <span [class.animate-spin]="couponService.isLoading()">🔄</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  @if (couponService.error(); as err) {
+    <div class="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center justify-between text-xs text-rose-300 shadow-md">
+      <div class="flex items-center gap-2">
+        <span class="text-base">⚠️</span>
+        <span>{{ err }}</span>
+      </div>
+      <button
+        (click)="reload()"
+        class="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg font-bold cursor-pointer">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  <!-- Quick Card: First Purchase Discount -->
+  <app-welcome-discount-card
+    [welcomeCoupon]="welcomeCoupon()"
+    [isSaving]="isSavingWelcome()"
+    (saveWelcomeDiscount)="saveWelcomeDiscount($event)" />
+
+  <!-- Coupons Section -->
+  <div class="space-y-4">
+
+    <!-- Toolbar: Search, Filters & Add Button -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-850 p-3 rounded-2xl border border-neutral-750">
+
+      <!-- Search bar -->
+      <div class="relative flex-1 max-w-md">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none text-xs">
+          🔍
+        </span>
+        <input
+          type="text"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          placeholder="Buscar cupón por código o tipo..."
+          class="w-full pl-9 pr-4 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]" />
+      </div>
+
+      <!-- Add Button -->
+      <button
+        type="button"
+        (click)="openNewCouponModal()"
+        class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5 shrink-0">
+        <span>+</span>
+        <span>Nuevo Cupón</span>
+      </button>
+    </div>
+
+    <!-- Restriction Filter Chips -->
+    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+      @for (r of restrictions; track r) {
+        <button
+          type="button"
+          (click)="selectedRestriction.set(r)"
+          class="px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border"
+          [class]="selectedRestriction() === r ? 'bg-neutral-700 text-[#D4AF37] border-[#D4AF37]/50 shadow-sm' : 'bg-neutral-800/80 text-gray-400 border-neutral-700 hover:text-gray-200'">
+          {{ r === 'all' ? 'Todos los cupones' : r }}
+        </button>
+      }
+    </div>
+
+    <!-- Coupons Grid -->
+    @if (couponService.isLoading() && couponService.coupons().length === 0) {
+      <div class="flex flex-col items-center justify-center py-16 text-center bg-neutral-800/40 rounded-2xl border border-neutral-700/60">
+        <span class="text-3xl animate-spin mb-3">🔄</span>
+        <p class="text-sm font-semibold text-gray-300">Cargando cupones desde Supabase...</p>
+      </div>
+    } @else if (filteredCoupons().length > 0) {
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (coupon of filteredCoupons(); track coupon.id) {
+          <app-coupon-card
+            [coupon]="coupon"
+            (edit)="openEditCouponModal($event)"
+            (delete)="confirmDeleteCoupon($event)" />
+        }
+      </div>
+    } @else {
+      <!-- Empty State -->
+      <div class="flex flex-col items-center justify-center py-16 text-center bg-neutral-800/40 rounded-2xl border border-neutral-700/60 p-6">
+        <span class="text-4xl mb-3">🎟️</span>
+        <h3 class="text-base font-bold text-white mb-1">No se encontraron cupones</h3>
+        <p class="text-xs text-gray-400 max-w-sm mb-4">
+          @if (searchQuery() || selectedRestriction() !== 'all') {
+            No hay cupones que coincidan con los filtros aplicados.
+          } @else {
+            Aún no hay cupones registrados en la base de datos de Supabase.
+          }
+        </p>
+        <button
+          type="button"
+          (click)="openNewCouponModal()"
+          class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer">
+          + Crear Primer Cupón
+        </button>
+      </div>
+    }
+
+  </div>
+
+  <!-- Coupon Form Modal -->
+  <app-coupon-modal
+    [isOpen]="showCouponModal()"
+    [coupon]="editingCoupon()"
+    [isSaving]="isSavingCoupon()"
+    (closeModal)="closeCouponModal()"
+    (save)="saveCoupon($event)" />
+
+  <!-- Delete Confirmation Modal -->
+  @if (couponToDelete(); as item) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+        <div class="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-2xl mx-auto">
+          🗑️
+        </div>
+        <div class="text-center space-y-1">
+          <h3 class="text-base font-bold text-white">¿Eliminar cupón?</h3>
+          <p class="text-xs text-gray-400">
+            Estás a punto de eliminar el cupón <strong class="text-white font-mono">{{ item.codigo }}</strong> (ID: #{{ item.id }}). Esta acción no se puede deshacer en Supabase.
+          </p>
+        </div>
+        <div class="flex items-center gap-3 pt-2">
+          <button
+            type="button"
+            (click)="cancelDelete()"
+            [disabled]="isDeleting()"
+            class="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            (click)="executeDelete()"
+            [disabled]="isDeleting()"
+            class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+            @if (isDeleting()) {
+              <span class="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            }
+            <span>{{ isDeleting() ? 'Eliminando...' : 'Eliminar' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

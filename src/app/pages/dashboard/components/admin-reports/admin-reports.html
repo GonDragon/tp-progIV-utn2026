@@ -1,0 +1,86 @@
+<div class="space-y-6">
+
+  <!-- Toast Notification Feedback -->
+  @if (toast(); as t) {
+    <div
+      class="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-semibold backdrop-blur-md transition-all animate-bounce"
+      [class.bg-emerald-950]="t.type === 'success'"
+      [class.border-emerald-600]="t.type === 'success'"
+      [class.text-emerald-300]="t.type === 'success'"
+      [class.bg-rose-950]="t.type === 'error'"
+      [class.border-rose-600]="t.type === 'error'"
+      [class.text-rose-300]="t.type === 'error'">
+      <span>{{ t.type === 'success' ? '✅' : '❌' }}</span>
+      <span>{{ t.message }}</span>
+    </div>
+  }
+
+  <!-- Error Alert if any -->
+  @if (reportsService.error()) {
+    <div class="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span>⚠️</span>
+        <span>{{ reportsService.error() }}</span>
+      </div>
+      <button
+        type="button"
+        (click)="onRefresh()"
+        class="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg font-bold transition-all">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  <!-- 1. Header Bar with Timeframe & Export Buttons -->
+  <app-report-header
+    [timeframe]="reportsService.timeframe()"
+    [isLoading]="reportsService.isLoading()"
+    (timeframeChange)="onTimeframeChange($event)"
+    (refresh)="onRefresh()"
+    (exportExcel)="onExportExcel()"
+    (exportCsv)="onExportCsv()"
+    (exportPdf)="onExportPdf()"
+    (openNewSale)="openQuickSaleModal()">
+  </app-report-header>
+
+  <!-- 2. KPI Summary Cards -->
+  <app-report-kpis
+    [summary]="reportsService.kpiSummary()"
+    [timeframe]="reportsService.timeframe()">
+  </app-report-kpis>
+
+  <!-- 3. Charts & Analytics Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Movie Views / Ticket Stats -->
+    <app-report-movie-stats
+      [stats]="reportsService.movieStats()"
+      [movieChartTimeframe]="reportsService.movieChartTimeframe()"
+      (timeframeChange)="onMovieChartTimeframeChange($event)">
+    </app-report-movie-stats>
+
+    <!-- Candy Bar Sales Ranking -->
+    <app-report-candy-stats
+      [stats]="reportsService.candyStats()">
+    </app-report-candy-stats>
+  </div>
+
+  <!-- 4. Daily Billing Report Table -->
+  <app-report-daily-table
+    [dailyReports]="reportsService.dailyReports()"
+    [summary]="reportsService.kpiSummary()"
+    [timeframe]="reportsService.timeframe()">
+  </app-report-daily-table>
+
+  <!-- 5. Quick Sale / Transaction Creation Modal -->
+  <app-quick-sale-modal
+    [isOpen]="isQuickSaleModalOpen()"
+    [functions]="reportsService.rawFunctions()"
+    [movies]="reportsService.rawMovies()"
+    [candyProducts]="reportsService.rawCandyProducts()"
+    [combos]="reportsService.rawCombos()"
+    [isSaving]="isSavingSale()"
+    (close)="closeQuickSaleModal()"
+    (save)="onSaveSale($event)">
+  </app-quick-sale-modal>
+
+</div>

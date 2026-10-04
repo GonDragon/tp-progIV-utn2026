@@ -1,0 +1,108 @@
+<div class="space-y-6">
+
+  <!-- Header Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700 shadow-lg">
+    <div>
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">
+        <span class="text-[#D4AF37]">🎬</span> Gestión de Películas & Cartelera
+      </h2>
+      <p class="text-xs text-gray-400 mt-0.5">
+        Administración integral de películas, posters (almacenados en Supabase Storage), restricciones y funciones en salas.
+      </p>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="flex items-center gap-3 shrink-0">
+      <div class="px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-700 text-center">
+        <span class="text-[10px] text-gray-400 uppercase font-bold block">Películas</span>
+        <span class="text-sm font-bold text-white">{{ movieService.movies().length }}</span>
+      </div>
+      <div class="px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-700 text-center">
+        <span class="text-[10px] text-gray-400 uppercase font-bold block">Funciones</span>
+        <span class="text-sm font-bold text-amber-400">{{ totalSchedulesCount() }}</span>
+      </div>
+      <button
+        type="button"
+        (click)="openNewMovieForm()"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer shrink-0">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+        </svg>
+        <span>Nueva Película</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Search & Filter Controls -->
+  <div class="flex flex-col sm:flex-row gap-3 items-center justify-between bg-neutral-800/50 p-4 rounded-xl border border-neutral-700/60">
+    <div class="relative w-full sm:w-72">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
+      <input
+        type="text"
+        [ngModel]="filterQuery()"
+        (ngModelChange)="filterQuery.set($event)"
+        placeholder="Buscar por título o sinopsis..."
+        class="w-full pl-9 pr-3 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]" />
+    </div>
+
+    <div class="flex items-center gap-2 w-full sm:w-auto">
+      <label class="text-xs text-gray-400 whitespace-nowrap">Género:</label>
+      <select
+        [ngModel]="filterGenre()"
+        (ngModelChange)="filterGenre.set($event)"
+        class="w-full sm:w-48 px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]">
+        <option value="Todos">Todos los géneros</option>
+        @for (g of availableGenreNames(); track g) {
+          <option [value]="g">{{ g }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading Indicator -->
+  @if (movieService.isLoading()) {
+    <div class="flex flex-col items-center justify-center p-12 bg-neutral-800/40 rounded-2xl border border-neutral-700/60">
+      <div class="w-8 h-8 border-3 border-[#D4AF37] border-t-transparent rounded-full animate-spin mb-3"></div>
+      <p class="text-sm text-gray-400 font-medium">Cargando catálogo desde Supabase...</p>
+    </div>
+  } @else {
+    <!-- Movies List -->
+    <div class="grid grid-cols-1 gap-4">
+      @for (movie of adminMoviesList(); track movie.id) {
+        <app-movie-list-item
+          [movie]="movie"
+          (schedule)="openScheduleModal($event)"
+          (edit)="openEditMovieForm($event)"
+          (delete)="handleDeleteMovie($event)"
+          (toggleVisibility)="handleToggleVisibility($event)"
+          (removeSchedule)="handleRemoveSchedule($event)" />
+      } @empty {
+        <div class="text-center p-12 bg-neutral-800/40 rounded-2xl border border-dashed border-neutral-700 space-y-3">
+          <div class="text-3xl">🎬</div>
+          <p class="text-gray-300 font-semibold">No se encontraron películas</p>
+          <p class="text-xs text-gray-500">Prueba ajustando los filtros o agrega una nueva película con el botón superior.</p>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Movie Form Modal (Create / Edit + Poster Upload to Supabase bucket 'images') -->
+  @if (showMovieForm()) {
+    <app-movie-form-modal
+      [movie]="editingMovie()"
+      [availableGenres]="availableGenreNames()"
+      [isSaving]="isSavingMovie()"
+      (save)="handleSaveMovie($event)"
+      (close)="closeMovieForm()" />
+  }
+
+  <!-- Showtime & Room Allocation Modal -->
+  @if (showScheduleModal()) {
+    <app-schedule-modal
+      [movie]="selectedMovieForSchedule()"
+      [isSaving]="isSavingSchedule()"
+      (save)="handleSaveSchedules($event)"
+      (close)="closeScheduleModal()" />
+  }
+
+</div>
