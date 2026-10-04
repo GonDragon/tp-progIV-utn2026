@@ -1,475 +1,309 @@
 <div class="space-y-6">
+
+  <!-- Toast Notification -->
+  @if (toast(); as t) {
+    <div
+      class="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 transition-all animate-bounce"
+      [class]="t.type === 'success' ? 'bg-emerald-950/90 border-emerald-500 text-emerald-200' : 'bg-rose-950/90 border-rose-500 text-rose-200'">
+      <span class="text-lg">{{ t.type === 'success' ? '✅' : '❌' }}</span>
+      <span class="text-xs font-semibold">{{ t.message }}</span>
+    </div>
+  }
+
   <!-- Header Bar -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700 shadow-md">
     <div>
       <h2 class="text-xl font-bold text-white flex items-center gap-2">
-        <span class="text-[#D4AF37]">🍿</span> Candy Bar, Combos & Fidelización
+        <span class="text-[#D4AF37]">🍿</span> Candy Bar & Combos
       </h2>
       <p class="text-xs text-gray-400 mt-0.5">
-        Administra el catálogo de golosinas y bebidas, combos especiales a precio fijo y costos en puntos para canjes.
+        Gestión en tiempo real de productos de confitería, costos de canje por puntos y combos especiales en Supabase.
       </p>
     </div>
 
-    <!-- Sub-tabs switch -->
-    <div class="flex items-center gap-1.5 p-1 bg-neutral-900 rounded-xl border border-neutral-700">
+    <!-- Sub-tabs switch & Refresh -->
+    <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1.5 p-1 bg-neutral-900 rounded-xl border border-neutral-700">
+        <button
+          type="button"
+          (click)="activeTab.set('products')"
+          class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+          [class.bg-[#D4AF37]]="activeTab() === 'products'"
+          [class.text-neutral-950]="activeTab() === 'products'"
+          [class.text-gray-400]="activeTab() !== 'products'">
+          <span>🍿</span>
+          <span>Productos</span>
+          <span class="px-1.5 py-0.2 rounded-full text-[10px]"
+                [class]="activeTab() === 'products' ? 'bg-neutral-950 text-[#D4AF37]' : 'bg-neutral-800 text-gray-300'">
+            {{ candyService.products().length }}
+          </span>
+        </button>
+        <button
+          type="button"
+          (click)="activeTab.set('combos')"
+          class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+          [class.bg-[#D4AF37]]="activeTab() === 'combos'"
+          [class.text-neutral-950]="activeTab() === 'combos'"
+          [class.text-gray-400]="activeTab() !== 'combos'">
+          <span>🎁</span>
+          <span>Combos Fijos</span>
+          <span class="px-1.5 py-0.2 rounded-full text-[10px]"
+                [class]="activeTab() === 'combos' ? 'bg-neutral-950 text-[#D4AF37]' : 'bg-neutral-800 text-gray-300'">
+            {{ candyService.combos().length }}
+          </span>
+        </button>
+      </div>
+
       <button
         type="button"
-        (click)="activeTab.set('products')"
-        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
-        [class.bg-[#D4AF37]]="activeTab() === 'products'"
-        [class.text-neutral-950]="activeTab() === 'products'"
-        [class.text-gray-400]="activeTab() !== 'products'">
-        Productos ({{ adminService.candyProducts().length }})
-      </button>
-      <button
-        type="button"
-        (click)="activeTab.set('combos')"
-        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
-        [class.bg-[#D4AF37]]="activeTab() === 'combos'"
-        [class.text-neutral-950]="activeTab() === 'combos'"
-        [class.text-gray-400]="activeTab() !== 'combos'">
-        Combos Fijos ({{ adminService.specialCombos().length }})
-      </button>
-      <button
-        type="button"
-        (click)="activeTab.set('rewards')"
-        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer"
-        [class.bg-[#D4AF37]]="activeTab() === 'rewards'"
-        [class.text-neutral-950]="activeTab() === 'rewards'"
-        [class.text-gray-400]="activeTab() !== 'rewards'">
-        Recompensas Puntos ({{ adminService.loyaltyRewards().length }})
+        (click)="reload()"
+        [disabled]="candyService.isLoading()"
+        class="p-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white rounded-xl border border-neutral-700 cursor-pointer transition-all disabled:opacity-50"
+        title="Recargar datos de Supabase">
+        <span [class.animate-spin]="candyService.isLoading()">🔄</span>
       </button>
     </div>
   </div>
 
+  <!-- Error Alert -->
+  @if (candyService.error(); as err) {
+    <div class="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center justify-between text-xs text-rose-300">
+      <div class="flex items-center gap-2">
+        <span class="text-base">⚠️</span>
+        <span>{{ err }}</span>
+      </div>
+      <button
+        (click)="reload()"
+        class="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg font-bold cursor-pointer">
+        Reintentar
+      </button>
+    </div>
+  }
+
   <!-- TAB 1: CANDY PRODUCTS -->
   @if (activeTab() === 'products') {
     <div class="space-y-4">
-      <div class="flex justify-between items-center">
-        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Catálogo de Productos</span>
+      <!-- Toolbar: Search, Filters & Add Button -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-850 p-3 rounded-2xl border border-neutral-750">
+        <!-- Search bar -->
+        <div class="relative flex-1 max-w-md">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none text-xs">
+            🔍
+          </span>
+          <input
+            type="text"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+            placeholder="Buscar producto por nombre o categoría..."
+            class="w-full pl-9 pr-4 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]" />
+        </div>
+
+        <!-- Add Button -->
         <button
           type="button"
           (click)="openNewProductModal()"
-          class="px-3.5 py-1.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5">
-          <span>+</span> Nuevo Producto
+          class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5 shrink-0">
+          <span>+</span>
+          <span>Nuevo Producto</span>
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        @for (prod of adminService.candyProducts(); track prod.id) {
-          <div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-4 shadow-lg flex flex-col justify-between">
-            <div>
-              <div class="flex items-center gap-3 mb-3">
-                <div
-                  class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0"
-                  [style.background-color]="prod.placeholderColor">
-                  🍿
-                </div>
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2">
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-900 text-amber-400 border border-neutral-700">
-                      {{ prod.category }}
-                    </span>
-                  </div>
-                  <h4 class="text-sm font-bold text-white truncate mt-1">{{ prod.name }}</h4>
-                </div>
-              </div>
-
-              <p class="text-xs text-gray-300 line-clamp-2 mb-3">
-                {{ prod.description }}
-              </p>
-            </div>
-
-            <div class="pt-3 border-t border-neutral-700/80 flex items-center justify-between">
-              <div>
-                <span class="text-base font-bold text-white">${{ prod.price.toLocaleString('es-AR') }}</span>
-                <span class="text-[11px] text-amber-400 font-semibold block">ó {{ prod.pointsCost.toLocaleString('es-AR') }} pts</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  (click)="openEditProductModal(prod)"
-                  class="p-2 bg-neutral-700 hover:bg-neutral-600 text-gray-200 text-xs rounded-lg transition-all cursor-pointer"
-                  title="Editar">
-                  ✏️
-                </button>
-                <button
-                  type="button"
-                  (click)="deleteProduct(prod)"
-                  class="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs rounded-lg transition-all cursor-pointer"
-                  title="Eliminar">
-                  🗑️
-                </button>
-              </div>
-            </div>
-          </div>
+      <!-- Category Filter Chips -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
+        @for (cat of categories; track cat) {
+          <button
+            type="button"
+            (click)="selectedCategory.set(cat)"
+            class="px-3 py-1 rounded-xl font-bold whitespace-nowrap cursor-pointer transition-all border"
+            [class]="selectedCategory() === cat ? 'bg-[#D4AF37] text-neutral-950 border-[#D4AF37]' : 'bg-neutral-800 text-gray-400 border-neutral-700 hover:text-white'">
+            {{ cat === 'all' ? 'Todos los Productos' : cat }}
+          </button>
         }
       </div>
+
+      <!-- Loading State -->
+      @if (candyService.isLoading() && candyService.products().length === 0) {
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (i of [1,2,3,4,5,6]; track i) {
+            <div class="bg-neutral-800/50 rounded-2xl border border-neutral-700/50 p-5 space-y-4 animate-pulse">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-neutral-700 rounded-xl"></div>
+                <div class="space-y-2 flex-1">
+                  <div class="h-3 bg-neutral-700 rounded w-1/3"></div>
+                  <div class="h-4 bg-neutral-700 rounded w-3/4"></div>
+                </div>
+              </div>
+              <div class="pt-3 border-t border-neutral-700/50 flex justify-between items-center">
+                <div class="h-4 bg-neutral-700 rounded w-1/4"></div>
+                <div class="h-8 bg-neutral-700 rounded w-16"></div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else if (filteredProducts().length === 0) {
+        <!-- Empty State -->
+        <div class="bg-neutral-850/60 rounded-2xl border border-dashed border-neutral-700 p-12 text-center space-y-3">
+          <div class="text-4xl">🍿</div>
+          <h3 class="text-base font-bold text-white">No se encontraron productos</h3>
+          <p class="text-xs text-gray-400 max-w-sm mx-auto">
+            @if (searchQuery() || selectedCategory() !== 'all') {
+              No hay productos que coincidan con la búsqueda o filtro seleccionado.
+            } @else {
+              Aún no hay productos registrados en Supabase. Haz clic en "Nuevo Producto" para añadir el primero.
+            }
+          </p>
+          @if (!searchQuery() && selectedCategory() === 'all') {
+            <button
+              type="button"
+              (click)="openNewProductModal()"
+              class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow cursor-pointer">
+              + Crear Primer Producto
+            </button>
+          }
+        </div>
+      } @else {
+        <!-- Product Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (prod of filteredProducts(); track prod.id) {
+            <app-candy-product-card
+              [product]="prod"
+              (edit)="openEditProductModal($event)"
+              (delete)="confirmDeleteProduct($event)" />
+          }
+        </div>
+      }
     </div>
   }
 
   <!-- TAB 2: SPECIAL COMBOS -->
   @if (activeTab() === 'combos') {
     <div class="space-y-4">
-      <div class="flex justify-between items-center">
-        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Combos Especiales (Entrada + Candy) a Precio Fijo</span>
+      <!-- Toolbar: Search & Add Button -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-850 p-3 rounded-2xl border border-neutral-750">
+        <!-- Search bar -->
+        <div class="relative flex-1 max-w-md">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none text-xs">
+            🔍
+          </span>
+          <input
+            type="text"
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+            placeholder="Buscar combo por nombre o ID..."
+            class="w-full pl-9 pr-4 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]" />
+        </div>
+
+        <!-- Add Button -->
         <button
           type="button"
           (click)="openNewComboModal()"
-          class="px-3.5 py-1.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5">
-          <span>+</span> Nuevo Combo
+          class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5 shrink-0">
+          <span>+</span>
+          <span>Nuevo Combo</span>
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        @for (combo of adminService.specialCombos(); track combo.id) {
-          <div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-5 shadow-lg flex flex-col justify-between relative overflow-hidden">
-            <div class="absolute top-0 right-0 px-3 py-1 bg-[#D4AF37] text-neutral-950 font-bold text-[10px] rounded-bl-xl shadow">
-              COMBO FIJO
-            </div>
-
-            <div>
-              <h4 class="text-base font-bold text-white mb-1.5 pr-20">{{ combo.name }}</h4>
-              <p class="text-xs text-gray-300 mb-3">{{ combo.description }}</p>
-
-              <!-- Included items -->
-              <div class="space-y-1 mb-4 bg-neutral-900/80 p-3 rounded-xl border border-neutral-700/60">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400">Incluye:</span>
-                <div class="text-xs text-gray-300 font-semibold">🎟️ {{ combo.ticketCount }} Entrada(s) de Cine</div>
-                @for (item of combo.includedItems; track item) {
-                  <div class="text-xs text-gray-300 flex items-center gap-1.5">
-                    <span>•</span> {{ item }}
-                  </div>
-                }
+      <!-- Loading State -->
+      @if (candyService.isLoading() && candyService.combos().length === 0) {
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (i of [1,2,3]; track i) {
+            <div class="bg-neutral-800/50 rounded-2xl border border-neutral-700/50 p-5 space-y-4 animate-pulse">
+              <div class="h-5 bg-neutral-700 rounded w-1/2"></div>
+              <div class="h-3 bg-neutral-700 rounded w-1/3"></div>
+              <div class="pt-4 border-t border-neutral-700/50 flex justify-between items-center">
+                <div class="h-4 bg-neutral-700 rounded w-1/4"></div>
+                <div class="h-8 bg-neutral-700 rounded w-16"></div>
               </div>
             </div>
-
-            <div class="pt-3 border-t border-neutral-700/80 flex items-center justify-between">
-              <div>
-                <span class="text-lg font-bold text-[#D4AF37]">${{ combo.fixedPrice.toLocaleString('es-AR') }}</span>
-                @if (combo.pointsCost) {
-                  <span class="text-[11px] text-gray-400 block font-medium">{{ combo.pointsCost.toLocaleString('es-AR') }} pts</span>
-                }
-              </div>
-              <div class="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  (click)="openEditComboModal(combo)"
-                  class="p-2 bg-neutral-700 hover:bg-neutral-600 text-gray-200 text-xs rounded-lg transition-all cursor-pointer"
-                  title="Editar">
-                  ✏️
-                </button>
-                <button
-                  type="button"
-                  (click)="deleteCombo(combo)"
-                  class="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs rounded-lg transition-all cursor-pointer"
-                  title="Eliminar">
-                  🗑️
-                </button>
-              </div>
-            </div>
-          </div>
-        }
-      </div>
-    </div>
-  }
-
-  <!-- TAB 3: LOYALTY REWARDS -->
-  @if (activeTab() === 'rewards') {
-    <div class="space-y-4">
-      <div class="flex justify-between items-center">
-        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Configuración de Recompensas por Puntos</span>
-        <button
-          type="button"
-          (click)="openNewRewardModal()"
-          class="px-3.5 py-1.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5">
-          <span>+</span> Nueva Recompensa
-        </button>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        @for (reward of adminService.loyaltyRewards(); track reward.id) {
-          <div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-5 shadow-lg flex items-center justify-between gap-4">
-            <div class="flex items-start gap-3.5">
-              <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl font-bold shrink-0">
-                💎
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h4 class="text-sm font-bold text-white">{{ reward.name }}</h4>
-                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-neutral-900 text-gray-400 uppercase">
-                    {{ reward.type }}
-                  </span>
-                </div>
-                <p class="text-xs text-gray-300 mt-1">{{ reward.description }}</p>
-                <div class="mt-2 text-xs font-bold text-[#D4AF37]">
-                  Costo: {{ reward.pointsCost.toLocaleString('es-AR') }} Puntos
-                </div>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                (click)="openEditRewardModal(reward)"
-                class="p-2 bg-neutral-700 hover:bg-neutral-600 text-gray-200 text-xs rounded-lg transition-all cursor-pointer"
-                title="Editar">
-                ✏️
-              </button>
-              <button
-                type="button"
-                (click)="deleteReward(reward)"
-                class="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs rounded-lg transition-all cursor-pointer"
-                title="Eliminar">
-                🗑️
-              </button>
-            </div>
-          </div>
-        }
-      </div>
-    </div>
-  }
-
-  <!-- PRODUCT MODAL -->
-  @if (showProductModal()) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
-        <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
-          <h3 class="text-lg font-bold text-white">
-            {{ editingProductId() ? 'Editar Producto Candy' : 'Nuevo Producto Candy' }}
-          </h3>
-          <button (click)="closeProductModal()" class="text-gray-400 hover:text-white cursor-pointer text-lg">✕</button>
+          }
         </div>
-
-        <form (ngSubmit)="saveProduct()" class="space-y-3">
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Nombre del Producto *</label>
-            <input
-              type="text"
-              [(ngModel)]="productName"
-              name="prodName"
-              required
-              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Categoría</label>
-              <select
-                [(ngModel)]="productCategory"
-                name="prodCategory"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]">
-                <option value="Pochoclos">Pochoclos</option>
-                <option value="Bebidas">Bebidas</option>
-                <option value="Snacks">Snacks</option>
-                <option value="Dulces">Dulces</option>
-                <option value="Combos">Combos</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Precio ($) *</label>
-              <input
-                type="number"
-                [(ngModel)]="productPrice"
-                name="prodPrice"
-                min="0"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Costo en Puntos (Canje Fidelización) *</label>
-            <input
-              type="number"
-              [(ngModel)]="productPointsCost"
-              name="prodPoints"
-              min="0"
-              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Descripción</label>
-            <textarea
-              [(ngModel)]="productDescription"
-              name="prodDesc"
-              rows="2"
-              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]"></textarea>
-          </div>
-
-          <div class="flex justify-end gap-2 pt-3 border-t border-neutral-800">
+      } @else if (filteredCombos().length === 0) {
+        <!-- Empty State -->
+        <div class="bg-neutral-850/60 rounded-2xl border border-dashed border-neutral-700 p-12 text-center space-y-3">
+          <div class="text-4xl">🎁</div>
+          <h3 class="text-base font-bold text-white">No se encontraron combos</h3>
+          <p class="text-xs text-gray-400 max-w-sm mx-auto">
+            @if (searchQuery()) {
+              No hay combos que coincidan con la búsqueda.
+            } @else {
+              Aún no hay combos registrados en Supabase. Haz clic en "Nuevo Combo" para crear el primero.
+            }
+          </p>
+          @if (!searchQuery()) {
             <button
               type="button"
-              (click)="closeProductModal()"
-              class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-bold rounded-xl cursor-pointer">
-              Cancelar
+              (click)="openNewComboModal()"
+              class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow cursor-pointer">
+              + Crear Primer Combo
             </button>
-            <button
-              type="submit"
-              [disabled]="!productName.trim()"
-              class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl shadow cursor-pointer disabled:opacity-50">
-              Guardar
-            </button>
-          </div>
-        </form>
-      </div>
+          }
+        </div>
+      } @else {
+        <!-- Combo Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (combo of filteredCombos(); track combo.id) {
+            <app-combo-card
+              [combo]="combo"
+              (edit)="openEditComboModal($event)"
+              (delete)="confirmDeleteCombo($event)" />
+          }
+        </div>
+      }
     </div>
   }
+
+  <!-- CANDY PRODUCT MODAL -->
+  <app-candy-product-modal
+    [isOpen]="showProductModal()"
+    [product]="editingProduct()"
+    [isSaving]="isSavingProduct()"
+    (closeModal)="closeProductModal()"
+    (save)="saveProduct($event)" />
 
   <!-- COMBO MODAL -->
-  @if (showComboModal()) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
-        <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
-          <h3 class="text-lg font-bold text-white">
-            {{ editingComboId() ? 'Editar Combo Fijo' : 'Nuevo Combo Especial' }}
-          </h3>
-          <button (click)="closeComboModal()" class="text-gray-400 hover:text-white cursor-pointer text-lg">✕</button>
+  <app-combo-modal
+    [isOpen]="showComboModal()"
+    [combo]="editingCombo()"
+    [isSaving]="isSavingCombo()"
+    (closeModal)="closeComboModal()"
+    (save)="saveCombo($event)" />
+
+  <!-- DELETE CONFIRMATION MODAL -->
+  @if (itemToDelete(); as item) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+        <div class="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-2xl mx-auto">
+          🗑️
         </div>
-
-        <form (ngSubmit)="saveCombo()" class="space-y-3">
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Nombre del Combo *</label>
-            <input
-              type="text"
-              [(ngModel)]="comboName"
-              name="cName"
-              required
-              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Descripción</label>
-            <input
-              type="text"
-              [(ngModel)]="comboDescription"
-              name="cDesc"
-              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Entradas Incluidas</label>
-              <input
-                type="number"
-                [(ngModel)]="comboTicketCount"
-                name="cTickets"
-                min="1"
-                max="10"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Precio Fijo ($) *</label>
-              <input
-                type="number"
-                [(ngModel)]="comboFixedPrice"
-                name="cPrice"
-                min="0"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Productos Candy Incluidos (1 por línea)</label>
-            <textarea
-              [(ngModel)]="comboIncludedItemsText"
-              name="cItems"
-              rows="3"
-              placeholder="1x Balde Pochoclos&#10;2x Gaseosas"
-              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]"></textarea>
-          </div>
-
-          <div class="flex justify-end gap-2 pt-3 border-t border-neutral-800">
-            <button
-              type="button"
-              (click)="closeComboModal()"
-              class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-bold rounded-xl cursor-pointer">
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              [disabled]="!comboName.trim()"
-              class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl shadow cursor-pointer disabled:opacity-50">
-              Guardar Combo
-            </button>
-          </div>
-        </form>
+        <div class="text-center space-y-1">
+          <h3 class="text-base font-bold text-white">¿Eliminar {{ item.type === 'product' ? 'Producto' : 'Combo' }}?</h3>
+          <p class="text-xs text-gray-300">
+            Estás a punto de eliminar <span class="text-amber-400 font-semibold">"{{ item.name }}"</span> de Supabase. Esta acción no se puede deshacer.
+          </p>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button
+            type="button"
+            (click)="cancelDelete()"
+            [disabled]="isDeleting()"
+            class="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-bold rounded-xl cursor-pointer transition-colors disabled:opacity-50">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            (click)="executeDelete()"
+            [disabled]="isDeleting()"
+            class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow cursor-pointer transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
+            @if (isDeleting()) {
+              <span class="animate-spin text-xs">⏳</span>
+              <span>Eliminando...</span>
+            } @else {
+              <span>Eliminar</span>
+            }
+          </button>
+        </div>
       </div>
     </div>
   }
 
-  <!-- REWARD MODAL -->
-  @if (showRewardModal()) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
-        <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
-          <h3 class="text-lg font-bold text-white">
-            {{ editingRewardId() ? 'Editar Recompensa' : 'Nueva Recompensa' }}
-          </h3>
-          <button (click)="closeRewardModal()" class="text-gray-400 hover:text-white cursor-pointer text-lg">✕</button>
-        </div>
-
-        <form (ngSubmit)="saveReward()" class="space-y-3">
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Nombre del Beneficio *</label>
-            <input
-              type="text"
-              [(ngModel)]="rewardName"
-              name="rName"
-              required
-              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Tipo</label>
-              <select
-                [(ngModel)]="rewardType"
-                name="rType"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]">
-                <option value="ticket">Entrada Cine</option>
-                <option value="candy">Candy Bar</option>
-                <option value="combo">Combo</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-gray-300 mb-1">Puntos Requeridos *</label>
-              <input
-                type="number"
-                [(ngModel)]="rewardPointsCost"
-                name="rPoints"
-                min="100"
-                class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]" />
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">Descripción</label>
-            <textarea
-              [(ngModel)]="rewardDescription"
-              name="rDesc"
-              rows="2"
-              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37]"></textarea>
-          </div>
-
-          <div class="flex justify-end gap-2 pt-3 border-t border-neutral-800">
-            <button
-              type="button"
-              (click)="closeRewardModal()"
-              class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-bold rounded-xl cursor-pointer">
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              [disabled]="!rewardName.trim()"
-              class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl shadow cursor-pointer disabled:opacity-50">
-              Guardar Recompensa
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  }
 </div>

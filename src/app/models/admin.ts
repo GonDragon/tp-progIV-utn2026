@@ -1,24 +1,24 @@
 export interface CandyProduct {
   id: string;
   name: string;
-  category: 'Pochoclos' | 'Bebidas' | 'Snacks' | 'Dulces' | 'Combos';
+  category: 'Pochoclos' | 'Bebidas' | 'Snacks' | 'Dulces' | 'Combos' | string;
   price: number;
   pointsCost: number; // Cost in loyalty points to redeem
-  description: string;
-  placeholderColor: string;
-  isAvailable: boolean;
+  description?: string;
+  placeholderColor?: string;
+  isAvailable?: boolean;
   salesCount: number;
 }
 
 export interface SpecialCombo {
   id: string;
   name: string;
-  description: string;
-  ticketCount: number;
-  includedItems: string[]; // e.g. ["1x Balde Pochoclos Grande", "2x Gaseosa 750ml"]
+  description?: string;
+  ticketCount?: number;
+  includedItems?: string[]; // e.g. ["1x Balde Pochoclos Grande", "2x Gaseosa 750ml"]
   fixedPrice: number;
   pointsCost?: number;
-  isActive: boolean;
+  isActive?: boolean;
 }
 
 export interface DiscountCoupon {

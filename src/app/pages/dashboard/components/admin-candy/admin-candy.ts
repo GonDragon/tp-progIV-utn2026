@@ -1,248 +1,230 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AdminService } from '../../../../services/admin.service';
-import { CandyProduct, SpecialCombo, LoyaltyReward } from '../../../../models/admin';
+import { CandyService } from '../../../../services/candy.service';
+import { CandyProduct, Combo, CANDY_CATEGORIES } from '../../../../models/candy';
+import { CandyProductCard } from './components/candy-product-card/candy-product-card';
+import { CandyProductModal } from './components/candy-product-modal/candy-product-modal';
+import { ComboCard } from './components/combo-card/combo-card';
+import { ComboModal } from './components/combo-modal/combo-modal';
 
 @Component({
   selector: 'app-admin-candy',
   standalone: true,
-  imports: [FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    CandyProductCard,
+    CandyProductModal,
+    ComboCard,
+    ComboModal
+  ],
   templateUrl: './admin-candy.html',
   styleUrl: './admin-candy.css'
 })
 export class AdminCandy {
-  readonly adminService = inject(AdminService);
+  readonly candyService = inject(CandyService);
 
-  readonly activeTab = signal<'products' | 'combos' | 'rewards'>('products');
+  readonly activeTab = signal<'products' | 'combos'>('products');
+  readonly searchQuery = signal<string>('');
+  readonly selectedCategory = signal<string>('all');
 
-  // Product modal & form
+  readonly categories = ['all', ...CANDY_CATEGORIES];
+
+  // Product modal & state
   readonly showProductModal = signal(false);
-  readonly editingProductId = signal<string | null>(null);
-  productName = '';
-  productCategory: CandyProduct['category'] = 'Pochoclos';
-  productPrice = 4500;
-  productPointsCost = 4000;
-  productDescription = '';
-  productColor = '#f59e0b';
+  readonly editingProduct = signal<CandyProduct | null>(null);
+  readonly isSavingProduct = signal(false);
 
-  // Combo modal & form
+  // Combo modal & state
   readonly showComboModal = signal(false);
-  readonly editingComboId = signal<string | null>(null);
-  comboName = '';
-  comboDescription = '';
-  comboTicketCount = 2;
-  comboIncludedItemsText = '1x Balde Pochoclos Gigante\n2x Gaseosa Grande 750ml';
-  comboFixedPrice = 14500;
-  comboPointsCost = 11000;
+  readonly editingCombo = signal<Combo | null>(null);
+  readonly isSavingCombo = signal(false);
 
-  // Reward modal & form
-  readonly showRewardModal = signal(false);
-  readonly editingRewardId = signal<string | null>(null);
-  rewardName = '';
-  rewardType: 'ticket' | 'candy' | 'combo' = 'candy';
-  rewardPointsCost = 4500;
-  rewardDescription = '';
+  // Delete confirmation modal state
+  readonly itemToDelete = signal<{
+    type: 'product' | 'combo';
+    id: number;
+    name: string;
+  } | null>(null);
+  readonly isDeleting = signal(false);
 
-  readonly colorPresets = [
-    '#f59e0b', '#d97706', '#dc2626', '#0284c7', '#ca8a04', '#7c2d12', '#16a34a', '#9333ea'
-  ];
+  // Toast / feedback message
+  readonly toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
+  private toastTimer: any = null;
+
+  // Filtered Products
+  readonly filteredProducts = computed(() => {
+    const list = this.candyService.products();
+    const query = this.searchQuery().trim().toLowerCase();
+    const cat = this.selectedCategory();
+
+    return list.filter(prod => {
+      const matchCat = cat === 'all' || prod.categoria.toLowerCase() === cat.toLowerCase();
+      const matchQuery =
+        !query ||
+        prod.nombre.toLowerCase().includes(query) ||
+        prod.categoria.toLowerCase().includes(query) ||
+        String(prod.id).includes(query);
+
+      return matchCat && matchQuery;
+    });
+  });
+
+  // Filtered Combos
+  readonly filteredCombos = computed(() => {
+    const list = this.candyService.combos();
+    const query = this.searchQuery().trim().toLowerCase();
+
+    return list.filter(combo => {
+      return (
+        !query ||
+        combo.nombre.toLowerCase().includes(query) ||
+        String(combo.id).includes(query)
+      );
+    });
+  });
+
+  private showToastMessage(message: string, type: 'success' | 'error' = 'success'): void {
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toast.set({ message, type });
+    this.toastTimer = setTimeout(() => {
+      this.toast.set(null);
+    }, 4000);
+  }
 
   // --- Product Handlers ---
   openNewProductModal(): void {
-    this.editingProductId.set(null);
-    this.productName = '';
-    this.productCategory = 'Pochoclos';
-    this.productPrice = 4500;
-    this.productPointsCost = 4000;
-    this.productDescription = '';
-    this.productColor = '#f59e0b';
+    this.editingProduct.set(null);
     this.showProductModal.set(true);
   }
 
-  openEditProductModal(prod: CandyProduct): void {
-    this.editingProductId.set(prod.id);
-    this.productName = prod.name;
-    this.productCategory = prod.category;
-    this.productPrice = prod.price;
-    this.productPointsCost = prod.pointsCost;
-    this.productDescription = prod.description;
-    this.productColor = prod.placeholderColor;
+  openEditProductModal(product: CandyProduct): void {
+    this.editingProduct.set(product);
     this.showProductModal.set(true);
   }
 
   closeProductModal(): void {
     this.showProductModal.set(false);
-    this.editingProductId.set(null);
+    this.editingProduct.set(null);
   }
 
-  saveProduct(): void {
-    if (!this.productName.trim()) return;
+  async saveProduct(data: {
+    nombre: string;
+    categoria: string;
+    precio: number;
+    costo_puntos: number;
+  }): Promise<void> {
+    this.isSavingProduct.set(true);
+    const prod = this.editingProduct();
 
-    if (this.editingProductId()) {
-      const existing = this.adminService.candyProducts().find(p => p.id === this.editingProductId());
-      if (existing) {
-        this.adminService.updateCandyProduct({
-          ...existing,
-          name: this.productName.trim(),
-          category: this.productCategory,
-          price: Number(this.productPrice) || 0,
-          pointsCost: Number(this.productPointsCost) || 0,
-          description: this.productDescription.trim(),
-          placeholderColor: this.productColor
-        });
+    if (prod) {
+      const success = await this.candyService.updateProduct(prod.id, data);
+      this.isSavingProduct.set(false);
+      if (success) {
+        this.closeProductModal();
+        this.showToastMessage(`Producto "${data.nombre}" actualizado correctamente.`);
+      } else {
+        this.showToastMessage(this.candyService.error() || 'Error al actualizar producto.', 'error');
       }
     } else {
-      const newProd: CandyProduct = {
-        id: `cp-${Date.now()}`,
-        name: this.productName.trim(),
-        category: this.productCategory,
-        price: Number(this.productPrice) || 0,
-        pointsCost: Number(this.productPointsCost) || 0,
-        description: this.productDescription.trim(),
-        placeholderColor: this.productColor,
-        isAvailable: true,
-        salesCount: 0
-      };
-      this.adminService.addCandyProduct(newProd);
+      const created = await this.candyService.createProduct(data);
+      this.isSavingProduct.set(false);
+      if (created) {
+        this.closeProductModal();
+        this.showToastMessage(`Producto "${data.nombre}" creado exitosamente.`);
+      } else {
+        this.showToastMessage(this.candyService.error() || 'Error al crear producto.', 'error');
+      }
     }
-
-    this.closeProductModal();
   }
 
-  deleteProduct(prod: CandyProduct): void {
-    if (confirm(`¿Eliminar producto "${prod.name}" del Candy Bar?`)) {
-      this.adminService.deleteCandyProduct(prod.id);
-    }
+  confirmDeleteProduct(product: CandyProduct): void {
+    this.itemToDelete.set({
+      type: 'product',
+      id: product.id,
+      name: product.nombre
+    });
   }
 
   // --- Combo Handlers ---
   openNewComboModal(): void {
-    this.editingComboId.set(null);
-    this.comboName = '';
-    this.comboDescription = '';
-    this.comboTicketCount = 2;
-    this.comboIncludedItemsText = '1x Balde Pochoclos Gigante\n2x Gaseosa Grande 750ml';
-    this.comboFixedPrice = 14500;
-    this.comboPointsCost = 11000;
+    this.editingCombo.set(null);
     this.showComboModal.set(true);
   }
 
-  openEditComboModal(combo: SpecialCombo): void {
-    this.editingComboId.set(combo.id);
-    this.comboName = combo.name;
-    this.comboDescription = combo.description;
-    this.comboTicketCount = combo.ticketCount;
-    this.comboIncludedItemsText = combo.includedItems.join('\n');
-    this.comboFixedPrice = combo.fixedPrice;
-    this.comboPointsCost = combo.pointsCost || 10000;
+  openEditComboModal(combo: Combo): void {
+    this.editingCombo.set(combo);
     this.showComboModal.set(true);
   }
 
   closeComboModal(): void {
     this.showComboModal.set(false);
-    this.editingComboId.set(null);
+    this.editingCombo.set(null);
   }
 
-  saveCombo(): void {
-    if (!this.comboName.trim()) return;
+  async saveCombo(data: { nombre: string; precio_fijo: number }): Promise<void> {
+    this.isSavingCombo.set(true);
+    const combo = this.editingCombo();
 
-    const items = this.comboIncludedItemsText
-      .split('\n')
-      .map(i => i.trim())
-      .filter(i => i.length > 0);
-
-    if (this.editingComboId()) {
-      const existing = this.adminService.specialCombos().find(c => c.id === this.editingComboId());
-      if (existing) {
-        this.adminService.updateSpecialCombo({
-          ...existing,
-          name: this.comboName.trim(),
-          description: this.comboDescription.trim(),
-          ticketCount: Number(this.comboTicketCount) || 1,
-          includedItems: items,
-          fixedPrice: Number(this.comboFixedPrice) || 0,
-          pointsCost: Number(this.comboPointsCost) || 0
-        });
+    if (combo) {
+      const success = await this.candyService.updateCombo(combo.id, data);
+      this.isSavingCombo.set(false);
+      if (success) {
+        this.closeComboModal();
+        this.showToastMessage(`Combo "${data.nombre}" actualizado correctamente.`);
+      } else {
+        this.showToastMessage(this.candyService.error() || 'Error al actualizar combo.', 'error');
       }
     } else {
-      const newCombo: SpecialCombo = {
-        id: `sc-${Date.now()}`,
-        name: this.comboName.trim(),
-        description: this.comboDescription.trim(),
-        ticketCount: Number(this.comboTicketCount) || 1,
-        includedItems: items,
-        fixedPrice: Number(this.comboFixedPrice) || 0,
-        pointsCost: Number(this.comboPointsCost) || 0,
-        isActive: true
-      };
-      this.adminService.addSpecialCombo(newCombo);
-    }
-
-    this.closeComboModal();
-  }
-
-  deleteCombo(combo: SpecialCombo): void {
-    if (confirm(`¿Eliminar combo "${combo.name}"?`)) {
-      this.adminService.deleteSpecialCombo(combo.id);
-    }
-  }
-
-  // --- Rewards Handlers ---
-  openNewRewardModal(): void {
-    this.editingRewardId.set(null);
-    this.rewardName = '';
-    this.rewardType = 'candy';
-    this.rewardPointsCost = 4500;
-    this.rewardDescription = '';
-    this.showRewardModal.set(true);
-  }
-
-  openEditRewardModal(reward: LoyaltyReward): void {
-    this.editingRewardId.set(reward.id);
-    this.rewardName = reward.name;
-    this.rewardType = reward.type;
-    this.rewardPointsCost = reward.pointsCost;
-    this.rewardDescription = reward.description;
-    this.showRewardModal.set(true);
-  }
-
-  closeRewardModal(): void {
-    this.showRewardModal.set(false);
-    this.editingRewardId.set(null);
-  }
-
-  saveReward(): void {
-    if (!this.rewardName.trim()) return;
-
-    if (this.editingRewardId()) {
-      const existing = this.adminService.loyaltyRewards().find(r => r.id === this.editingRewardId());
-      if (existing) {
-        this.adminService.updateLoyaltyReward({
-          ...existing,
-          name: this.rewardName.trim(),
-          type: this.rewardType,
-          pointsCost: Number(this.rewardPointsCost) || 0,
-          description: this.rewardDescription.trim()
-        });
+      const created = await this.candyService.createCombo(data);
+      this.isSavingCombo.set(false);
+      if (created) {
+        this.closeComboModal();
+        this.showToastMessage(`Combo "${data.nombre}" creado exitosamente.`);
+      } else {
+        this.showToastMessage(this.candyService.error() || 'Error al crear combo.', 'error');
       }
-    } else {
-      const newReward: LoyaltyReward = {
-        id: `lr-${Date.now()}`,
-        name: this.rewardName.trim(),
-        type: this.rewardType,
-        pointsCost: Number(this.rewardPointsCost) || 0,
-        description: this.rewardDescription.trim(),
-        isActive: true
-      };
-      this.adminService.addLoyaltyReward(newReward);
     }
-
-    this.closeRewardModal();
   }
 
-  deleteReward(reward: LoyaltyReward): void {
-    if (confirm(`¿Eliminar recompensa "${reward.name}"?`)) {
-      this.adminService.deleteLoyaltyReward(reward.id);
+  confirmDeleteCombo(combo: Combo): void {
+    this.itemToDelete.set({
+      type: 'combo',
+      id: combo.id,
+      name: combo.nombre
+    });
+  }
+
+  // --- Confirm Deletion ---
+  cancelDelete(): void {
+    this.itemToDelete.set(null);
+  }
+
+  async executeDelete(): Promise<void> {
+    const item = this.itemToDelete();
+    if (!item) return;
+
+    this.isDeleting.set(true);
+    let success = false;
+
+    if (item.type === 'product') {
+      success = await this.candyService.deleteProduct(item.id);
+    } else {
+      success = await this.candyService.deleteCombo(item.id);
     }
+
+    this.isDeleting.set(false);
+    this.itemToDelete.set(null);
+
+    if (success) {
+      this.showToastMessage(`"${item.name}" eliminado correctamente.`);
+    } else {
+      this.showToastMessage(this.candyService.error() || 'Error al eliminar el elemento.', 'error');
+    }
+  }
+
+  async reload(): Promise<void> {
+    await this.candyService.initData();
   }
 }

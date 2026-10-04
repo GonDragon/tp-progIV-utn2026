@@ -1,6 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { AuthService } from './auth';
 import { MovieService } from './movie.service';
+import { CandyService } from './candy.service';
 import {
   CandyProduct,
   SpecialCombo,
@@ -19,6 +20,7 @@ import { Movie, Schedule } from '../models/movie';
 export class AdminService {
   private readonly authService = inject(AuthService);
   private readonly movieService = inject(MovieService);
+  private readonly candyService = inject(CandyService);
 
   // Available Rooms in the Cinema
   readonly availableRooms = [
@@ -31,111 +33,33 @@ export class AdminService {
     'Sala IMAX'
   ];
 
-  // Candy Bar Catalog
-  private readonly _candyProducts = signal<CandyProduct[]>([
-    {
-      id: 'cp1',
-      name: 'Balde Pochoclos Gigante (Dulces)',
-      category: 'Pochoclos',
-      price: 5200,
-      pointsCost: 4500,
-      description: 'Balde extragrande con pochoclos caramelizados recién preparados.',
+  // Candy Bar Catalog (Synced live with CandyService and Supabase)
+  readonly candyProducts = computed<CandyProduct[]>(() => {
+    return this.candyService.products().map(p => ({
+      id: String(p.id),
+      name: p.nombre,
+      category: p.categoria as any,
+      price: p.precio,
+      pointsCost: p.costo_puntos,
+      description: `${p.categoria} - ${p.nombre}`,
       placeholderColor: '#f59e0b',
       isAvailable: true,
-      salesCount: 1420
-    },
-    {
-      id: 'cp2',
-      name: 'Balde Pochoclos Mediano (Salados)',
-      category: 'Pochoclos',
-      price: 4100,
-      pointsCost: 3600,
-      description: 'Balde mediano clásico con manteca y sal.',
-      placeholderColor: '#d97706',
-      isAvailable: true,
-      salesCount: 980
-    },
-    {
-      id: 'cp3',
-      name: 'Gaseosa Grande 750ml',
-      category: 'Bebidas',
-      price: 2800,
-      pointsCost: 2500,
-      description: 'Vaso grande de gaseosa línea Coca-Cola bien fría.',
-      placeholderColor: '#dc2626',
-      isAvailable: true,
-      salesCount: 2150
-    },
-    {
-      id: 'cp4',
-      name: 'Agua Mineral 500ml',
-      category: 'Bebidas',
-      price: 1900,
-      pointsCost: 1600,
-      description: 'Agua mineral natural sin gas o con gas.',
-      placeholderColor: '#0284c7',
-      isAvailable: true,
-      salesCount: 650
-    },
-    {
-      id: 'cp5',
-      name: 'Nachos con Queso Cheddar Caliente',
-      category: 'Snacks',
-      price: 4600,
-      pointsCost: 4000,
-      description: 'Crujientes totopos de maíz acompañados de salsa cheddar caliente.',
-      placeholderColor: '#ca8a04',
-      isAvailable: true,
-      salesCount: 890
-    },
-    {
-      id: 'cp6',
-      name: 'Chocolates & Caramelos Mix',
-      category: 'Dulces',
-      price: 2400,
-      pointsCost: 2000,
-      description: 'Paquete de confites de chocolate crocantes.',
-      placeholderColor: '#7c2d12',
-      isAvailable: true,
-      salesCount: 520
-    }
-  ]);
-  readonly candyProducts = this._candyProducts.asReadonly();
+      salesCount: 0
+    }));
+  });
 
-  // Special Combos (Tickets + Candy Bar)
-  private readonly _specialCombos = signal<SpecialCombo[]>([
-    {
-      id: 'sc1',
-      name: 'Combo Dúo Cinéfilo',
-      description: '2 Entradas 2D/3D + 1 Balde Gigante de Pochoclos + 2 Gaseosas Grandes.',
-      ticketCount: 2,
-      includedItems: ['1x Balde Pochoclos Gigante', '2x Gaseosa Grande 750ml'],
-      fixedPrice: 15900,
-      pointsCost: 12000,
-      isActive: true
-    },
-    {
-      id: 'sc2',
-      name: 'Combo Familiar Premium',
-      description: '4 Entradas + 2 Baldes Medianos + 4 Bebidas + 1 Nachos Cheddar.',
-      ticketCount: 4,
-      includedItems: ['2x Balde Mediano', '4x Bebidas 750ml', '1x Nachos Cheddar'],
-      fixedPrice: 28900,
-      pointsCost: 22000,
-      isActive: true
-    },
-    {
-      id: 'sc3',
-      name: 'Combo Solo Nachos & Movie',
-      description: '1 Entrada + 1 Nachos Cheddar + 1 Gaseosa Grande.',
+  // Special Combos (Synced live with CandyService and Supabase)
+  readonly specialCombos = computed<SpecialCombo[]>(() => {
+    return this.candyService.combos().map(c => ({
+      id: String(c.id),
+      name: c.nombre,
+      description: `Combo especial ${c.nombre}`,
       ticketCount: 1,
-      includedItems: ['1x Nachos Cheddar', '1x Gaseosa Grande 750ml'],
-      fixedPrice: 9400,
-      pointsCost: 7500,
+      includedItems: [],
+      fixedPrice: c.precio_fijo,
       isActive: true
-    }
-  ]);
-  readonly specialCombos = this._specialCombos.asReadonly();
+    }));
+  });
 
   // Discount Coupons & Promotions
   private readonly _discountCoupons = signal<DiscountCoupon[]>([
@@ -524,53 +448,61 @@ export class AdminService {
 
   // --- CANDY BAR ABM ---
   addCandyProduct(product: CandyProduct): void {
-    this._candyProducts.update(curr => [product, ...curr]);
+    this.candyService.createProduct({
+      nombre: product.name || '',
+      categoria: product.category || 'Pochoclos',
+      precio: product.price || 0,
+      costo_puntos: product.pointsCost || 0
+    });
     this.addAuditLog('modificar_candy', 'Candy Bar', `Creó el producto "${product.name}" con precio $${product.price} y costo ${product.pointsCost} pts.`);
   }
 
   updateCandyProduct(product: CandyProduct): void {
-    const old = this._candyProducts().find(p => p.id === product.id);
-    this._candyProducts.update(curr =>
-      curr.map(p => p.id === product.id ? { ...p, ...product } : p)
-    );
-    if (old && old.price !== product.price) {
-      this.addAuditLog('modificar_precio', 'Candy Bar', `Modificó precio de "${product.name}" de $${old.price} a $${product.price}.`);
-    } else {
+    const id = Number(product.id);
+    if (!isNaN(id)) {
+      this.candyService.updateProduct(id, {
+        nombre: product.name || '',
+        categoria: product.category || 'Pochoclos',
+        precio: product.price || 0,
+        costo_puntos: product.pointsCost || 0
+      });
       this.addAuditLog('modificar_candy', 'Candy Bar', `Actualizó el producto "${product.name}".`);
     }
   }
 
   deleteCandyProduct(id: string): void {
-    const p = this._candyProducts().find(item => item.id === id);
-    this._candyProducts.update(curr => curr.filter(item => item.id !== id));
-    if (p) {
-      this.addAuditLog('modificar_candy', 'Candy Bar', `Eliminó el producto "${p.name}".`);
+    const numId = Number(id);
+    if (!isNaN(numId)) {
+      this.candyService.deleteProduct(numId);
+      this.addAuditLog('modificar_candy', 'Candy Bar', `Eliminó el producto ID: ${id}`);
     }
   }
 
   // --- SPECIAL COMBOS ABM ---
   addSpecialCombo(combo: SpecialCombo): void {
-    this._specialCombos.update(curr => [combo, ...curr]);
+    this.candyService.createCombo({
+      nombre: combo.name || '',
+      precio_fijo: combo.fixedPrice || 0
+    });
     this.addAuditLog('modificar_candy', 'Combos Especiales', `Creó el combo "${combo.name}" a precio fijo $${combo.fixedPrice}.`);
   }
 
   updateSpecialCombo(combo: SpecialCombo): void {
-    const old = this._specialCombos().find(c => c.id === combo.id);
-    this._specialCombos.update(curr =>
-      curr.map(c => c.id === combo.id ? { ...c, ...combo } : c)
-    );
-    if (old && old.fixedPrice !== combo.fixedPrice) {
-      this.addAuditLog('modificar_precio', 'Combos Especiales', `Modificó precio del combo "${combo.name}" de $${old.fixedPrice} a $${combo.fixedPrice}.`);
-    } else {
+    const id = Number(combo.id);
+    if (!isNaN(id)) {
+      this.candyService.updateCombo(id, {
+        nombre: combo.name || '',
+        precio_fijo: combo.fixedPrice || 0
+      });
       this.addAuditLog('modificar_candy', 'Combos Especiales', `Actualizó combo "${combo.name}".`);
     }
   }
 
   deleteSpecialCombo(id: string): void {
-    const c = this._specialCombos().find(item => item.id === id);
-    this._specialCombos.update(curr => curr.filter(item => item.id !== id));
-    if (c) {
-      this.addAuditLog('modificar_candy', 'Combos Especiales', `Eliminó combo "${c.name}".`);
+    const numId = Number(id);
+    if (!isNaN(numId)) {
+      this.candyService.deleteCombo(numId);
+      this.addAuditLog('modificar_candy', 'Combos Especiales', `Eliminó combo ID: ${id}`);
     }
   }
 
