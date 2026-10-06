@@ -1,47 +1,84 @@
 import { Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { AdminService } from '../../../../services/admin.service';
-import { ValidatableTicket } from '../../../../models/admin';
+import { TicketService } from '../../../../services/ticket.service';
+import { ValidationHeader } from './components/validation-header/validation-header';
+import { QrScanner } from './components/qr-scanner/qr-scanner';
+import { ManualCodeInput } from './components/manual-code-input/manual-code-input';
+import { TicketDetailsCard } from './components/ticket-details-card/ticket-details-card';
 
 @Component({
   selector: 'app-admin-validation',
   standalone: true,
-  imports: [FormsModule],
+  imports: [
+    ValidationHeader,
+    QrScanner,
+    ManualCodeInput,
+    TicketDetailsCard
+  ],
   templateUrl: './admin-validation.html',
   styleUrl: './admin-validation.css'
 })
 export class AdminValidation {
-  readonly adminService = inject(AdminService);
+  readonly ticketService = inject(TicketService);
 
-  manualCode = '';
-  validationResult = signal<{
-    success: boolean;
-    message: string;
-    ticket?: ValidatableTicket;
-  } | null>(null);
+  readonly currentTicket = this.ticketService.currentTicket;
+  readonly isLoading = this.ticketService.isLoading;
+  readonly error = this.ticketService.error;
 
-  isScanning = signal(false);
+  cameraActive = signal<boolean>(false);
+  feedback = signal<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null);
 
-  validateManualCode(): void {
-    if (!this.manualCode.trim()) return;
+  onCameraStateChange(active: boolean): void {
+    this.cameraActive.set(active);
+  }
 
-    const res = this.adminService.validateTicketByCode(this.manualCode);
-    this.validationResult.set(res);
-    if (res.success) {
-      this.manualCode = '';
+  async handleCodeValidation(code: string): Promise<void> {
+    this.feedback.set(null);
+    const result = await this.ticketService.getTicketByQrCode(code);
+
+    if (!result.success) {
+      this.feedback.set({
+        type: 'error',
+        message: result.message
+      });
+    } else if (result.ticket?.isUsed) {
+      this.feedback.set({
+        type: 'warning',
+        message: 'Atención: Este boleto ya fue consumido previamente.'
+      });
+    } else {
+      this.feedback.set({
+        type: 'success',
+        message: '¡Boleto válido encontrado! Revisa los datos a continuación.'
+      });
     }
   }
 
-  simulateScan(code: string): void {
-    this.isScanning.set(true);
-    setTimeout(() => {
-      this.isScanning.set(false);
-      const res = this.adminService.validateTicketByCode(code);
-      this.validationResult.set(res);
-    }, 600);
+  async handleUseTicket(): Promise<void> {
+    const ticket = this.currentTicket();
+    if (!ticket) return;
+
+    this.feedback.set(null);
+    const result = await this.ticketService.useTicket(ticket.id);
+
+    if (result.success) {
+      this.feedback.set({
+        type: 'success',
+        message: result.message
+      });
+    } else {
+      this.feedback.set({
+        type: 'error',
+        message: result.message
+      });
+    }
   }
 
-  clearResult(): void {
-    this.validationResult.set(null);
+  handleGoBack(): void {
+    this.ticketService.clearCurrentTicket();
+    this.feedback.set(null);
+  }
+
+  dismissFeedback(): void {
+    this.feedback.set(null);
   }
 }

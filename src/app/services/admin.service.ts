@@ -5,6 +5,7 @@ import { CandyService } from './candy.service';
 import { CouponService } from './coupon.service';
 import { ReportsService } from './reports.service';
 import { AuditService } from './audit.service';
+import { TicketService } from './ticket.service';
 import {
   CandyProduct,
   SpecialCombo,
@@ -26,6 +27,7 @@ export class AdminService {
   private readonly candyService = inject(CandyService);
   private readonly couponService = inject(CouponService);
   private readonly reportsService = inject(ReportsService);
+  readonly ticketService = inject(TicketService);
   readonly auditService = inject(AuditService);
 
   // Available Rooms in the Cinema
@@ -125,57 +127,10 @@ export class AdminService {
   // Audit Log (Synced live with Supabase via AuditService)
   readonly auditLogs = this.auditService.logs;
 
-  // Validatable Tickets database
-  private readonly _tickets = signal<ValidatableTicket[]>([
-    {
-      id: 't1',
-      code: 'TKT-89214',
-      movieTitle: 'Duna: Odisea Espacial',
-      scheduleTime: '15:30 (Sala 1)',
-      room: 'Sala 1 (Principal)',
-      format: '2D Castellano',
-      seats: ['J-4', 'J-5'],
-      candyItems: ['1x Balde Pochoclos Gigante', '2x Gaseosa Grande 750ml'],
-      customerName: 'Juan Carlos Pérez',
-      customerEmail: 'juan.perez@example.com',
-      purchaseDate: '2026-09-22 10:14',
-      totalPaid: 15900,
-      status: 'valida'
-    },
-    {
-      id: 't2',
-      code: 'TKT-34901',
-      movieTitle: 'Guardianes del Abismo',
-      scheduleTime: '19:15 (Sala 1)',
-      room: 'Sala 1 (Principal)',
-      format: '3D Subtitulada',
-      seats: ['R-10', 'R-11 (VIP)'],
-      candyItems: ['1x Nachos Cheddar'],
-      customerName: 'María Elena Gomez',
-      customerEmail: 'maria.gomez@example.com',
-      purchaseDate: '2026-09-22 11:05',
-      totalPaid: 12400,
-      status: 'valida'
-    },
-    {
-      id: 't3',
-      code: 'TKT-55102',
-      movieTitle: 'Aventura en el Reino Mágico',
-      scheduleTime: '14:00 (Sala 5)',
-      room: 'Sala 5 (Familiar)',
-      format: '2D Castellano',
-      seats: ['F-6', 'F-7', 'F-8'],
-      candyItems: ['2x Balde Mediano', '3x Bebidas'],
-      customerName: 'Carlos López',
-      customerEmail: 'carlos.l@example.com',
-      purchaseDate: '2026-09-21 16:30',
-      totalPaid: 18200,
-      status: 'utilizada',
-      validatedAt: '2026-09-21 17:50',
-      validatedBy: 'Empleado Empleadinho'
-    }
-  ]);
-  readonly tickets = this._tickets.asReadonly();
+  // Tickets & Validation (Live from Supabase via TicketService)
+  readonly currentTicket = this.ticketService.currentTicket;
+  readonly isTicketLoading = this.ticketService.isLoading;
+  readonly ticketError = this.ticketService.error;
 
   // Daily Reports & Movie Stats (Live from Supabase via ReportsService)
   get dailyReports(): DailyReportItem[] {
@@ -391,64 +346,16 @@ export class AdminService {
   }
 
   // --- QR / TICKET VALIDATION ---
-  validateTicketByCode(codeToValidate: string): {
-    success: boolean;
-    message: string;
-    ticket?: ValidatableTicket;
-  } {
-    const cleanCode = codeToValidate.trim().toUpperCase();
-    const ticket = this._tickets().find(t => t.code.toUpperCase() === cleanCode);
+  async validateTicketByCode(codeToValidate: string) {
+    return this.ticketService.getTicketByQrCode(codeToValidate);
+  }
 
-    if (!ticket) {
-      return {
-        success: false,
-        message: `No se encontró ningún boleto con el código "${cleanCode}".`
-      };
-    }
+  async useTicket(ticketId: number) {
+    return this.ticketService.useTicket(ticketId);
+  }
 
-    if (ticket.status === 'utilizada') {
-      return {
-        success: false,
-        message: `El boleto #${ticket.code} ya fue UTILIZADO previamente el ${ticket.validatedAt || 'día de la función'} por ${ticket.validatedBy || 'el personal'}.`,
-        ticket
-      };
-    }
-
-    if (ticket.status === 'cancelada') {
-      return {
-        success: false,
-        message: `El boleto #${ticket.code} fue CANCELADO y el monto reintegrado como saldo a favor.`,
-        ticket
-      };
-    }
-
-    // Valid ticket! Invalidate immediately
-    const user = this.authService.currentUser();
-    const validatorName = user ? `${user.nombre} ${user.apellido} (${user.rol})` : 'Personal Cine';
-    const nowStr = new Date().toLocaleString('es-AR');
-
-    const updatedTicket: ValidatableTicket = {
-      ...ticket,
-      status: 'utilizada',
-      validatedAt: nowStr,
-      validatedBy: validatorName
-    };
-
-    this._tickets.update(curr =>
-      curr.map(t => t.id === ticket.id ? updatedTicket : t)
-    );
-
-    this.addAuditLog(
-      'validar_qr',
-      'Control de Acceso',
-      `Validó e invalidó boleto #${ticket.code} (${ticket.movieTitle} - ${ticket.room}). Cliente: ${ticket.customerName}.`
-    );
-
-    return {
-      success: true,
-      message: `¡Boleto #${ticket.code} VALIDADO e INVALIDADO con éxito! Acceso permitido a ${ticket.movieTitle}.`,
-      ticket: updatedTicket
-    };
+  clearCurrentTicket(): void {
+    this.ticketService.clearCurrentTicket();
   }
 
   // --- EXPORT DAILY REPORTS ---
