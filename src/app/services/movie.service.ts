@@ -132,6 +132,25 @@ export class MovieService {
   async loadMovies(): Promise<void> {
     this._isLoading.set(true);
     try {
+      // Fetch ticket counts to know actual tickets sold per movie from Supabase
+      const ticketsSoldByMovie = new Map<number, number>();
+      try {
+        const { data: ticketsData } = await this.supabaseService.client
+          .from('entradas_tickets')
+          .select('id, funcion_id, funciones ( id, pelicula_id )');
+
+        if (ticketsData) {
+          for (const item of ticketsData as any[]) {
+            const mId = item.funciones?.pelicula_id;
+            if (mId != null) {
+              ticketsSoldByMovie.set(mId, (ticketsSoldByMovie.get(mId) || 0) + 1);
+            }
+          }
+        }
+      } catch (tErr) {
+        console.warn('Error fetching ticket sales stats:', tErr);
+      }
+
       const { data, error } = await this.supabaseService.client
         .from('peliculas')
         .select(`
@@ -210,6 +229,8 @@ export class MovieService {
             ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
             : 5.0;
 
+          const soldCount = ticketsSoldByMovie.get(row.id) || 0;
+
           return {
             id: String(row.id),
             title: row.nombre,
@@ -219,8 +240,8 @@ export class MovieService {
             ageRestriction: (row.restriccion_edad as any) || 'ATP',
             genres: genres.length > 0 ? genres : ['Acción'],
             rating: ratingAvg,
-            reviewsCount: ratings.length > 0 ? ratings.length : 1,
-            ticketsSold: 0,
+            reviewsCount: ratings.length > 0 ? ratings.length : 0,
+            ticketsSold: soldCount,
             isVisibleOnHome: true,
             schedules
           };

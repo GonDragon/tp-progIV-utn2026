@@ -84,32 +84,10 @@
   (scheduleSelected)="onScheduleSelected($event)"
 />
 
-<!-- Schedule Selection Toast Notification -->
-@if (selectedScheduleToast()) {
-  <div class="fixed bottom-20 right-4 sm:right-6 z-50 max-w-sm w-full bg-neutral-900 border border-[#D4AF37] rounded-2xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-    <div class="flex items-start justify-between gap-3">
-      <div class="flex items-center gap-2.5">
-        <div class="p-2 rounded-xl bg-amber-500/20 text-[#D4AF37]">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <div>
-          <h4 class="text-xs font-bold text-[#D4AF37] uppercase tracking-wider">Función Seleccionada</h4>
-          <p class="text-sm font-bold text-white">{{ selectedScheduleToast()!.movieTitle }}</p>
-          <p class="text-xs text-gray-300">
-            Horario: <span class="text-white font-semibold">{{ selectedScheduleToast()!.time }}</span> •
-            <span class="text-amber-400 font-semibold">{{ selectedScheduleToast()!.format }}</span> •
-            {{ selectedScheduleToast()!.room }}
-          </p>
-        </div>
-      </div>
-      <button
-        type="button"
-        (click)="closeToast()"
-        class="text-gray-400 hover:text-white text-lg leading-none cursor-pointer">
-        ×
-      </button>
-    </div>
-  </div>
-}
+<!-- Ticket Purchase Flow Wizard Modal -->
+<app-purchase-flow
+  [movie]="purchaseMovie()"
+  [schedule]="purchaseSchedule()"
+  (close)="onClosePurchaseFlow()"
+  (purchaseCompleted)="onPurchaseCompleted($event)"
+/>
