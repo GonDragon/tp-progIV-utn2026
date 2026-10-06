@@ -4,6 +4,7 @@ import { MovieService } from './movie.service';
 import { CandyService } from './candy.service';
 import { CouponService } from './coupon.service';
 import { ReportsService } from './reports.service';
+import { AuditService } from './audit.service';
 import {
   CandyProduct,
   SpecialCombo,
@@ -25,6 +26,7 @@ export class AdminService {
   private readonly candyService = inject(CandyService);
   private readonly couponService = inject(CouponService);
   private readonly reportsService = inject(ReportsService);
+  readonly auditService = inject(AuditService);
 
   // Available Rooms in the Cinema
   readonly availableRooms = [
@@ -120,50 +122,8 @@ export class AdminService {
   ]);
   readonly loyaltyRewards = this._loyaltyRewards.asReadonly();
 
-  // Audit Log
-  private readonly _auditLogs = signal<AuditLogEntry[]>([
-    {
-      id: 'log-101',
-      timestamp: '2026-09-22 13:45:10',
-      userId: '1',
-      userName: 'Admin Adminincio',
-      userRole: 'administrador',
-      action: 'crear_funcion',
-      category: 'Funciones',
-      details: 'Programó función para "Duna: Odisea Espacial" en Sala IMAX a las 22:00 (4D - Subtitulada).'
-    },
-    {
-      id: 'log-102',
-      timestamp: '2026-09-22 12:30:22',
-      userId: '1',
-      userName: 'Admin Adminincio',
-      userRole: 'administrador',
-      action: 'modificar_precio',
-      category: 'Candy Bar',
-      details: 'Actualizó precio de "Balde Pochoclos Gigante" a $5.200 (antes $4.800).'
-    },
-    {
-      id: 'log-103',
-      timestamp: '2026-09-22 11:15:04',
-      userId: '2',
-      userName: 'Empleado Empleadinho',
-      userRole: 'empleado',
-      action: 'validar_qr',
-      category: 'Control de Acceso',
-      details: 'Validó código QR de boleto #TKT-89214 para Sala 1 (Butacas J4, J5).'
-    },
-    {
-      id: 'log-104',
-      timestamp: '2026-09-21 18:20:45',
-      userId: '1',
-      userName: 'Admin Adminincio',
-      userRole: 'administrador',
-      action: 'crear_cupon',
-      category: 'Promociones',
-      details: 'Creó cupón "SENIOR50PLUS" con 35% de descuento para clientes >50 años.'
-    }
-  ]);
-  readonly auditLogs = this._auditLogs.asReadonly();
+  // Audit Log (Synced live with Supabase via AuditService)
+  readonly auditLogs = this.auditService.logs;
 
   // Validatable Tickets database
   private readonly _tickets = signal<ValidatableTicket[]>([
@@ -226,28 +186,13 @@ export class AdminService {
     return this.reportsService.movieStats();
   }
 
-  // Log action helper
+  // Log action helper (delegates to AuditService / Supabase log_actividad)
   addAuditLog(
     action: AuditLogEntry['action'],
     category: string,
     details: string
   ): void {
-    const user = this.authService.currentUser();
-    const now = new Date();
-    const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-
-    const newEntry: AuditLogEntry = {
-      id: `log-${Date.now()}`,
-      timestamp: formattedDate,
-      userId: user?.id || 'anon',
-      userName: user ? `${user.nombre} ${user.apellido}` : 'Usuario Sistema',
-      userRole: user?.rol === 'administrador' ? 'administrador' : 'empleado',
-      action,
-      category,
-      details
-    };
-
-    this._auditLogs.update(current => [newEntry, ...current]);
+    this.auditService.log(action, category, details);
   }
 
   // --- AUTOMATIC ROOM ALLOCATION ALGORITHM ---

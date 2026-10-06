@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseService } from './supabase';
 import { AuthService } from './auth';
+import { AuditService } from './audit.service';
 import { CandyProduct, Combo } from '../models/candy';
 
 @Injectable({
@@ -9,6 +10,7 @@ import { CandyProduct, Combo } from '../models/candy';
 export class CandyService {
   private readonly supabase = inject(SupabaseService);
   private readonly authService = inject(AuthService);
+  private readonly auditService = inject(AuditService);
 
   private readonly _products = signal<CandyProduct[]>([]);
   private readonly _combos = signal<Combo[]>([]);
@@ -131,7 +133,7 @@ export class CandyService {
       };
 
       this._products.update(list => [...list, newProduct]);
-      await this.logActivity(`Creó el producto de candy "${newProduct.nombre}" ($${newProduct.precio}, ${newProduct.costo_puntos} pts)`);
+      await this.auditService.log('crear_candy', 'Candy Bar', `Creó el producto "${newProduct.nombre}" con precio $${newProduct.precio} y costo ${newProduct.costo_puntos} pts`);
 
       return newProduct;
     } catch (err: any) {
@@ -177,7 +179,7 @@ export class CandyService {
         list.map(item => (item.id === id ? { ...item, ...payload } : item))
       );
 
-      await this.logActivity(`Actualizó el producto de candy "${payload.nombre}" (ID: ${id})`);
+      await this.auditService.log('modificar_candy', 'Candy Bar', `Actualizó el producto "${payload.nombre}" (ID: ${id}) con precio $${payload.precio} y costo ${payload.costo_puntos} pts`);
       return true;
     } catch (err: any) {
       console.error('Error en updateProduct:', err);
@@ -205,7 +207,7 @@ export class CandyService {
       }
 
       this._products.update(list => list.filter(item => item.id !== id));
-      await this.logActivity(`Eliminó el producto de candy "${existing?.nombre || id}"`);
+      await this.auditService.log('eliminar_candy', 'Candy Bar', `Eliminó el producto "${existing?.nombre || id}" (ID: ${id})`);
       return true;
     } catch (err: any) {
       console.error('Error en deleteProduct:', err);
@@ -247,7 +249,7 @@ export class CandyService {
       };
 
       this._combos.update(list => [...list, newCombo]);
-      await this.logActivity(`Creó el combo "${newCombo.nombre}" a precio fijo $${newCombo.precio_fijo}`);
+      await this.auditService.log('crear_combo', 'Candy Bar', `Creó el combo "${newCombo.nombre}" con precio fijo $${newCombo.precio_fijo}`);
 
       return newCombo;
     } catch (err: any) {
@@ -289,7 +291,7 @@ export class CandyService {
         list.map(item => (item.id === id ? { ...item, ...payload } : item))
       );
 
-      await this.logActivity(`Actualizó el combo "${payload.nombre}" (ID: ${id})`);
+      await this.auditService.log('modificar_combo', 'Candy Bar', `Actualizó el combo "${payload.nombre}" (ID: ${id}) a precio fijo $${payload.precio_fijo}`);
       return true;
     } catch (err: any) {
       console.error('Error en updateCombo:', err);
@@ -317,7 +319,7 @@ export class CandyService {
       }
 
       this._combos.update(list => list.filter(item => item.id !== id));
-      await this.logActivity(`Eliminó el combo "${existing?.nombre || id}"`);
+      await this.auditService.log('eliminar_combo', 'Candy Bar', `Eliminó el combo "${existing?.nombre || id}" (ID: ${id})`);
       return true;
     } catch (err: any) {
       console.error('Error en deleteCombo:', err);
@@ -329,14 +331,6 @@ export class CandyService {
   }
 
   private async logActivity(action: string): Promise<void> {
-    try {
-      const currentUser = this.authService.currentUser();
-      await this.supabase.client.from('log_actividad').insert({
-        perfil_id: currentUser?.id || null,
-        accion: action
-      });
-    } catch (e) {
-      console.warn('No se pudo registrar log de actividad:', e);
-    }
+    await this.auditService.log('modificar_candy', 'Candy Bar', action);
   }
 }
