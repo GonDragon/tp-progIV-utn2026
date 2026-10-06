@@ -2,7 +2,8 @@ import { Routes } from '@angular/router';
 import { Principal } from './pages/principal/principal';
 import { Dashboard } from './pages/dashboard/dashboard';
 import { Login } from './pages/login/login';
-import { dashboardGuard, loginGuard, principalGuard } from './guards/auth-guard';
+import { Registro } from './pages/registro/registro';
+import { dashboardGuard, loginGuard, principalGuard, registerGuard } from './guards/auth-guard';
 
 export const routes: Routes = [
   {
@@ -19,6 +20,15 @@ export const routes: Routes = [
     path: 'login',
     component: Login,
     canActivate: [loginGuard]
+  },
+  {
+    path: 'registro',
+    component: Registro,
+    canActivate: [registerGuard]
+  },
+  {
+    path: 'register',
+    redirectTo: 'registro'
   },
   {
     path: '**',

@@ -31,11 +31,18 @@ export class Layout {
     if (url.includes('login')) {
       return 'Iniciar Sesión';
     }
+    if (url.includes('registro') || url.includes('register')) {
+      return 'Registro de Cliente';
+    }
     return 'Cartelera y Funciones de CineIV';
   });
 
   goToLogin(): void {
     this.router.navigate(['/login']);
+  }
+
+  goToRegister(): void {
+    this.router.navigate(['/registro']);
   }
 
   logout(): void {

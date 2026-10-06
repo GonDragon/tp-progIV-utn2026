@@ -1,0 +1,123 @@
+<div class="space-y-4">
+  <div class="border-b border-neutral-700/80 pb-2 mb-4">
+    <h3 class="text-base font-bold text-gray-200 flex items-center gap-2">
+      <span class="text-[#D4AF37]">🔐</span>
+      <span>Datos de Acceso</span>
+    </h3>
+    <p class="text-xs text-gray-400">Configura tu correo electrónico y contraseña para iniciar sesión en CineIV.</p>
+  </div>
+
+  <!-- Email -->
+  <div>
+    <label for="reg-email" class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+      Correo Electrónico <span class="text-amber-400">*</span>
+    </label>
+    <div class="relative">
+      <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+        </svg>
+      </div>
+      <input
+        id="reg-email"
+        type="email"
+        name="email"
+        [ngModel]="email()"
+        (ngModelChange)="email.set($event)"
+        placeholder="cliente@ejemplo.com"
+        required
+        class="w-full pl-10 pr-4 py-2.5 bg-neutral-900 border border-neutral-700 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all text-sm"
+      />
+    </div>
+  </div>
+
+  <!-- Contraseña y Confirmar Contraseña -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <!-- Password -->
+    <div>
+      <label for="reg-password" class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+        Contraseña <span class="text-amber-400">*</span>
+      </label>
+      <div class="relative">
+        <input
+          id="reg-password"
+          [type]="showPassword() ? 'text' : 'password'"
+          name="password"
+          [ngModel]="password()"
+          (ngModelChange)="password.set($event)"
+          placeholder="Mínimo 6 caracteres"
+          required
+          class="w-full pl-3.5 pr-10 py-2.5 bg-neutral-900 border border-neutral-700 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all text-sm"
+        />
+        <button
+          type="button"
+          (click)="toggleShowPassword()"
+          class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white cursor-pointer"
+          [title]="showPassword() ? 'Ocultar contraseña' : 'Ver contraseña'">
+          @if (showPassword()) {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+            </svg>
+          } @else {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          }
+        </button>
+      </div>
+    </div>
+
+    <!-- Confirm Password -->
+    <div>
+      <label for="reg-confirm-password" class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
+        Confirmar Contraseña <span class="text-amber-400">*</span>
+      </label>
+      <div class="relative">
+        <input
+          id="reg-confirm-password"
+          [type]="showConfirmPassword() ? 'text' : 'password'"
+          name="confirmPassword"
+          [ngModel]="confirmPassword()"
+          (ngModelChange)="confirmPassword.set($event)"
+          placeholder="Repite la contraseña"
+          required
+          class="w-full pl-3.5 pr-10 py-2.5 bg-neutral-900 border border-neutral-700 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all text-sm"
+        />
+        <button
+          type="button"
+          (click)="toggleShowConfirmPassword()"
+          class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white cursor-pointer"
+          [title]="showConfirmPassword() ? 'Ocultar contraseña' : 'Ver contraseña'">
+          @if (showConfirmPassword()) {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+            </svg>
+          } @else {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Password Validation Feedback -->
+  @if (password().length > 0 || confirmPassword().length > 0) {
+    <div class="flex flex-wrap items-center gap-3 pt-1 text-xs">
+      <span class="flex items-center gap-1" [class]="hasMinLength() ? 'text-emerald-400' : 'text-gray-400'">
+        <span>{{ hasMinLength() ? '✓' : '○' }}</span>
+        <span>Al menos 6 caracteres</span>
+      </span>
+
+      @if (confirmPassword().length > 0) {
+        <span class="flex items-center gap-1" [class]="passwordsMatch() ? 'text-emerald-400' : 'text-rose-400'">
+          <span>{{ passwordsMatch() ? '✓' : '✗' }}</span>
+          <span>{{ passwordsMatch() ? 'Las contraseñas coinciden' : 'Las contraseñas no coinciden' }}</span>
+        </span>
+      }
+    </div>
+  }
+</div>

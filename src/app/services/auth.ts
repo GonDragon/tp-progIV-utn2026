@@ -73,6 +73,89 @@ export class AuthService {
     }
   }
 
+  async register(params: {
+    email: string;
+    password: string;
+    nombre: string;
+    apellido: string;
+    fecha_nacimiento?: string;
+    tipo_sangre?: string;
+    color_ojos?: string;
+    dias_vacaciones?: number;
+  }): Promise<{ success: boolean; error?: string; user?: User }> {
+    try {
+      const email = params.email.trim().toLowerCase();
+      const password = params.password;
+
+      const { data, error } = await this.supabaseService.client.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nombre: params.nombre.trim(),
+            apellido: params.apellido.trim(),
+            rol: 'cliente',
+            fecha_nacimiento: params.fecha_nacimiento || null,
+            tipo_sangre: params.tipo_sangre || null,
+            color_ojos: params.color_ojos || null,
+            dias_vacaciones: params.dias_vacaciones !== undefined ? Number(params.dias_vacaciones) : 0
+          }
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      const userId = data.user?.id;
+      if (!userId) {
+        return { success: false, error: 'No se pudo crear la cuenta de usuario.' };
+      }
+
+      const profilePayload = {
+        id: userId,
+        email: email,
+        nombre: params.nombre.trim(),
+        apellido: params.apellido.trim(),
+        fecha_nacimiento: params.fecha_nacimiento || null,
+        tipo_sangre: params.tipo_sangre || null,
+        color_ojos: params.color_ojos || null,
+        dias_vacaciones: params.dias_vacaciones !== undefined ? Number(params.dias_vacaciones) : 0,
+        rol: 'cliente' as const,
+        puntos_fidelidad: 0,
+        saldo_favor: 0.00
+      };
+
+      const { error: profileError } = await this.supabaseService.client
+        .from('perfiles')
+        .upsert(profilePayload);
+
+      if (profileError) {
+        console.warn('Error al guardar datos en la tabla perfiles:', profileError.message);
+      }
+
+      try {
+        await this.supabaseService.client.from('log_actividad').insert({
+          perfil_id: userId,
+          accion: `Registro de nuevo cliente: ${params.nombre.trim()} ${params.apellido.trim()} (${email})`
+        });
+      } catch {
+        // non-blocking
+      }
+
+      const userProfile: User = {
+        ...profilePayload,
+        created_at: new Date().toISOString()
+      };
+
+      this._currentUser.set(userProfile);
+
+      return { success: true, user: userProfile };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Error inesperado durante el registro' };
+    }
+  }
+
   async logout(): Promise<void> {
     try {
       await this.supabaseService.client.auth.signOut();

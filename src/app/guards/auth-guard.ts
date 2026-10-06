@@ -30,6 +30,25 @@ export const loginGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
 
   if (authService.isAuthenticated()) {
+    const user = authService.currentUser();
+    if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+      return router.createUrlTree(['/dashboard']);
+    }
+    return router.createUrlTree(['/']);
+  }
+
+  return true;
+};
+
+export const registerGuard: CanActivateFn = (route, state) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isAuthenticated()) {
+    const user = authService.currentUser();
+    if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+      return router.createUrlTree(['/dashboard']);
+    }
     return router.createUrlTree(['/']);
   }
 

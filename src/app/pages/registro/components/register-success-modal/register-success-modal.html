@@ -1,0 +1,70 @@
+@if (isOpen()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+    <div class="w-full max-w-md bg-neutral-800 border border-[#D4AF37]/50 rounded-2xl p-6 md:p-8 shadow-2xl text-center space-y-5 animate-scale-up">
+      <!-- Success Icon -->
+      <div class="w-16 h-16 bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-lg text-3xl">
+        ✓
+      </div>
+
+      <div>
+        <h3 class="text-2xl font-black text-[#D4AF37]">¡Registro Exitoso!</h3>
+        <p class="text-gray-200 font-semibold mt-1">
+          ¡Bienvenido/a a CineIV, {{ userName() }}!
+        </p>
+        <p class="text-xs text-gray-400 mt-1">
+          Tu cuenta de cliente fue creada exitosamente en Supabase.
+        </p>
+      </div>
+
+      <!-- Welcome Coupon Benefit Card -->
+      @if (welcomeDiscount() !== null && welcomeDiscount()! > 0) {
+        <div class="p-4 bg-neutral-900 border border-[#D4AF37]/40 rounded-xl space-y-2 text-left">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-[#D4AF37] flex items-center gap-1.5">
+              <span>🎟️</span> Cupón de Bienvenida
+            </span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-[#D4AF37] text-neutral-950 font-black">
+              {{ welcomeDiscount() }}% OFF
+            </span>
+          </div>
+          <p class="text-xs text-gray-300">
+            Tenés disponible un descuento exclusivo del <strong>{{ welcomeDiscount() }}%</strong> en tu primera compra de entradas.
+          </p>
+          @if (welcomeCode()) {
+            <div class="mt-2 text-center py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-amber-300 font-mono font-bold tracking-widest text-sm">
+              {{ welcomeCode() }}
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Loyalty program & Benefits highlights -->
+      <div class="grid grid-cols-2 gap-2 text-left text-xs bg-neutral-900/50 p-3 rounded-xl border border-neutral-700/50">
+        <div class="flex items-center gap-2 text-gray-300">
+          <span class="text-[#D4AF37]">⭐</span>
+          <span>1 $ = 1 Punto</span>
+        </div>
+        <div class="flex items-center gap-2 text-gray-300">
+          <span class="text-[#D4AF37]">🍿</span>
+          <span>Canjes Candy Bar</span>
+        </div>
+        <div class="flex items-center gap-2 text-gray-300">
+          <span class="text-[#D4AF37]">🎫</span>
+          <span>Entradas y QR</span>
+        </div>
+        <div class="flex items-center gap-2 text-gray-300">
+          <span class="text-[#D4AF37]">💳</span>
+          <span>Saldo a Favor</span>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <button
+        type="button"
+        (click)="onContinue()"
+        class="w-full py-3 bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-extrabold rounded-xl shadow-lg transition-all duration-200 cursor-pointer text-sm tracking-wide">
+        Explorar Cartelera de Películas
+      </button>
+    </div>
+  </div>
+}
