@@ -15,144 +15,172 @@ export class PdfService {
       format: 'a4'
     });
 
-    const primaryColor = [212, 175, 55]; // #D4AF37 Gold
-    const darkBg = [20, 20, 20];
-    const cardBg = [30, 30, 30];
-    const textColor = [240, 240, 240];
-    const mutedColor = [160, 160, 160];
+    const primaryColor: [number, number, number] = [212, 175, 55]; // #D4AF37 Gold
+    const darkBg: [number, number, number] = [20, 20, 20];
+    const cardBg: [number, number, number] = [30, 30, 30];
+    const textColor: [number, number, number] = [240, 240, 240];
+    const mutedColor: [number, number, number] = [160, 160, 160];
 
-    // Page background
-    doc.setFillColor(darkBg[0], darkBg[1], darkBg[2]);
-    doc.rect(0, 0, 210, 297, 'F');
+    const tickets = purchase.tickets.length > 0 ? purchase.tickets : [
+      { ticketId: 1, seatCode: 'General', seatType: 'Normal', qrCode: `TKT-${purchase.transaccionId}-0` }
+    ];
+    const totalTickets = tickets.length;
 
-    // Header banner
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.rect(0, 0, 210, 18, 'F');
+    for (let i = 0; i < totalTickets; i++) {
+      const ticket = tickets[i];
 
-    doc.setTextColor(15, 15, 15);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('CINE PROG IV • ENTRADA OFICIAL Y COMPROBANTE', 105, 12, { align: 'center' });
+      if (i > 0) {
+        doc.addPage();
+      }
 
-    // Ticket Container Box
-    doc.setFillColor(cardBg[0], cardBg[1], cardBg[2]);
-    doc.roundedRect(15, 26, 180, 250, 4, 4, 'F');
+      // Page background
+      doc.setFillColor(darkBg[0], darkBg[1], darkBg[2]);
+      doc.rect(0, 0, 210, 297, 'F');
 
-    // Movie title
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text(purchase.movie.title, 25, 42);
+      // Header banner
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, 210, 18, 'F');
 
-    // Movie meta info
-    doc.setTextColor(mutedColor[0], mutedColor[1], mutedColor[2]);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const ageRest = purchase.movie.ageRestriction || 'ATP';
-    const dur = purchase.movie.duration ? `${purchase.movie.duration} min` : '';
-    doc.text(`Clasificación: ${ageRest}  |  Duración: ${dur}`, 25, 49);
+      doc.setTextColor(15, 15, 15);
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`CINE PROG IV • ENTRADA OFICIAL (BOLETO ${i + 1} DE ${totalTickets})`, 105, 12, { align: 'center' });
 
-    // Divider
-    doc.setDrawColor(60, 60, 60);
-    doc.line(25, 54, 185, 54);
+      // Ticket Container Box
+      doc.setFillColor(cardBg[0], cardBg[1], cardBg[2]);
+      doc.roundedRect(15, 24, 180, 258, 4, 4, 'F');
 
-    // Show details
-    let y = 64;
-    doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-    doc.setFontSize(11);
+      // Movie title
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setFontSize(17);
+      doc.setFont('helvetica', 'bold');
+      doc.text(purchase.movie.title, 25, 38);
 
-    doc.setFont('helvetica', 'bold');
-    doc.text('Función:', 25, y);
-    doc.setFont('helvetica', 'normal');
-    const timeFormatted = `${purchase.schedule.time} hs - ${purchase.schedule.format} (${purchase.schedule.language})`;
-    doc.text(timeFormatted, 60, y);
+      // Movie meta info
+      doc.setTextColor(mutedColor[0], mutedColor[1], mutedColor[2]);
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'normal');
+      const ageRest = purchase.movie.ageRestriction || 'ATP';
+      const dur = purchase.movie.duration ? `${purchase.movie.duration} min` : '120 min';
+      const formatLang = `${purchase.schedule.format || '2D'} • ${purchase.schedule.language || 'Castellano'}`;
+      doc.text(`Clasificación: ${ageRest}  |  Duración: ${dur}  |  ${formatLang}`, 25, 45);
 
-    y += 8;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Sala:', 25, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(purchase.schedule.room || 'Sala Principal', 60, y);
+      // Divider
+      doc.setDrawColor(60, 60, 60);
+      doc.line(25, 50, 185, 50);
 
-    y += 8;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Transacción:', 25, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`#${purchase.transaccionId} (${purchase.fechaCompra})`, 60, y);
+      // Show details
+      let y = 58;
+      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+      doc.setFontSize(10.5);
 
-    y += 8;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Cliente:', 25, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${purchase.customerName} (${purchase.customerEmail})`, 60, y);
+      // Función y Horario
+      doc.setFont('helvetica', 'bold');
+      doc.text('Función:', 25, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${purchase.schedule.time} hs (${formatLang})`, 58, y);
 
-    y += 8;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Butacas:', 25, y);
-    doc.setFont('helvetica', 'normal');
-    const seatList = purchase.tickets.map(t => `${t.seatCode} (${t.seatType})`).join(', ');
-    doc.text(seatList, 60, y);
+      y += 7;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Sala:', 25, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(purchase.schedule.room || 'Sala Principal', 58, y);
 
-    // Divider
-    y += 8;
-    doc.setDrawColor(60, 60, 60);
-    doc.line(25, y, 185, y);
+      y += 7;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Butaca:', 25, y);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text(`${ticket.seatCode} (${ticket.seatType})`, 58, y);
 
-    // Candy Bar Section if applicable
-    if (purchase.candyItems && purchase.candyItems.length > 0) {
-      y += 9;
+      y += 7;
+      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Transacción:', 25, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`#${purchase.transaccionId}  •  ${purchase.fechaCompra}`, 58, y);
+
+      y += 7;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Cliente:', 25, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${purchase.customerName}`, 58, y);
+
+      // Divider
+      y += 6;
+      doc.setDrawColor(60, 60, 60);
+      doc.line(25, y, 185, y);
+
+      // Candy Bar & Combos Section
+      y += 7;
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setFont('helvetica', 'bold');
-      doc.text('Candy Bar & Adiciones:', 25, y);
+      doc.setFontSize(10);
+      doc.text('PRODUCTOS CANDY BAR & COMBOS:', 25, y);
 
       doc.setTextColor(textColor[0], textColor[1], textColor[2]);
       doc.setFont('helvetica', 'normal');
-      for (const item of purchase.candyItems) {
-        y += 6;
-        const line = `• ${item.cantidad}x ${item.nombre} - $${(item.precio * item.cantidad).toLocaleString('es-AR')}`;
-        doc.text(line, 30, y);
+      doc.setFontSize(9.5);
+
+      if (purchase.candyItems && purchase.candyItems.length > 0) {
+        for (const item of purchase.candyItems) {
+          y += 5.5;
+          const line = `• ${item.cantidad}x ${item.nombre}  ($${(item.precio * item.cantidad).toLocaleString('es-AR')})`;
+          doc.text(line, 28, y);
+        }
+      } else {
+        y += 5.5;
+        doc.setTextColor(mutedColor[0], mutedColor[1], mutedColor[2]);
+        doc.text('• Ningún producto de Candy Bar incluido en esta orden', 28, y);
       }
-      y += 4;
+
+      // Divider
+      y += 5;
       doc.setDrawColor(60, 60, 60);
       doc.line(25, y, 185, y);
+
+      // Total Amount
+      y += 7;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text(`TOTAL TRANSACCIÓN: $${purchase.montoTotal.toLocaleString('es-AR')}`, 25, y);
+
+      // Generate QR Code for this specific ticket
+      const qrText = ticket.qrCode;
+      const qrDataUrl = await QRCode.toDataURL(qrText, {
+        margin: 1,
+        width: 200,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        }
+      });
+
+      // QR Code Container Box
+      const qrY = Math.max(y + 8, 168);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(70, qrY, 70, 70, 3, 3, 'F');
+      doc.addImage(qrDataUrl, 'PNG', 73, qrY + 3, 64, 64);
+
+      // QR Label
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`QR DE ACCESO • BUTACA ${ticket.seatCode}`, 105, qrY + 77, { align: 'center' });
+
+      doc.setTextColor(mutedColor[0], mutedColor[1], mutedColor[2]);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(qrText, 105, qrY + 82, { align: 'center' });
+      doc.text('Presenta este código QR en el acceso a la sala. Válido para 1 persona en la butaca asignada.', 105, qrY + 87, { align: 'center' });
+
+      // Bottom footer info
+      doc.setFontSize(7.5);
+      doc.text(`Boleto ${i + 1} de ${totalTickets}  |  Transacción #${purchase.transaccionId}`, 105, 276, { align: 'center' });
     }
 
-    // Total Amount
-    y += 10;
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text(`TOTAL ABONADO: $${purchase.montoTotal.toLocaleString('es-AR')}`, 25, y);
-
-    // Generate QR Code for the primary ticket or combined code
-    const qrText = purchase.tickets[0]?.qrCode || `TKT-${purchase.transaccionId}-${Date.now()}`;
-    const qrDataUrl = await QRCode.toDataURL(qrText, {
-      margin: 1,
-      width: 200,
-      color: {
-        dark: '#000000',
-        light: '#ffffff'
-      }
-    });
-
-    // QR Code Container Box
-    const qrY = Math.max(y + 12, 160);
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(65, qrY, 80, 80, 3, 3, 'F');
-    doc.addImage(qrDataUrl, 'PNG', 70, qrY + 5, 70, 70);
-
-    // QR Label
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('CÓDIGO DE ACCESO / CONTROL DE ENTRADA', 105, qrY + 88, { align: 'center' });
-
-    doc.setTextColor(mutedColor[0], mutedColor[1], mutedColor[2]);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(qrText, 105, qrY + 93, { align: 'center' });
-    doc.text('Presenta este código QR en la entrada o taquilla del cine para ingresar.', 105, qrY + 98, { align: 'center' });
-
     // Save PDF
-    doc.save(`Entrada_Cine_${purchase.transaccionId}.pdf`);
+    doc.save(`Entradas_Cine_${purchase.transaccionId}.pdf`);
   }
 }
