@@ -31,7 +31,7 @@
   <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 py-2.5 px-4 bg-neutral-950/70 rounded-xl border border-neutral-800 text-xs">
     <!-- Común / Normal (Azul oscuro) -->
     <div class="flex items-center gap-2">
-      <div class="w-5 h-5 rounded-md bg-blue-900 border border-blue-500 shadow-sm flex items-center justify-center text-[9px] text-blue-200 font-bold">
+      <div class="w-5 h-5 butaca butaca-normal text-[8px] pointer-events-none">
         A1
       </div>
       <span class="text-gray-300 font-medium">Común (Azul oscuro)</span>
@@ -39,7 +39,7 @@
 
     <!-- Discapacidad (Verde) -->
     <div class="flex items-center gap-2">
-      <div class="w-5 h-5 rounded-md bg-emerald-600 border border-emerald-400 shadow-sm flex items-center justify-center text-[9px] text-white font-bold">
+      <div class="w-5 h-5 butaca butaca-accesible !w-5 !h-5 text-[9px] pointer-events-none">
         ♿
       </div>
       <span class="text-gray-300 font-medium">Accesible (Verde - J y K)</span>
@@ -47,7 +47,7 @@
 
     <!-- VIP (Naranja) -->
     <div class="flex items-center gap-2">
-      <div class="w-5 h-5 rounded-md bg-orange-600 border border-orange-400 shadow-sm flex items-center justify-center text-[9px] text-white font-bold">
+      <div class="w-5 h-5 butaca butaca-vip text-[8px] pointer-events-none">
         R1
       </div>
       <span class="text-amber-400 font-medium">VIP (Naranja +$1.500)</span>
@@ -55,7 +55,7 @@
 
     <!-- Seleccionada (Dorado) -->
     <div class="flex items-center gap-2">
-      <div class="w-5 h-5 rounded-md bg-[#D4AF37] border border-white shadow-sm flex items-center justify-center text-[9px] text-black font-black">
+      <div class="w-5 h-5 butaca butaca-seleccionada text-[9px] pointer-events-none">
         ✓
       </div>
       <span class="text-[#D4AF37] font-bold">Seleccionada</span>
@@ -63,7 +63,7 @@
 
     <!-- Reservada (Apagada) -->
     <div class="flex items-center gap-2">
-      <div class="w-5 h-5 rounded-md bg-neutral-800 border border-neutral-700/60 opacity-40 flex items-center justify-center text-[9px] text-neutral-500 font-bold line-through">
+      <div class="w-5 h-5 butaca butaca-ocupada text-[9px] pointer-events-none">
         X
       </div>
       <span class="text-gray-500">Ocupada / Reservada</span>
@@ -116,15 +116,7 @@
                     (click)="onSelectSeat(seat)"
                     [disabled]="seat.isReserved"
                     [title]="seat.isReserved ? ('Butaca ' + seat.code + ' (Ocupada)') : ('Butaca ' + seat.code + ' (' + seat.tipo + ')') "
-                    [class]="isSeatSelected(seat)
-                      ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-[#D4AF37] border-2 border-white text-neutral-950 font-black text-[9px] sm:text-[10px] flex items-center justify-center shadow-md scale-105 ring-2 ring-[#D4AF37] cursor-pointer transition-transform'
-                      : seat.isReserved
-                        ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-neutral-900 border border-neutral-800 text-neutral-600 text-[8px] sm:text-[9px] flex items-center justify-center opacity-35 cursor-not-allowed line-through'
-                        : seat.tipo === 'Discapacidad'
-                          ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-emerald-600 hover:bg-emerald-500 border border-emerald-400 text-white font-bold text-[9px] sm:text-[10px] flex items-center justify-center shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all'
-                          : seat.tipo === 'VIP'
-                            ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-orange-600 hover:bg-orange-500 border border-orange-400 text-white font-bold text-[9px] sm:text-[10px] flex items-center justify-center shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all'
-                            : 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-blue-900 hover:bg-blue-800 border border-blue-600 text-blue-100 font-bold text-[8px] sm:text-[9px] flex items-center justify-center shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all'">
+                    [class]="getSeatClass(seat)">
                     {{ seat.code }}
                   </button>
                 }
@@ -141,15 +133,7 @@
                     (click)="onSelectSeat(seat)"
                     [disabled]="seat.isReserved"
                     [title]="seat.isReserved ? ('Butaca ' + seat.code + ' (Ocupada)') : ('Butaca ' + seat.code + ' (' + seat.tipo + ')') "
-                    [class]="isSeatSelected(seat)
-                      ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-[#D4AF37] border-2 border-white text-neutral-950 font-black text-[9px] sm:text-[10px] flex items-center justify-center shadow-md scale-105 ring-2 ring-[#D4AF37] cursor-pointer transition-transform'
-                      : seat.isReserved
-                        ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-neutral-900 border border-neutral-800 text-neutral-600 text-[8px] sm:text-[9px] flex items-center justify-center opacity-35 cursor-not-allowed line-through'
-                        : seat.tipo === 'Discapacidad'
-                          ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-emerald-600 hover:bg-emerald-500 border border-emerald-400 text-white font-bold text-[9px] sm:text-[10px] flex items-center justify-center shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all'
-                          : seat.tipo === 'VIP'
-                            ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-orange-600 hover:bg-orange-500 border border-orange-400 text-white font-bold text-[9px] sm:text-[10px] flex items-center justify-center shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all'
-                            : 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-blue-900 hover:bg-blue-800 border border-blue-600 text-blue-100 font-bold text-[8px] sm:text-[9px] flex items-center justify-center shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all'">
+                    [class]="getSeatClass(seat)">
                     {{ seat.code }}
                   </button>
                 }
@@ -166,15 +150,7 @@
                     (click)="onSelectSeat(seat)"
                     [disabled]="seat.isReserved"
                     [title]="seat.isReserved ? ('Butaca ' + seat.code + ' (Ocupada)') : ('Butaca ' + seat.code + ' (' + seat.tipo + ')') "
-                    [class]="isSeatSelected(seat)
-                      ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-[#D4AF37] border-2 border-white text-neutral-950 font-black text-[9px] sm:text-[10px] flex items-center justify-center shadow-md scale-105 ring-2 ring-[#D4AF37] cursor-pointer transition-transform'
-                      : seat.isReserved
-                        ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-neutral-900 border border-neutral-800 text-neutral-600 text-[8px] sm:text-[9px] flex items-center justify-center opacity-35 cursor-not-allowed line-through'
-                        : seat.tipo === 'Discapacidad'
-                          ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-emerald-600 hover:bg-emerald-500 border border-emerald-400 text-white font-bold text-[9px] sm:text-[10px] flex items-center justify-center shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all'
-                          : seat.tipo === 'VIP'
-                            ? 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-orange-600 hover:bg-orange-500 border border-orange-400 text-white font-bold text-[9px] sm:text-[10px] flex items-center justify-center shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all'
-                            : 'w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-blue-900 hover:bg-blue-800 border border-blue-600 text-blue-100 font-bold text-[8px] sm:text-[9px] flex items-center justify-center shadow-sm cursor-pointer hover:scale-105 active:scale-95 transition-all'">
+                    [class]="getSeatClass(seat)">
                     {{ seat.code }}
                   </button>
                 }

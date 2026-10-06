@@ -18,7 +18,8 @@ export interface RowViewData {
   selector: 'app-step-seats',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './step-seats.html'
+  templateUrl: './step-seats.html',
+  styleUrl: './step-seats.css'
 })
 export class StepSeats implements OnInit {
   private readonly purchaseService = inject(PurchaseService);
@@ -126,6 +127,27 @@ export class StepSeats implements OnInit {
 
   isSeatSelected(seat: Seat): boolean {
     return this.selectedSeats().some(s => s.id === seat.id || (s.fila === seat.fila && s.columna === seat.columna));
+  }
+
+  getSeatClass(seat: Seat): string {
+    const isSelected = this.isSeatSelected(seat);
+    const classes = ['butaca'];
+
+    if (seat.tipo === 'Discapacidad') {
+      classes.push('butaca-accesible');
+    } else if (seat.tipo === 'VIP') {
+      classes.push('butaca-vip');
+    } else {
+      classes.push('butaca-normal');
+    }
+
+    if (seat.isReserved) {
+      classes.push('butaca-ocupada');
+    } else if (isSelected) {
+      classes.push('butaca-seleccionada');
+    }
+
+    return classes.join(' ');
   }
 
   onSelectSeat(seat: Seat): void {
