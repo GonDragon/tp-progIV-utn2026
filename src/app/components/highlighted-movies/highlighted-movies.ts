@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { Movie, Schedule } from '../../models/movie';
+import { Movie } from '../../models/movie';
 
 @Component({
   selector: 'app-highlighted-movies',
@@ -9,9 +9,9 @@ import { Movie, Schedule } from '../../models/movie';
 })
 export class HighlightedMovies {
   readonly movies = input.required<Movie[]>();
-  readonly scheduleSelected = output<{ movie: Movie; schedule: Schedule }>();
+  readonly movieSelected = output<Movie>();
 
-  onSelectSchedule(movie: Movie, schedule: Schedule): void {
-    this.scheduleSelected.emit({ movie, schedule });
+  onSelectMovie(movie: Movie): void {
+    this.movieSelected.emit(movie);
   }
 }
