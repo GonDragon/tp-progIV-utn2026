@@ -1,7 +1,8 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { Movie, Schedule, Genre, Sala } from '../models/movie';
 import { SupabaseService } from './supabase';
 import { AuditService } from './audit.service';
+import { AuthService } from './auth';
 
 @Injectable({
   providedIn: 'root'
@@ -9,6 +10,7 @@ import { AuditService } from './audit.service';
 export class MovieService {
   private readonly supabaseService = inject(SupabaseService);
   private readonly auditService = inject(AuditService);
+  private readonly authService = inject(AuthService);
 
   private readonly _movies = signal<Movie[]>([]);
   private readonly _upcomingMovies = signal<Movie[]>([]);
@@ -74,7 +76,45 @@ export class MovieService {
   });
 
   constructor() {
-    this.initData();
+    this.loadGenres();
+    this.loadSalas();
+    effect(() => {
+      // Re-load movies when user auth state changes (login, logout, profile update)
+      this.authService.currentUser();
+      this.loadMovies();
+    }, { allowSignalWrites: true });
+  }
+
+  private calculateUserAge(birthDateStr?: string | null): number | null {
+    if (!birthDateStr) return null;
+    let birthDate: Date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(birthDateStr)) {
+      const [y, m, d] = birthDateStr.split('-').map(Number);
+      birthDate = new Date(y, m - 1, d);
+    } else {
+      birthDate = new Date(birthDateStr);
+    }
+    if (isNaN(birthDate.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age >= 0 ? age : null;
+  }
+
+  private isAdultMovie(restriction?: string | null): boolean {
+    if (!restriction) return false;
+    const r = restriction.trim().toLowerCase();
+    return r === '+18' || r === '18' || r.includes('18') || r.includes('adult');
+  }
+
+  private is13Movie(restriction?: string | null): boolean {
+    if (!restriction) return false;
+    const r = restriction.trim().toLowerCase();
+    return r === '+13' || r === '13' || r.includes('13');
   }
 
   async initData(): Promise<void> {
@@ -193,7 +233,31 @@ export class MovieService {
       }
 
       if (data && data.length > 0) {
-        const mappedMovies: Movie[] = data.map((row: any) => {
+        let filteredRows = data;
+
+        // Verificación de censura por edad para cuentas registradas (clientes)
+        const currentUser = this.authService.currentUser();
+        if (currentUser && currentUser.rol === 'cliente' && currentUser.fecha_nacimiento) {
+          const age = this.calculateUserAge(currentUser.fecha_nacimiento);
+          if (age !== null) {
+            if (age < 13) {
+              // Si el usuario tiene -13 años, no se cargan las peliculas +13 (ni adultos +18)
+              filteredRows = filteredRows.filter((row: any) => {
+                const rest = row.restriccion_edad;
+                return !this.isAdultMovie(rest) && !this.is13Movie(rest);
+              });
+            } else if (age < 18) {
+              // Si el usuario tiene -18 años, no se cargan las peliculas para adultos (+18)
+              filteredRows = filteredRows.filter((row: any) => {
+                const rest = row.restriccion_edad;
+                return !this.isAdultMovie(rest);
+              });
+            }
+            // Si el usuario tiene +18 años (age >= 18), se cargan todas las peliculas
+          }
+        }
+
+        const mappedMovies: Movie[] = filteredRows.map((row: any) => {
           const genres: string[] = (row.peliculas_generos || [])
             .map((pg: any) => pg.generos?.nombre)
             .filter((name: string | undefined): name is string => !!name);
@@ -248,6 +312,8 @@ export class MovieService {
         });
 
         this._movies.set(mappedMovies);
+      } else {
+        this._movies.set([]);
       }
     } catch (err) {
       console.warn('Error procesando películas de Supabase:', err);
