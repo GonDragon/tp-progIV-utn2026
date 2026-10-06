@@ -1,102 +1,99 @@
-<div class="space-y-6">
-  <!-- Header Bar -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700">
-    <div>
-      <h2 class="text-xl font-bold text-white flex items-center gap-2">
-        <span class="text-[#D4AF37]">📜</span> Registro de Auditoría & Log de Actividad
-      </h2>
-      <p class="text-xs text-gray-400 mt-0.5">
-        Historial inmutable con fecha, hora y usuario que creó funciones, modificó precios o validó códigos QR.
-      </p>
+<div class="space-y-6 animate-fade-in">
+  <!-- Toast Notification -->
+  @if (toast(); as t) {
+    <div
+      class="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-semibold backdrop-blur-md animate-slide-up"
+      [class]="t.type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/30' : 'bg-rose-950/90 text-rose-300 border-rose-500/30'">
+      <span>{{ t.type === 'success' ? '✅' : '⚠️' }}</span>
+      <span>{{ t.message }}</span>
     </div>
+  }
 
-    <!-- Filters & Search -->
-    <div class="flex flex-wrap items-center gap-3">
-      <select
-        [ngModel]="selectedCategory()"
-        (ngModelChange)="selectedCategory.set($event)"
-        class="px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-white text-xs font-semibold focus:outline-none focus:border-[#D4AF37]">
-        <option value="todos">Todas las Categorías</option>
-        <option value="Funciones">Funciones</option>
-        <option value="Candy Bar">Candy Bar</option>
-        <option value="Control de Acceso">Control de Acceso (QR)</option>
-        <option value="Películas">Películas</option>
-        <option value="Promociones">Promociones & Cupones</option>
-        <option value="Preventas">Preventas</option>
-      </select>
+  <!-- Header Component -->
+  <app-audit-header
+    [isLoading]="auditService.isLoading()"
+    [totalCount]="auditService.stats().totalLogs"
+    (refresh)="reload()"
+    (openManualModal)="openManualLogModal()" />
 
-      <div class="relative">
-        <input
-          type="text"
-          [ngModel]="searchQuery()"
-          (ngModelChange)="searchQuery.set($event)"
-          placeholder="Buscar en registros..."
-          class="pl-8 pr-3 py-2 bg-neutral-900 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37] w-48 sm:w-60" />
-        <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
+  <!-- Error Banner if any -->
+  @if (auditService.error(); as err) {
+    <div class="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span>⚠️</span>
+        <span>{{ err }}</span>
       </div>
+      <button
+        type="button"
+        (click)="reload()"
+        class="underline hover:text-white text-xs font-bold cursor-pointer">
+        Reintentar
+      </button>
     </div>
-  </div>
+  }
+
+  <!-- Stats Component -->
+  <app-audit-stats [stats]="auditService.stats()" />
+
+  <!-- Filters Component -->
+  <app-audit-filters
+    [selectedCategory]="selectedCategory()"
+    [selectedAction]="selectedAction()"
+    [selectedRole]="selectedRole()"
+    [searchQuery]="searchQuery()"
+    [resultsCount]="filteredLogs().length"
+    (categoryChange)="selectedCategory.set($event)"
+    (actionChange)="selectedAction.set($event)"
+    (roleChange)="selectedRole.set($event)"
+    (searchChange)="searchQuery.set($event)"
+    (resetFilters)="resetFilters()" />
 
   <!-- Audit List -->
   <div class="space-y-3">
-    @if (filteredLogs().length > 0) {
-      @for (log of filteredLogs(); track log.id) {
-        <div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-4 shadow flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-neutral-600 transition-colors">
-          <div class="flex items-start gap-3 flex-1 min-w-0">
-            <!-- Action Icon Badge -->
-            <div
-              class="w-10 h-10 rounded-xl flex items-center justify-center text-base shrink-0 font-bold"
-              [class]="log.action === 'validar_qr' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' :
-                       log.action === 'modificar_precio' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' :
-                       log.action === 'crear_funcion' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
-                       'bg-purple-500/10 text-purple-400 border border-purple-500/30'">
-              @switch (log.action) {
-                @case ('validar_qr') { 📱 }
-                @case ('modificar_precio') { 💲 }
-                @case ('crear_funcion') { ⏰ }
-                @case ('crear_pelicula') { 🎬 }
-                @case ('modificar_pelicula') { ✏️ }
-                @case ('eliminar_pelicula') { 🗑️ }
-                @default { 📝 }
-              }
-            </div>
-
-            <div class="space-y-1 flex-1 min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="text-xs font-bold text-white">{{ log.category }}</span>
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-900 text-gray-400 border border-neutral-700">
-                  {{ log.action }}
-                </span>
-                <span
-                  class="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  [class]="log.userRole === 'administrador' ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-blue-500/20 text-blue-400'">
-                  {{ log.userRole }}
-                </span>
+    @if (auditService.isLoading() && auditService.logs().length === 0) {
+      <!-- Loading Skeleton -->
+      <div class="space-y-3">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="bg-neutral-800/40 rounded-2xl border border-neutral-700/60 p-4 animate-pulse flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-neutral-700/50"></div>
+              <div class="space-y-2">
+                <div class="w-48 h-3.5 bg-neutral-700/60 rounded"></div>
+                <div class="w-80 h-3 bg-neutral-700/40 rounded"></div>
               </div>
-
-              <p class="text-xs text-gray-300 leading-relaxed">
-                {{ log.details }}
-              </p>
             </div>
+            <div class="w-28 h-3 bg-neutral-700/40 rounded"></div>
           </div>
-
-          <!-- User & Timestamp -->
-          <div class="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-neutral-700/60 text-right">
-            <span class="text-xs font-bold text-white flex items-center gap-1">
-              👤 {{ log.userName }}
-            </span>
-            <span class="text-[11px] font-mono text-gray-400 flex items-center gap-1">
-              🕒 {{ log.timestamp }}
-            </span>
-          </div>
-        </div>
+        }
+      </div>
+    } @else if (filteredLogs().length > 0) {
+      @for (log of filteredLogs(); track log.id) {
+        <app-audit-item [log]="log" />
       }
     } @else {
-      <div class="p-12 text-center bg-neutral-800/40 border border-neutral-700 rounded-2xl">
-        <p class="text-sm text-gray-400">No se encontraron registros de auditoría para la búsqueda o categoría seleccionada.</p>
+      <!-- Empty State -->
+      <div class="p-12 text-center bg-neutral-800/40 border border-neutral-700/80 rounded-2xl space-y-2">
+        <div class="text-3xl mb-1">📜</div>
+        <p class="text-sm font-semibold text-neutral-300">No se encontraron registros de auditoría</p>
+        <p class="text-xs text-neutral-400 max-w-md mx-auto">
+          No hay acciones registradas para los filtros seleccionados o la tabla en Supabase está vacía.
+        </p>
+        @if (selectedCategory() !== 'todos' || selectedAction() !== 'todos' || selectedRole() !== 'todos' || searchQuery()) {
+          <button
+            type="button"
+            (click)="resetFilters()"
+            class="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-800 text-amber-400 hover:text-amber-300 border border-neutral-700 cursor-pointer">
+            Limpiar filtros de búsqueda
+          </button>
+        }
       </div>
     }
   </div>
+
+  <!-- Manual Event Registration Modal -->
+  <app-audit-modal
+    [isOpen]="isModalOpen()"
+    [isSaving]="isSavingManual()"
+    (close)="closeManualLogModal()"
+    (save)="handleSaveManualLog($event)" />
 </div>

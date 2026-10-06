@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseService } from './supabase';
 import { AuthService } from './auth';
+import { AuditService } from './audit.service';
 import { Coupon } from '../models/coupon';
 
 @Injectable({
@@ -9,6 +10,7 @@ import { Coupon } from '../models/coupon';
 export class CouponService {
   private readonly supabase = inject(SupabaseService);
   private readonly authService = inject(AuthService);
+  private readonly auditService = inject(AuditService);
 
   private readonly _coupons = signal<Coupon[]>([]);
   private readonly _isLoading = signal<boolean>(false);
@@ -97,7 +99,7 @@ export class CouponService {
       };
 
       this._coupons.update(list => [...list, newCoupon]);
-      await this.logActivity(`Creó el cupón "${newCoupon.codigo}" con ${newCoupon.porcentaje_descuento}% de descuento (Restricción: ${newCoupon.tipo_restriccion})`);
+      await this.auditService.log('crear_cupon', 'Promociones & Cupones', `Creó el cupón "${newCoupon.codigo}" con ${newCoupon.porcentaje_descuento}% de descuento (Restricción: ${newCoupon.tipo_restriccion})`);
 
       return newCoupon;
     } catch (err: any) {
@@ -141,7 +143,7 @@ export class CouponService {
         list.map(item => (item.id === id ? { ...item, ...payload } : item))
       );
 
-      await this.logActivity(`Actualizó el cupón "${payload.codigo}" (ID: ${id})`);
+      await this.auditService.log('modificar_cupon', 'Promociones & Cupones', `Actualizó el cupón "${payload.codigo}" (ID: ${id}) a ${payload.porcentaje_descuento}% descuento`);
       return true;
     } catch (err: any) {
       console.error('Error en updateCoupon:', err);
@@ -169,7 +171,7 @@ export class CouponService {
       }
 
       this._coupons.update(list => list.filter(item => item.id !== id));
-      await this.logActivity(`Eliminó el cupón "${existing?.codigo || id}"`);
+      await this.auditService.log('eliminar_cupon', 'Promociones & Cupones', `Eliminó el cupón "${existing?.codigo || id}" (ID: ${id})`);
       return true;
     } catch (err: any) {
       console.error('Error en deleteCoupon:', err);
@@ -199,14 +201,6 @@ export class CouponService {
   }
 
   private async logActivity(action: string): Promise<void> {
-    try {
-      const currentUser = this.authService.currentUser();
-      await this.supabase.client.from('log_actividad').insert({
-        perfil_id: currentUser?.id || null,
-        accion: action
-      });
-    } catch (e) {
-      console.warn('No se pudo registrar log de actividad:', e);
-    }
+    await this.auditService.log('crear_cupon', 'Promociones & Cupones', action);
   }
 }

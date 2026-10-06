@@ -1,0 +1,40 @@
+<div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-5 shadow-lg space-y-3">
+  <h3 class="text-sm font-bold text-white flex items-center gap-2">
+    <span>⌨️</span> Ingreso Manual de Código de Entrada
+  </h3>
+  <p class="text-xs text-gray-400">
+    Ingresa el código alfanumérico del boleto en caso de fallas con la cámara o pantalla dañada.
+  </p>
+
+  <form (ngSubmit)="onSubmit()" class="flex flex-col sm:flex-row gap-2">
+    <div class="relative flex-1">
+      <input
+        type="text"
+        [(ngModel)]="code"
+        name="ticketCode"
+        [disabled]="disabled() || isLoading()"
+        placeholder="Ej. TKT-1718000000000-1-1-123"
+        class="w-full px-4 py-2.5 bg-neutral-900 border border-neutral-700 rounded-xl text-white font-mono uppercase text-sm placeholder:text-gray-600 focus:outline-none focus:border-[#D4AF37] disabled:opacity-50" />
+      @if (code) {
+        <button
+          type="button"
+          (click)="clear()"
+          class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 text-xs">
+          ✕
+        </button>
+      }
+    </div>
+
+    <button
+      type="submit"
+      [disabled]="!code.trim() || disabled() || isLoading()"
+      class="px-5 py-2.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-sm font-bold rounded-xl shadow cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 transition shrink-0">
+      @if (isLoading()) {
+        <span class="w-4 h-4 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></span>
+        <span>Buscando...</span>
+      } @else {
+        <span>Verificar Boleto</span>
+      }
+    </button>
+  </form>
+</div>

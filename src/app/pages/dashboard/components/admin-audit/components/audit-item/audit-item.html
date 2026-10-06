@@ -1,0 +1,60 @@
+<div class="bg-neutral-800/90 rounded-2xl border border-neutral-700/80 p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3.5 hover:border-neutral-600 transition-all hover:bg-neutral-800">
+  <div class="flex items-start gap-3.5 flex-1 min-w-0">
+    <!-- Action Icon Badge -->
+    <div
+      class="w-10 h-10 rounded-xl flex items-center justify-center text-base shrink-0 font-bold shadow-sm"
+      [class]="getActionBadgeColor(log().action)">
+      {{ getActionIcon(log().action) }}
+    </div>
+
+    <!-- Content Details -->
+    <div class="space-y-1.5 flex-1 min-w-0">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs font-bold text-white tracking-wide">
+          {{ log().category }}
+        </span>
+
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-neutral-900/90 text-neutral-300 border border-neutral-700">
+          {{ log().action }}
+        </span>
+
+        <span
+          class="text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
+          [class]="log().userRole === 'administrador' ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/30' :
+                   log().userRole === 'empleado' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                   'bg-neutral-700 text-neutral-300 border border-neutral-600'">
+          {{ log().userRole }}
+        </span>
+
+        @if (log().id) {
+          <span class="text-[9px] font-mono text-neutral-500">
+            #{{ log().id }}
+          </span>
+        }
+      </div>
+
+      <p class="text-xs text-neutral-300 leading-relaxed break-words font-normal">
+        {{ log().details }}
+      </p>
+    </div>
+  </div>
+
+  <!-- User & Timestamp Metadata -->
+  <div class="flex md:flex-col items-center md:items-end justify-between md:justify-center shrink-0 border-t md:border-t-0 pt-2.5 md:pt-0 border-neutral-700/60 text-right min-w-[170px]">
+    <div class="flex items-center gap-1.5 text-xs font-semibold text-white">
+      <span class="text-neutral-400 text-xs">👤</span>
+      <span class="truncate max-w-[150px]" [title]="log().userName">{{ log().userName }}</span>
+    </div>
+
+    @if (log().userEmail) {
+      <span class="text-[10px] text-neutral-400 font-mono truncate max-w-[170px]" [title]="log().userEmail">
+        {{ log().userEmail }}
+      </span>
+    }
+
+    <div class="flex items-center gap-1.5 text-[11px] font-mono text-neutral-400 mt-0.5">
+      <span class="text-[10px]">🕒</span>
+      <span>{{ log().timestamp }}</span>
+    </div>
+  </div>
+</div>

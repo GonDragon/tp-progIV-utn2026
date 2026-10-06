@@ -1,0 +1,18 @@
+.scanner-laser {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(212,175,55,0) 0%, #D4AF37 50%, rgba(212,175,55,0) 100%);
+  box-shadow: 0 0 12px #D4AF37, 0 0 4px #fff;
+  animation: scanLaser 2s ease-in-out infinite alternate;
+}
+
+@keyframes scanLaser {
+  0% {
+    top: 5%;
+  }
+  100% {
+    top: 95%;
+  }
+}

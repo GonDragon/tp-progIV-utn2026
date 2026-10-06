@@ -41,16 +41,7 @@ export interface LoyaltyReward {
   isActive: boolean;
 }
 
-export interface AuditLogEntry {
-  id: string;
-  timestamp: string; // ISO or readable string
-  userId: string;
-  userName: string;
-  userRole: 'administrador' | 'empleado';
-  action: 'crear_funcion' | 'modificar_precio' | 'validar_qr' | 'crear_pelicula' | 'modificar_pelicula' | 'eliminar_pelicula' | 'crear_cupon' | 'modificar_candy';
-  category: string;
-  details: string;
-}
+export type { AuditLogEntry, LogActividadDB, AuditActionType, AuditStats } from './audit';
 
 export interface ValidatableTicket {
   id: string;

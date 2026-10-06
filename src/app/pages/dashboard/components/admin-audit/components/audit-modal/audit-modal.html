@@ -1,0 +1,101 @@
+@if (isOpen()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/80 backdrop-blur-sm animate-fade-in">
+    <div
+      class="bg-neutral-900 border border-neutral-700 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-scale-up"
+      (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between p-6 border-b border-neutral-800 bg-neutral-900/50">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/30 flex items-center justify-center text-xl">
+            📝
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white">Registrar Entrada de Auditoría</h3>
+            <p class="text-xs text-neutral-400">Guarda una entrada inmutable en la tabla de log de Supabase</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          (click)="close.emit()"
+          class="w-8 h-8 rounded-full bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center transition-colors">
+          ✕
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <form (ngSubmit)="onSubmit()" class="p-6 space-y-4">
+        <!-- Action Type -->
+        <div>
+          <label class="block text-xs font-semibold text-neutral-300 mb-1.5">
+            Tipo de Acción / Evento <span class="text-[#D4AF37]">*</span>
+          </label>
+          <select
+            [ngModel]="selectedAction"
+            (ngModelChange)="onActionChange($event)"
+            name="selectedAction"
+            class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-xs font-semibold focus:outline-none focus:border-[#D4AF37]">
+            @for (act of availableActions; track act.value) {
+              <option [value]="act.value">{{ act.label }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Category -->
+        <div>
+          <label class="block text-xs font-semibold text-neutral-300 mb-1.5">
+            Categoría / Módulo <span class="text-[#D4AF37]">*</span>
+          </label>
+          <input
+            type="text"
+            [(ngModel)]="category"
+            name="category"
+            placeholder="Ej: Funciones, Control de Acceso, Candy Bar..."
+            class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]"
+            required />
+        </div>
+
+        <!-- Details -->
+        <div>
+          <label class="block text-xs font-semibold text-neutral-300 mb-1.5">
+            Detalle del Evento / Registro <span class="text-[#D4AF37]">*</span>
+          </label>
+          <textarea
+            [(ngModel)]="details"
+            name="details"
+            rows="3"
+            placeholder="Describe la operación realizada, IDs involucrados o motivo..."
+            class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37] resize-none"
+            required></textarea>
+        </div>
+
+        <!-- Notice -->
+        <div class="p-3 bg-neutral-800/60 rounded-xl border border-neutral-700/60 text-[11px] text-neutral-400 flex items-start gap-2">
+          <span>🔒</span>
+          <span>El registro se asociará a tu usuario actual y quedará almacenado de forma permanente en Supabase con fecha y hora exacta.</span>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-neutral-800">
+          <button
+            type="button"
+            (click)="close.emit()"
+            [disabled]="isSaving()"
+            class="px-4 py-2.5 rounded-xl text-xs font-semibold bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="isSaving() || !details.trim()"
+            class="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#D4AF37] text-neutral-950 hover:bg-[#c49f27] transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-lg shadow-[#D4AF37]/10">
+            @if (isSaving()) {
+              <span class="w-3.5 h-3.5 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></span>
+              <span>Guardando...</span>
+            } @else {
+              <span>Guardar en Supabase</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

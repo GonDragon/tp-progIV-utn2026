@@ -1,12 +1,14 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { Movie, Schedule, Genre, Sala } from '../models/movie';
 import { SupabaseService } from './supabase';
+import { AuditService } from './audit.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MovieService {
   private readonly supabaseService = inject(SupabaseService);
+  private readonly auditService = inject(AuditService);
 
   private readonly _movies = signal<Movie[]>([]);
   private readonly _upcomingMovies = signal<Movie[]>([]);
@@ -566,19 +568,29 @@ export class MovieService {
       presaleEndDate?: string;
     }
   ): void {
+    const movie = this._movies().find(m => m.id === movieId);
+    const price = config.presalePrice ?? movie?.presalePrice ?? 4500;
+
     this._movies.update(current =>
       current.map(m => {
         if (m.id === movieId) {
           return {
             ...m,
             isPresaleEnabled: config.isPresaleEnabled,
-            presalePrice: config.presalePrice ?? m.presalePrice ?? 4500,
+            presalePrice: price,
             presaleStartDate: config.presaleStartDate ?? m.presaleStartDate,
             presaleEndDate: config.presaleEndDate ?? m.presaleEndDate
           };
         }
         return m;
       })
+    );
+
+    const status = config.isPresaleEnabled ? `activada con precio especial $${price}` : 'desactivada';
+    this.auditService.log(
+      'actualizar_preventa',
+      'Preventas',
+      `Preventa para "${movie?.title || movieId}" ${status}.`
     );
   }
 }

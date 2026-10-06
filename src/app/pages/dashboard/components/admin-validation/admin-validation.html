@@ -1,217 +1,76 @@
 <div class="space-y-6">
-  <!-- Header Bar -->
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-neutral-800/80 p-5 rounded-2xl border border-neutral-700">
-    <div>
-      <h2 class="text-xl font-bold text-white flex items-center gap-2">
-        <span class="text-[#D4AF37]">📱</span> Validación de Entradas & Candy Bar (QR)
-      </h2>
-      <p class="text-xs text-gray-400 mt-0.5">
-        Escaner de código QR e ingreso manual para acceso a salas y entrega de combos/snacks con invalidación automática.
-      </p>
-    </div>
-  </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Header Component -->
+  <app-validation-header [cameraActive]="cameraActive()" />
 
-    <!-- LEFT: SCANNER & MANUAL INPUT -->
-    <div class="space-y-5">
-      <!-- Interactive Scanner Simulation -->
-      <div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-6 shadow-lg text-center space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-white flex items-center gap-1.5">
-            <span>📷</span> Lector de Código QR
-          </h3>
-          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-            CÁMARA ACTIVA
-          </span>
-        </div>
-
-        <!-- Scanner Viewfinder Box -->
-        <div class="relative w-full max-w-[260px] aspect-square mx-auto rounded-2xl bg-black/60 border-2 border-dashed border-[#D4AF37] flex flex-col items-center justify-center p-4 overflow-hidden">
-
-          <!-- Animated Laser Beam -->
-          @if (isScanning()) {
-            <div class="absolute inset-x-0 h-1 bg-red-500 shadow-[0_0_15px_#ef4444] animate-bounce"></div>
-          }
-
-          <!-- QR icon placeholder -->
-          <div class="p-4 rounded-xl bg-neutral-900/80 border border-neutral-700 text-gray-400 mb-2">
-            <svg class="w-16 h-16 text-[#D4AF37]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-            </svg>
-          </div>
-          <span class="text-xs text-gray-300 font-medium">Apunta la cámara al código QR</span>
-        </div>
-
-        <!-- Quick Demo Scanners -->
-        <div class="pt-2">
-          <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-2">
-            Simular Escaneo Rápido de Prueba:
-          </span>
-          <div class="flex flex-wrap justify-center gap-2">
-            @for (ticket of adminService.tickets(); track ticket.id) {
-              <button
-                type="button"
-                (click)="simulateScan(ticket.code)"
-                [disabled]="isScanning()"
-                class="px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border"
-                [class]="ticket.status === 'valida' ? 'bg-neutral-900 hover:bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/40' : 'bg-neutral-900/60 text-gray-500 border-neutral-800 line-through'">
-                {{ ticket.code }} ({{ ticket.status }})
-              </button>
-            }
-          </div>
-        </div>
+  <!-- Feedback Banner (Success / Warning / Error) -->
+  @if (feedback(); as fb) {
+    <div
+      class="p-4 rounded-2xl border flex items-center justify-between gap-3 text-sm animate-fade-in shadow-md"
+      [class]="fb.type === 'success' ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300' : (fb.type === 'warning' ? 'bg-amber-950/40 border-amber-500/40 text-amber-300' : 'bg-rose-950/40 border-rose-500/40 text-rose-300')">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">
+          {{ fb.type === 'success' ? '✅' : (fb.type === 'warning' ? '⚠️' : '❌') }}
+        </span>
+        <span class="font-medium">{{ fb.message }}</span>
       </div>
-
-      <!-- Manual Ticket Code Input -->
-      <div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-5 shadow-lg space-y-3">
-        <h3 class="text-sm font-bold text-white flex items-center gap-2">
-          <span>⌨️</span> Ingreso Manual de Código de Entrada
-        </h3>
-        <p class="text-xs text-gray-400">
-          Usa este método en caso de fallas con el lector óptico o daño en la pantalla del usuario.
-        </p>
-
-        <form (ngSubmit)="validateManualCode()" class="flex gap-2">
-          <input
-            type="text"
-            [(ngModel)]="manualCode"
-            name="tktCode"
-            placeholder="Ej. TKT-89214"
-            class="flex-1 px-4 py-2.5 bg-neutral-900 border border-neutral-700 rounded-xl text-white font-mono uppercase text-sm focus:outline-none focus:border-[#D4AF37]" />
-          <button
-            type="submit"
-            [disabled]="!manualCode.trim()"
-            class="px-5 py-2.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-sm font-bold rounded-xl shadow cursor-pointer disabled:opacity-50">
-            Validar
-          </button>
-        </form>
-      </div>
+      <button
+        type="button"
+        (click)="dismissFeedback()"
+        class="text-gray-400 hover:text-white text-base cursor-pointer p-1">
+        ✕
+      </button>
     </div>
+  }
 
-    <!-- RIGHT: VALIDATION RESULT CARD -->
-    <div class="space-y-5">
-      @if (validationResult(); as res) {
-        <div
-          class="rounded-2xl border p-6 shadow-xl space-y-4 transition-all duration-300"
-          [class]="res.success ? 'bg-emerald-950/40 border-emerald-500/40' : 'bg-rose-950/40 border-rose-500/40'">
+  <!-- View 1: When a ticket has been found & selected -->
+  @if (currentTicket(); as ticket) {
+    <div class="max-w-4xl mx-auto">
+      <app-ticket-details-card
+        [ticket]="ticket"
+        [isProcessing]="isLoading()"
+        (useTicket)="handleUseTicket()"
+        (goBack)="handleGoBack()" />
+    </div>
+  }
 
-          <div class="flex items-start justify-between">
-            <div class="flex items-center gap-3">
-              <span class="text-3xl">{{ res.success ? '🎉' : '⚠️' }}</span>
-              <div>
-                <h3
-                  class="text-lg font-bold"
-                  [class]="res.success ? 'text-emerald-300' : 'text-rose-300'">
-                  {{ res.success ? 'Acceso Autorizado' : 'Validación Denegada' }}
-                </h3>
-                <p class="text-xs text-gray-300 mt-0.5">{{ res.message }}</p>
-              </div>
+  <!-- View 2: Waiting for scan or manual code input -->
+  @if (!currentTicket()) {
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+      <!-- Real Camera QR Scanner Component -->
+      <app-qr-scanner
+        [disabled]="isLoading()"
+        (scan)="handleCodeValidation($event)"
+        (cameraActiveChange)="onCameraStateChange($event)" />
+
+      <!-- Right column: Manual Code Input & Instructions -->
+      <div class="space-y-5">
+        <app-manual-code-input
+          [disabled]="isLoading()"
+          [isLoading]="isLoading()"
+          (submitCode)="handleCodeValidation($event)" />
+
+        <!-- Status / Help Card -->
+        <div class="bg-neutral-800/50 rounded-2xl border border-neutral-700/80 p-6 space-y-3 text-center sm:text-left">
+          <div class="flex items-center gap-3 justify-center sm:justify-start">
+            <div class="w-10 h-10 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center text-lg text-[#D4AF37]">
+              🛡️
             </div>
-
-            <button
-              (click)="clearResult()"
-              class="text-gray-400 hover:text-white cursor-pointer text-sm">
-              ✕
-            </button>
+            <div>
+              <h4 class="text-sm font-bold text-white">Control de Acceso Seguro</h4>
+              <p class="text-xs text-gray-400">Verificación contra la base de datos de Supabase</p>
+            </div>
           </div>
-
-          @if (res.ticket; as ticket) {
-            <div class="bg-neutral-900/90 rounded-xl p-4 border border-neutral-800 space-y-3">
-              <div class="flex items-center justify-between border-b border-neutral-800 pb-2">
-                <span class="text-xs font-mono font-bold text-[#D4AF37]">{{ ticket.code }}</span>
-                <span
-                  class="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  [class]="ticket.status === 'utilizada' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'">
-                  ESTADO: {{ ticket.status.toUpperCase() }}
-                </span>
-              </div>
-
-              <div class="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span class="text-gray-400 block text-[10px] uppercase">Película:</span>
-                  <strong class="text-white">{{ ticket.movieTitle }}</strong>
-                </div>
-                <div>
-                  <span class="text-gray-400 block text-[10px] uppercase">Sala & Horario:</span>
-                  <strong class="text-white">{{ ticket.room }} ({{ ticket.scheduleTime }})</strong>
-                </div>
-                <div>
-                  <span class="text-gray-400 block text-[10px] uppercase">Butacas:</span>
-                  <strong class="text-[#D4AF37]">{{ ticket.seats.join(', ') }}</strong>
-                </div>
-                <div>
-                  <span class="text-gray-400 block text-[10px] uppercase">Cliente:</span>
-                  <strong class="text-white">{{ ticket.customerName }}</strong>
-                </div>
-              </div>
-
-              <!-- Candy Items Redemption -->
-              @if (ticket.candyItems && ticket.candyItems.length > 0) {
-                <div class="pt-2 border-t border-neutral-800">
-                  <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block mb-1">
-                    🍿 Retiro de Candy Bar Incluido:
-                  </span>
-                  <ul class="text-xs text-gray-200 space-y-0.5">
-                    @for (item of ticket.candyItems; track item) {
-                      <li class="flex items-center gap-1.5">
-                        <span class="text-emerald-400">✓</span> {{ item }}
-                      </li>
-                    }
-                  </ul>
-                </div>
-              }
-
-              @if (ticket.validatedAt) {
-                <div class="text-[11px] text-gray-400 pt-2 border-t border-neutral-800">
-                  Validado: {{ ticket.validatedAt }} por <strong>{{ ticket.validatedBy }}</strong>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      } @else {
-        <div class="bg-neutral-800/40 rounded-2xl border border-neutral-700 p-8 text-center space-y-3">
-          <div class="w-14 h-14 rounded-2xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-2xl mx-auto text-gray-500">
-            🎟️
-          </div>
-          <h3 class="text-sm font-bold text-gray-300">Esperando escaneo o ingreso de código</h3>
-          <p class="text-xs text-gray-400 max-w-sm mx-auto">
-            Los resultados de la validación, butacas y productos de Candy Bar a entregar aparecerán aquí automáticamente tras el escaneo.
-          </p>
-        </div>
-      }
-
-      <!-- Database Tickets Overview -->
-      <div class="bg-neutral-800/90 rounded-2xl border border-neutral-700 p-5 shadow-lg space-y-3">
-        <h4 class="text-xs font-bold text-gray-300 uppercase tracking-wider">
-          Boletos Registrados en el Sistema ({{ adminService.tickets().length }})
-        </h4>
-
-        <div class="space-y-2">
-          @for (t of adminService.tickets(); track t.id) {
-            <div class="p-3 rounded-xl bg-neutral-900/80 border border-neutral-800 flex items-center justify-between text-xs">
-              <div class="space-y-0.5">
-                <div class="flex items-center gap-2">
-                  <span class="font-mono font-bold text-[#D4AF37]">{{ t.code }}</span>
-                  <span class="text-white font-medium">{{ t.movieTitle }}</span>
-                </div>
-                <div class="text-[11px] text-gray-400">
-                  {{ t.room }} • Butacas: {{ t.seats.join(', ') }} • Cliente: {{ t.customerName }}
-                </div>
-              </div>
-
-              <span
-                class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                [class]="t.status === 'valida' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-neutral-800 text-gray-400'">
-                {{ t.status.toUpperCase() }}
-              </span>
-            </div>
-          }
+          <ul class="text-xs text-gray-400 space-y-1.5 list-disc list-inside">
+            <li>Escanea el código QR desde el pase digital o entrada impresa del cliente.</li>
+            <li>El sistema buscará los detalles de la función, butacas y retiro de Candy Bar.</li>
+            <li>Podrás confirmar el ingreso marcando el boleto como utilizado, o volver atrás para consultar.</li>
+          </ul>
         </div>
       </div>
 
     </div>
+  }
 
-  </div>
 </div>
