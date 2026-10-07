@@ -14,12 +14,20 @@ export class AuditFilters {
   readonly selectedAction = input<string>('todos');
   readonly selectedRole = input<string>('todos');
   readonly searchQuery = input<string>('');
+  readonly startDate = input<string>('');
+  readonly endDate = input<string>('');
   readonly resultsCount = input<number>(0);
+  readonly totalRecords = input<number>(0);
+  readonly isExporting = input<boolean>(false);
 
   readonly categoryChange = output<string>();
   readonly actionChange = output<string>();
   readonly roleChange = output<string>();
   readonly searchChange = output<string>();
+  readonly startDateChange = output<string>();
+  readonly endDateChange = output<string>();
+  readonly downloadCSV = output<void>();
+  readonly downloadXLSX = output<void>();
   readonly resetFilters = output<void>();
 
   readonly categories = [

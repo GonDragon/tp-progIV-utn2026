@@ -41,11 +41,19 @@
     [selectedAction]="selectedAction()"
     [selectedRole]="selectedRole()"
     [searchQuery]="searchQuery()"
+    [startDate]="startDate()"
+    [endDate]="endDate()"
     [resultsCount]="filteredLogs().length"
+    [totalRecords]="auditService.totalRecords()"
+    [isExporting]="auditService.isExporting()"
     (categoryChange)="selectedCategory.set($event)"
     (actionChange)="selectedAction.set($event)"
     (roleChange)="selectedRole.set($event)"
     (searchChange)="searchQuery.set($event)"
+    (startDateChange)="onStartDateChange($event)"
+    (endDateChange)="onEndDateChange($event)"
+    (downloadCSV)="handleDownloadCSV()"
+    (downloadXLSX)="handleDownloadXLSX()"
     (resetFilters)="resetFilters()" />
 
   <!-- Audit List -->
@@ -70,6 +78,75 @@
       @for (log of filteredLogs(); track log.id) {
         <app-audit-item [log]="log" />
       }
+
+      <!-- Pagination Controls -->
+      @if (auditService.totalRecords() > 0) {
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 px-2 bg-neutral-800/40 rounded-2xl border border-neutral-700/60 p-3 my-2">
+          <div class="text-xs text-neutral-400">
+            <span>Página <strong class="text-white">{{ auditService.currentPage() }}</strong> de <strong class="text-white">{{ auditService.totalPages() }}</strong></span>
+            <span class="mx-1.5">•</span>
+            <span>Total: <strong class="text-[#D4AF37]">{{ auditService.totalRecords() }}</strong> logs</span>
+            <span class="mx-1.5">•</span>
+            <span class="text-neutral-500">10 por página</span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <!-- First Page -->
+            <button
+              type="button"
+              (click)="setPage(1)"
+              [disabled]="auditService.currentPage() === 1 || auditService.isLoading()"
+              title="Primera página"
+              class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-neutral-900 border border-neutral-700 text-neutral-300 hover:text-white hover:border-[#D4AF37] disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer">
+              «
+            </button>
+
+            <!-- Previous Page -->
+            <button
+              type="button"
+              (click)="setPage(auditService.currentPage() - 1)"
+              [disabled]="auditService.currentPage() === 1 || auditService.isLoading()"
+              title="Página anterior"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-900 border border-neutral-700 text-neutral-300 hover:text-white hover:border-[#D4AF37] disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer flex items-center gap-1">
+              <span>‹</span>
+              <span>Anterior</span>
+            </button>
+
+            <!-- Page Numbers -->
+            @for (p of visiblePages(); track p) {
+              <button
+                type="button"
+                (click)="setPage(p)"
+                [disabled]="auditService.isLoading()"
+                class="min-w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center border"
+                [class]="p === auditService.currentPage() ? 'bg-[#D4AF37] text-neutral-950 border-[#D4AF37] shadow-sm shadow-[#D4AF37]/20 font-black' : 'bg-neutral-900 border-neutral-700 text-neutral-300 hover:text-white hover:border-neutral-500'">
+                {{ p }}
+              </button>
+            }
+
+            <!-- Next Page -->
+            <button
+              type="button"
+              (click)="setPage(auditService.currentPage() + 1)"
+              [disabled]="auditService.currentPage() >= auditService.totalPages() || auditService.isLoading()"
+              title="Página siguiente"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-900 border border-neutral-700 text-neutral-300 hover:text-white hover:border-[#D4AF37] disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer flex items-center gap-1">
+              <span>Siguiente</span>
+              <span>›</span>
+            </button>
+
+            <!-- Last Page -->
+            <button
+              type="button"
+              (click)="setPage(auditService.totalPages())"
+              [disabled]="auditService.currentPage() >= auditService.totalPages() || auditService.isLoading()"
+              title="Última página"
+              class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-neutral-900 border border-neutral-700 text-neutral-300 hover:text-white hover:border-[#D4AF37] disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer">
+              »
+            </button>
+          </div>
+        </div>
+      }
     } @else {
       <!-- Empty State -->
       <div class="p-12 text-center bg-neutral-800/40 border border-neutral-700/80 rounded-2xl space-y-2">
@@ -78,7 +155,7 @@
         <p class="text-xs text-neutral-400 max-w-md mx-auto">
           No hay acciones registradas para los filtros seleccionados o la tabla en Supabase está vacía.
         </p>
-        @if (selectedCategory() !== 'todos' || selectedAction() !== 'todos' || selectedRole() !== 'todos' || searchQuery()) {
+        @if (selectedCategory() !== 'todos' || selectedAction() !== 'todos' || selectedRole() !== 'todos' || searchQuery() || startDate() || endDate()) {
           <button
             type="button"
             (click)="resetFilters()"
