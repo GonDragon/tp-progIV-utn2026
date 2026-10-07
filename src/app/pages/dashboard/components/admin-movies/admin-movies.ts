@@ -192,11 +192,23 @@ export class AdminMovies {
   }
 
   async handleRemoveSchedule(event: { movie: Movie; schedule: Schedule }): Promise<void> {
-    await this.movieService.removeSchedule(event.movie.id, event.schedule.id);
+    const result = await this.movieService.removeSchedule(event.movie.id, event.schedule.id);
+    const refundNote = result.refundedCount > 0
+      ? ` (Reembolsó $${result.refundedAmount.toLocaleString('es-AR')} a ${result.refundedCount} comprador(es))`
+      : '';
     this.adminService.addAuditLog(
-      'crear_funcion',
+      'eliminar_funcion',
       'Funciones',
-      `Eliminó la función de las ${event.schedule.time} en ${event.schedule.room} para "${event.movie.title}".`
+      `Eliminó la función de las ${event.schedule.time} en ${event.schedule.room} para "${event.movie.title}"${refundNote}.`
+    );
+  }
+
+  async handleUpdateSchedule(event: { movie: Movie; schedule: Schedule }): Promise<void> {
+    await this.movieService.updateSchedule(event.movie.id, event.schedule);
+    this.adminService.addAuditLog(
+      'modificar_funcion',
+      'Funciones',
+      `Modificó datos de la función de las ${event.schedule.time} en ${event.schedule.room} para "${event.movie.title}".`
     );
   }
 }

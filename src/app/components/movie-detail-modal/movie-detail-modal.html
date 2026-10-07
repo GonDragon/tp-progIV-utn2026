@@ -90,8 +90,8 @@
           </div>
         </div>
 
-        <!-- Section: Próximas Funciones y Horarios agrupados por día -->
-        <div class="space-y-4">
+        <!-- Section: Próximas Funciones y Horarios en Formato Calendario -->
+        <div class="space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
               <span class="text-[#D4AF37]">📅</span> Próximas Funciones y Horarios
@@ -101,68 +101,10 @@
             </span>
           </div>
 
-          @if (dayScheduleGroups().length > 0) {
-            <div class="space-y-5">
-              @for (group of dayScheduleGroups(); track group.dateKey) {
-                <div class="bg-neutral-800/60 rounded-2xl border border-neutral-700/60 p-4 space-y-3">
-
-                  <!-- Day Header -->
-                  <div class="flex items-center gap-2 text-sm font-bold text-[#D4AF37] border-b border-neutral-700/50 pb-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span>{{ group.dayLabel }}</span>
-                  </div>
-
-                  <!-- Schedules Grid for this Day -->
-                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    @for (sched of group.schedules; track sched.id) {
-                      <button
-                        type="button"
-                        (click)="onSelectSchedule(sched)"
-                        class="group/item flex flex-col p-3 rounded-xl bg-neutral-900/90 border border-neutral-700 hover:border-[#D4AF37] hover:bg-[#D4AF37]/10 transition-all cursor-pointer text-left shadow-sm">
-
-                        <div class="flex items-center justify-between mb-1.5">
-                          <span class="text-lg font-black text-white group-hover/item:text-[#D4AF37] transition-colors">
-                            {{ sched.time }} hs
-                          </span>
-                          <span class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-[#D4AF37] font-bold border border-[#D4AF37]/30">
-                            {{ sched.format }}
-                          </span>
-                        </div>
-
-                        <div class="flex items-center justify-between text-xs text-gray-300">
-                          <span>{{ sched.language }}</span>
-                          <span class="text-gray-400 font-medium">{{ sched.room }}</span>
-                        </div>
-
-                        @if (sched.isPresale) {
-                          <div class="mt-2 pt-1.5 border-t border-neutral-800 flex items-center justify-between text-[11px]">
-                            <span class="font-bold text-purple-300">Preventa Especial</span>
-                            @if (sched.presalePrice) {
-                              <span class="text-[#D4AF37] font-semibold">${{ sched.presalePrice }}</span>
-                            }
-                          </div>
-                        } @else if (sched.basePrice) {
-                          <div class="mt-2 pt-1.5 border-t border-neutral-800 flex items-center justify-between text-[11px]">
-                            <span class="text-gray-400">Entrada general</span>
-                            <span class="text-[#D4AF37] font-semibold">${{ sched.basePrice }}</span>
-                          </div>
-                        }
-                      </button>
-                    }
-                  </div>
-
-                </div>
-              }
-            </div>
-          } @else {
-            <div class="p-8 text-center bg-neutral-800/30 rounded-2xl border border-neutral-700/50 space-y-2">
-              <span class="text-3xl block">🎟️</span>
-              <p class="text-sm font-semibold text-gray-300">No hay funciones programadas para los próximos días</p>
-              <p class="text-xs text-gray-500">Pronto se publicarán nuevos horarios para esta película.</p>
-            </div>
-          }
+          <app-movie-schedule-calendar
+            [movie]="m"
+            [mode]="'client'"
+            (scheduleSelected)="onSelectSchedule($event.schedule)" />
         </div>
 
       </div>
