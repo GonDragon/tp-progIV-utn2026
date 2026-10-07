@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, signal } from '@angular/core';
+import { Component, effect, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CandyProduct, CANDY_CATEGORIES, CandyCategory } from '../../../../../../models/candy';
@@ -9,13 +9,13 @@ import { CandyProduct, CANDY_CATEGORIES, CandyCategory } from '../../../../../..
   imports: [CommonModule, FormsModule],
   templateUrl: './candy-product-modal.html'
 })
-export class CandyProductModal implements OnChanges {
-  @Input({ required: true }) isOpen = false;
-  @Input() product: CandyProduct | null = null;
-  @Input() isSaving = false;
+export class CandyProductModal {
+  readonly isOpen = input.required<boolean>();
+  readonly product = input<CandyProduct | null>(null);
+  readonly isSaving = input<boolean>(false);
 
-  @Output() closeModal = new EventEmitter<void>();
-  @Output() save = new EventEmitter<{
+  readonly closeModal = output<void>();
+  readonly save = output<{
     nombre: string;
     categoria: string;
     precio: number;
@@ -30,21 +30,27 @@ export class CandyProductModal implements OnChanges {
   costo_puntos = signal<number>(0);
   validationError = signal<string | null>(null);
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (this.isOpen) {
-      this.validationError.set(null);
-      if (this.product) {
-        this.nombre.set(this.product.nombre);
-        this.categoria.set((this.product.categoria as CandyCategory) || 'Pochoclos');
-        this.precio.set(this.product.precio);
-        this.costo_puntos.set(this.product.costo_puntos);
-      } else {
-        this.nombre.set('');
-        this.categoria.set('Pochoclos');
-        this.precio.set(0);
-        this.costo_puntos.set(0);
-      }
-    }
+  constructor() {
+    effect(
+      () => {
+        const prod = this.product();
+        if (this.isOpen()) {
+          this.validationError.set(null);
+          if (prod) {
+            this.nombre.set(prod.nombre);
+            this.categoria.set((prod.categoria as CandyCategory) || 'Pochoclos');
+            this.precio.set(prod.precio);
+            this.costo_puntos.set(prod.costo_puntos);
+          } else {
+            this.nombre.set('');
+            this.categoria.set('Pochoclos');
+            this.precio.set(0);
+            this.costo_puntos.set(0);
+          }
+        }
+      },
+      { allowSignalWrites: true }
+    );
   }
 
   onSubmit(): void {
@@ -74,7 +80,7 @@ export class CandyProductModal implements OnChanges {
   }
 
   onClose(): void {
-    if (!this.isSaving) {
+    if (!this.isSaving()) {
       this.closeModal.emit();
     }
   }

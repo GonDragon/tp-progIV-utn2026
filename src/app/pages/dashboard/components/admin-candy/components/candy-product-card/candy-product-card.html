@@ -4,20 +4,20 @@
     <div class="flex items-start justify-between gap-3 mb-3">
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-12 h-12 rounded-xl bg-neutral-900 border border-neutral-700/80 flex items-center justify-center text-2xl shadow-inner shrink-0 group-hover:scale-105 transition-transform">
-          {{ getCategoryIcon(product.categoria) }}
+          {{ getCategoryIcon(product().categoria) }}
         </div>
         <div class="min-w-0 flex-1">
           <span class="inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full border"
-                [ngClass]="getCategoryBadgeClass(product.categoria)">
-            {{ product.categoria }}
+                [ngClass]="getCategoryBadgeClass(product().categoria)">
+            {{ product().categoria }}
           </span>
-          <h4 class="text-sm font-bold text-white truncate mt-1" [title]="product.nombre">
-            {{ product.nombre }}
+          <h4 class="text-sm font-bold text-white truncate mt-1" [title]="product().nombre">
+            {{ product().nombre }}
           </h4>
         </div>
       </div>
       <span class="text-[10px] font-mono text-gray-500 bg-neutral-900/60 px-1.5 py-0.5 rounded border border-neutral-700/50 shrink-0">
-        #{{ product.id }}
+        #{{ product().id }}
       </span>
     </div>
   </div>
@@ -26,25 +26,25 @@
   <div class="pt-3 border-t border-neutral-700/80 flex items-center justify-between gap-3 mt-4">
     <div>
       <div class="text-base font-extrabold text-white">
-        ${{ product.precio | number:'1.0-0' }}
+        ${{ product().precio | number:'1.0-0' }}
       </div>
       <div class="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
         <span>💎</span>
-        <span>{{ product.costo_puntos | number:'1.0-0' }} pts</span>
+        <span>{{ product().costo_puntos | number:'1.0-0' }} pts</span>
       </div>
     </div>
 
     <div class="flex items-center gap-1.5 shrink-0">
       <button
         type="button"
-        (click)="edit.emit(product)"
+        (click)="edit.emit(product())"
         class="p-2 bg-neutral-700/80 hover:bg-neutral-600 text-gray-200 hover:text-white text-xs rounded-xl transition-all cursor-pointer shadow-sm"
         title="Editar producto">
         ✏️
       </button>
       <button
         type="button"
-        (click)="delete.emit(product)"
+        (click)="delete.emit(product())"
         class="p-2 bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 text-xs rounded-xl transition-all cursor-pointer border border-rose-500/20"
         title="Eliminar producto">
         🗑️

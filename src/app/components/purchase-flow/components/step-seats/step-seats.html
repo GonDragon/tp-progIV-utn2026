@@ -15,14 +15,14 @@
     <div class="px-4 py-2 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center gap-2.5">
       <span class="text-xs text-gray-400 uppercase font-semibold">Seleccionadas:</span>
       <span class="text-base font-black font-mono"
-            [class.text-amber-400]="!isSelectionComplete"
-            [class.text-emerald-400]="isSelectionComplete">
-        {{ selectedSeats.length }} / {{ requiredQuantity }}
+            [class.text-amber-400]="!isSelectionComplete()"
+            [class.text-emerald-400]="isSelectionComplete()">
+        {{ selectedSeats().length }} / {{ requiredQuantity() }}
       </span>
-      @if (isSelectionComplete) {
+      @if (isSelectionComplete()) {
         <span class="text-emerald-400 text-xs font-bold">✓ Completo</span>
       } @else {
-        <span class="text-amber-400 text-xs">Faltan {{ requiredQuantity - selectedSeats.length }}</span>
+        <span class="text-amber-400 text-xs">Faltan {{ requiredQuantity() - selectedSeats().length }}</span>
       }
     </div>
   </div>
@@ -111,10 +111,14 @@
               <!-- Column 1 (Left Wing) -->
               <div class="flex items-center gap-1 shrink-0">
                 @for (seat of row.col1; track seat.code) {
-                  <app-seat
-                    [seat]="seat"
-                    [isSelected]="isSeatSelected(seat)"
-                    (seatClick)="onSelectSeat($event)" />
+                  <button
+                    type="button"
+                    (click)="onSelectSeat(seat)"
+                    [disabled]="seat.isReserved"
+                    [title]="seat.isReserved ? ('Butaca ' + seat.code + ' (Ocupada)') : ('Butaca ' + seat.code + ' (' + seat.tipo + ')') "
+                    [class]="getSeatClass(seat)">
+                    {{ seat.code }}
+                  </button>
                 }
               </div>
 
@@ -124,10 +128,14 @@
               <!-- Column 2 (Center Main) -->
               <div class="flex items-center gap-1 justify-center flex-1">
                 @for (seat of row.col2; track seat.code) {
-                  <app-seat
-                    [seat]="seat"
-                    [isSelected]="isSeatSelected(seat)"
-                    (seatClick)="onSelectSeat($event)" />
+                  <button
+                    type="button"
+                    (click)="onSelectSeat(seat)"
+                    [disabled]="seat.isReserved"
+                    [title]="seat.isReserved ? ('Butaca ' + seat.code + ' (Ocupada)') : ('Butaca ' + seat.code + ' (' + seat.tipo + ')') "
+                    [class]="getSeatClass(seat)">
+                    {{ seat.code }}
+                  </button>
                 }
               </div>
 
@@ -137,10 +145,14 @@
               <!-- Column 3 (Right Wing) -->
               <div class="flex items-center gap-1 shrink-0">
                 @for (seat of row.col3; track seat.code) {
-                  <app-seat
-                    [seat]="seat"
-                    [isSelected]="isSeatSelected(seat)"
-                    (seatClick)="onSelectSeat($event)" />
+                  <button
+                    type="button"
+                    (click)="onSelectSeat(seat)"
+                    [disabled]="seat.isReserved"
+                    [title]="seat.isReserved ? ('Butaca ' + seat.code + ' (Ocupada)') : ('Butaca ' + seat.code + ' (' + seat.tipo + ')') "
+                    [class]="getSeatClass(seat)">
+                    {{ seat.code }}
+                  </button>
                 }
               </div>
 
@@ -173,7 +185,7 @@
     <button
       type="button"
       (click)="onNext()"
-      [disabled]="!isSelectionComplete"
+      [disabled]="!isSelectionComplete()"
       class="px-6 py-3 rounded-xl bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#D4AF37]/20 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95">
       <span>Confirmar Asientos</span>
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

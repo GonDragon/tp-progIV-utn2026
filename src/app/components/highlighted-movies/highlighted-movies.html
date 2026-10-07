@@ -20,7 +20,7 @@
 
   <!-- Cards Grid -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    @for (movie of movies; track movie.id; let i = $index) {
+    @for (movie of movies(); track movie.id; let i = $index) {
       <div
         (click)="onSelectMovie(movie)"
         class="relative flex flex-col bg-neutral-800/90 rounded-2xl border border-neutral-700/80 shadow-xl overflow-hidden hover:border-[#D4AF37]/60 hover:shadow-2xl hover:shadow-[#D4AF37]/10 transition-all duration-300 group cursor-pointer">

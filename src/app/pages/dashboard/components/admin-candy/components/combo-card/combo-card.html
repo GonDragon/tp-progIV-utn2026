@@ -9,12 +9,12 @@
     <div class="flex items-center gap-2 mb-2 pr-20">
       <span class="text-xl">🎁</span>
       <h4 class="text-base font-bold text-white leading-snug">
-        {{ combo.nombre }}
+        {{ combo().nombre }}
       </h4>
     </div>
 
     <div class="text-[11px] text-gray-400 font-mono mt-1">
-      ID: #{{ combo.id }}
+      ID: #{{ combo().id }}
     </div>
   </div>
 
@@ -23,21 +23,21 @@
     <div>
       <span class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold block">Precio Final</span>
       <span class="text-lg font-black text-[#D4AF37]">
-        ${{ combo.precio_fijo | number:'1.0-0' }}
+        ${{ combo().precio_fijo | number:'1.0-0' }}
       </span>
     </div>
 
     <div class="flex items-center gap-1.5 shrink-0">
       <button
         type="button"
-        (click)="edit.emit(combo)"
+        (click)="edit.emit(combo())"
         class="p-2 bg-neutral-700/80 hover:bg-neutral-600 text-gray-200 hover:text-white text-xs rounded-xl transition-all cursor-pointer shadow-sm"
         title="Editar combo">
         ✏️
       </button>
       <button
         type="button"
-        (click)="delete.emit(combo)"
+        (click)="delete.emit(combo())"
         class="p-2 bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 text-xs rounded-xl transition-all cursor-pointer border border-rose-500/20"
         title="Eliminar combo">
         🗑️

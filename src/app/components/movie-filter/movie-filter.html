@@ -8,12 +8,12 @@
     </div>
     <input
       type="text"
-      [value]="searchQuery"
+      [value]="searchQuery()"
       (input)="onSearchInput($event)"
       placeholder="Buscar por título o sinopsis de la película..."
       class="w-full pl-11 pr-10 py-3 bg-neutral-900/90 text-white placeholder-gray-400 rounded-xl border border-neutral-700 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all text-sm md:text-base shadow-inner"
     />
-    @if (searchQuery) {
+    @if (searchQuery()) {
       <button
         type="button"
         (click)="searchChange.emit('')"
@@ -36,7 +36,7 @@
         Filtrar por Género (puedes seleccionar múltiples):
       </span>
 
-      @if (selectedGenres.length > 0 || searchQuery.length > 0) {
+      @if (selectedGenres().length > 0 || searchQuery().length > 0) {
         <button
           type="button"
           (click)="onClear()"
@@ -51,7 +51,7 @@
 
     <!-- Genre Pill Badges -->
     <div class="flex flex-wrap gap-2">
-      @for (genre of genres; track genre) {
+      @for (genre of genres(); track genre) {
         <button
           type="button"
           (click)="onToggleGenre(genre)"

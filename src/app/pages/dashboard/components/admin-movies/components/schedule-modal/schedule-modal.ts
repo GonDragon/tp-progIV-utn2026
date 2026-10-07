@@ -1,4 +1,4 @@
-import { Component, inject, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, effect, inject, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Movie, Schedule, Sala } from '../../../../../../models/movie';
 import { MovieService } from '../../../../../../services/movie.service';
@@ -43,15 +43,15 @@ const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Vierne
   templateUrl: './schedule-modal.html',
   styleUrl: './schedule-modal.css'
 })
-export class ScheduleModal implements OnChanges {
+export class ScheduleModal {
   readonly movieService = inject(MovieService);
   readonly adminService = inject(AdminService);
 
-  @Input() movie: Movie | null = null;
-  @Input() isSaving = false;
+  readonly movie = input<Movie | null>(null);
+  readonly isSaving = input<boolean>(false);
 
-  @Output() save = new EventEmitter<Schedule[]>();
-  @Output() close = new EventEmitter<void>();
+  readonly save = output<Schedule[]>();
+  readonly close = output<void>();
 
   // Configuration modes
   isSingleShowtime = true;
@@ -89,10 +89,13 @@ export class ScheduleModal implements OnChanges {
   roomAssignments: RoomAssignmentGroup[] = [];
   allocatedCandidates: CandidateShowtime[] = [];
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (this.movie) {
-      this.resetForm(this.movie);
-    }
+  constructor() {
+    effect(() => {
+      const currentMovie = this.movie();
+      if (currentMovie) {
+        this.resetForm(currentMovie);
+      }
+    });
   }
 
   private resetForm(currentMovie: Movie): void {
@@ -186,7 +189,7 @@ export class ScheduleModal implements OnChanges {
   }
 
   generateCandidateShowtimes(): CandidateShowtime[] {
-    const current = this.movie;
+    const current = this.movie();
     if (!current) return [];
 
     const duration = current.duration || 120;
@@ -276,7 +279,7 @@ export class ScheduleModal implements OnChanges {
   }
 
   searchAvailableRooms(): void {
-    const current = this.movie;
+    const current = this.movie();
     if (!current) return;
 
     this.isSearching = true;
