@@ -204,6 +204,21 @@ export class AuthService {
     };
   }
 
+  updateLocalUser(partial: Partial<User>): void {
+    const current = this._currentUser();
+    if (current) {
+      this._currentUser.set({ ...current, ...partial });
+    }
+  }
+
+  async refreshCurrentUser(): Promise<void> {
+    const current = this._currentUser();
+    if (current?.id) {
+      const updated = await this.fetchUserProfile(current.id, current.email);
+      this._currentUser.set(updated);
+    }
+  }
+
   isAuthenticated(): boolean {
     return this._currentUser() !== null;
   }

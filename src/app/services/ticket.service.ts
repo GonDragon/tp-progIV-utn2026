@@ -209,6 +209,160 @@ export class TicketService {
     }
   }
 
+  /**
+   * Refund ticket and its entire transaction:
+   * - Marks all tickets of the transaction as 'Invalidado'
+   * - Marks transaction as 'Cancelada'
+   * - If registered user (perfil_id), adds transaction's monto_total to their saldo_favor in perfiles
+   * - Writes audit log
+   */
+  async refundTicket(ticketId: number): Promise<{
+    success: boolean;
+    message: string;
+    refundAmount?: number;
+    ticket?: TicketDetails;
+  }> {
+    this._isLoading.set(true);
+    this._error.set(null);
+
+    try {
+      const { data: ticketData, error: ticketError } = await this.supabase.client
+        .from('entradas_tickets')
+        .select(`
+          id,
+          transaccion_id,
+          estado_qr,
+          transacciones:transaccion_id (
+            id,
+            perfil_id,
+            monto_total,
+            estado
+          )
+        `)
+        .eq('id', ticketId)
+        .maybeSingle();
+
+      if (ticketError || !ticketData) {
+        throw new Error(ticketError?.message || `No se encontró el boleto #${ticketId}`);
+      }
+
+      const transaccion = Array.isArray(ticketData.transacciones) ? ticketData.transacciones[0] : ticketData.transacciones;
+      if (!transaccion) {
+        throw new Error('No se encontró la transacción asociada al boleto.');
+      }
+
+      const transaccionId = transaccion.id || ticketData.transaccion_id;
+      const montoTotal = Number(transaccion.monto_total || 0);
+      const perfilId = transaccion.perfil_id;
+
+      if (transaccion.estado === 'Cancelada') {
+        return {
+          success: false,
+          message: `Esta transacción (#${transaccionId}) ya fue devuelta o cancelada previamente.`
+        };
+      }
+
+      // 1. Mark ALL tickets of this transaction as Invalidado
+      const { error: updateTicketsError } = await this.supabase.client
+        .from('entradas_tickets')
+        .update({ estado_qr: 'Invalidado' })
+        .eq('transaccion_id', transaccionId);
+
+      if (updateTicketsError) {
+        console.error('Error al invalidar entradas de la transacción:', updateTicketsError.message);
+        throw new Error(`Error al actualizar entradas: ${updateTicketsError.message}`);
+      }
+
+      // 2. Mark transaction as Cancelada
+      const { error: updateTxError } = await this.supabase.client
+        .from('transacciones')
+        .update({ estado: 'Cancelada' })
+        .eq('id', transaccionId);
+
+      if (updateTxError) {
+        console.error('Error al cancelar transacción:', updateTxError.message);
+        throw new Error(`Error al cancelar transacción: ${updateTxError.message}`);
+      }
+
+      // 3. If registered user, update saldo_favor in perfiles
+      let nuevoSaldoFavor: number | undefined;
+      let clienteNombre = 'Cliente';
+      if (perfilId) {
+        const { data: perfilData, error: perfilError } = await this.supabase.client
+          .from('perfiles')
+          .select('id, nombre, apellido, saldo_favor')
+          .eq('id', perfilId)
+          .maybeSingle();
+
+        if (perfilData && !perfilError) {
+          clienteNombre = `${perfilData.nombre || ''} ${perfilData.apellido || ''}`.trim() || 'Cliente';
+          const saldoActual = Number(perfilData.saldo_favor || 0);
+          nuevoSaldoFavor = saldoActual + montoTotal;
+
+          const { error: saldoUpdateError } = await this.supabase.client
+            .from('perfiles')
+            .update({ saldo_favor: nuevoSaldoFavor })
+            .eq('id', perfilId);
+
+          if (saldoUpdateError) {
+            console.error('Error al actualizar saldo a favor del cliente:', saldoUpdateError.message);
+          }
+        }
+
+        // If the current user in session is the refunded user, update local auth state
+        const currentUser = this.authService.currentUser();
+        if (currentUser && currentUser.id === perfilId) {
+          this.authService.updateLocalUser({
+            saldo_favor: nuevoSaldoFavor !== undefined ? nuevoSaldoFavor : (currentUser.saldo_favor || 0) + montoTotal
+          });
+        }
+      }
+
+      // 4. Update currentTicket in service if loaded
+      const current = this._currentTicket();
+      let updatedTicket: TicketDetails | undefined;
+      if (current && (current.id === ticketId || current.transaccionId === transaccionId)) {
+        updatedTicket = {
+          ...current,
+          estadoQr: 'Invalidado',
+          isUsed: true,
+          transaccion: {
+            ...current.transaccion,
+            estado: 'Cancelada'
+          }
+        };
+        this._currentTicket.set(updatedTicket);
+      }
+
+      // 5. Audit log
+      const staffUser = this.authService.currentUser();
+      const staffName = staffUser ? `${staffUser.nombre} ${staffUser.apellido}` : 'Sistema';
+      this.auditService.log(
+        'devolucion_transaccion',
+        'Devoluciones y Reembolsos',
+        `Se procesó la devolución total de la transacción #${transaccionId} (Boleto #${ticketId}) por $${montoTotal.toLocaleString('es-AR')}. Cliente: ${clienteNombre}. Responsable: ${staffName}.`
+      );
+
+      const refundMsg = perfilId
+        ? `Devolución exitosa de la transacción #${transaccionId}. Se reintegraron $${montoTotal.toLocaleString('es-AR')} como saldo a favor en la cuenta del cliente.`
+        : `Devolución exitosa de la transacción #${transaccionId}. La transacción ha sido cancelada.`;
+
+      return {
+        success: true,
+        message: refundMsg,
+        refundAmount: montoTotal,
+        ticket: updatedTicket
+      };
+    } catch (err: any) {
+      console.error('Error en proceso de devolución:', err);
+      const msg = err.message || 'Error inesperado al procesar la devolución';
+      this._error.set(msg);
+      return { success: false, message: msg };
+    } finally {
+      this._isLoading.set(false);
+    }
+  }
+
   clearCurrentTicket(): void {
     this._currentTicket.set(null);
     this._error.set(null);

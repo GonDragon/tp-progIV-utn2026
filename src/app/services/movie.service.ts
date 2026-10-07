@@ -777,7 +777,61 @@ export class MovieService {
     await this.addSchedules(movieId, [schedule]);
   }
 
-  async removeSchedule(movieId: string, scheduleId: string): Promise<void> {
+  async updateSchedule(movieId: string, schedule: Schedule): Promise<void> {
+    // 1. Actualizar estado local
+    this._allMovies.update(current =>
+      current.map(m => {
+        if (m.id === movieId && m.schedules) {
+          return {
+            ...m,
+            schedules: m.schedules.map(s => s.id === schedule.id ? { ...schedule } : s)
+          };
+        }
+        return m;
+      })
+    );
+
+    // 2. Actualizar en Supabase
+    const numericScheduleId = Number(schedule.id);
+    if (!isNaN(numericScheduleId)) {
+      try {
+        let salaId = schedule.salaId;
+        if (!salaId) {
+          const salas = this._salas();
+          const found = salas.find(r => r.nombre.toLowerCase() === schedule.room.toLowerCase());
+          salaId = found ? found.id : 1;
+        }
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const dateTimeStr = schedule.fechaHoraInicio || `${todayStr}T${schedule.time}:00`;
+
+        const { error } = await this.supabaseService.client
+          .from('funciones')
+          .update({
+            sala_id: salaId,
+            fecha_hora_inicio: dateTimeStr,
+            formato: schedule.format,
+            idioma: schedule.language,
+            precio_base: schedule.basePrice || 5500,
+            en_preventa: !!schedule.isPresale,
+            precio_preventa: schedule.isPresale && schedule.presalePrice != null ? schedule.presalePrice : null
+          })
+          .eq('id', numericScheduleId);
+
+        if (error) {
+          console.error('Error actualizando función en Supabase:', error);
+        }
+      } catch (e) {
+        console.error('Error al actualizar función en Supabase:', e);
+      }
+    }
+  }
+
+  async removeSchedule(movieId: string, scheduleId: string): Promise<{ success: boolean; refundedCount: number; refundedAmount: number }> {
+    let refundedCount = 0;
+    let refundedAmount = 0;
+
+    // 1. Actualizar estado local inmediatamente
     this._allMovies.update(current =>
       current.map(m => {
         if (m.id === movieId && m.schedules) {
@@ -790,15 +844,112 @@ export class MovieService {
     const numericScheduleId = Number(scheduleId);
     if (!isNaN(numericScheduleId)) {
       try {
+        // A. Consultar boletos vendidos para esta función con sus transacciones y perfiles asociados
+        const { data: ticketsData, error: ticketsErr } = await this.supabaseService.client
+          .from('entradas_tickets')
+          .select(`
+            id,
+            transaccion_id,
+            estado_qr,
+            transacciones:transaccion_id (
+              id,
+              perfil_id,
+              monto_total,
+              estado
+            )
+          `)
+          .eq('funcion_id', numericScheduleId);
+
+        if (ticketsErr) {
+          console.warn('Error consultando boletos asociados a la función:', ticketsErr);
+        }
+
+        // B. Reembolsar transacciones asociadas que no hayan sido canceladas previamente
+        if (ticketsData && ticketsData.length > 0) {
+          const txMap = new Map<number, { transaccionId: number; perfilId: string | null; montoTotal: number; estado: string }>();
+
+          for (const item of ticketsData) {
+            const tx = Array.isArray(item.transacciones) ? item.transacciones[0] : item.transacciones;
+            const txId = tx?.id || item.transaccion_id;
+            if (txId && !txMap.has(txId)) {
+              txMap.set(txId, {
+                transaccionId: txId,
+                perfilId: tx?.perfil_id || null,
+                montoTotal: Number(tx?.monto_total || 0),
+                estado: tx?.estado || 'Completada'
+              });
+            }
+          }
+
+          for (const tx of txMap.values()) {
+            if (tx.estado !== 'Cancelada') {
+              // 1. Invalidar entradas de la transacción
+              await this.supabaseService.client
+                .from('entradas_tickets')
+                .update({ estado_qr: 'Invalidado' })
+                .eq('transaccion_id', tx.transaccionId);
+
+              // 2. Marcar transacción como Cancelada
+              await this.supabaseService.client
+                .from('transacciones')
+                .update({ estado: 'Cancelada' })
+                .eq('id', tx.transaccionId);
+
+              // 3. Devolver saldo a favor al usuario si está registrado
+              if (tx.perfilId) {
+                const { data: perfilData } = await this.supabaseService.client
+                  .from('perfiles')
+                  .select('id, saldo_favor')
+                  .eq('id', tx.perfilId)
+                  .maybeSingle();
+
+                const currentSaldo = Number(perfilData?.saldo_favor || 0);
+                const nuevoSaldo = currentSaldo + tx.montoTotal;
+
+                await this.supabaseService.client
+                  .from('perfiles')
+                  .update({ saldo_favor: nuevoSaldo })
+                  .eq('id', tx.perfilId);
+
+                const currentAuthUser = this.authService.currentUser();
+                if (currentAuthUser && currentAuthUser.id === tx.perfilId) {
+                  this.authService.updateLocalUser({ saldo_favor: nuevoSaldo });
+                }
+
+                await this.supabaseService.client
+                  .from('log_actividad')
+                  .insert({
+                    perfil_id: tx.perfilId,
+                    accion: `Devolución automática de $${tx.montoTotal.toLocaleString('es-AR')} por cancelación/eliminación de función #${numericScheduleId} (Transacción #${tx.transaccionId}).`,
+                    fecha_hora: new Date().toISOString()
+                  });
+
+                refundedCount++;
+                refundedAmount += tx.montoTotal;
+              }
+            }
+          }
+        }
+
+        // C. Limpiar reservas temporales si las hubiera
+        await this.supabaseService.client
+          .from('reservas_temporales')
+          .delete()
+          .eq('funcion_id', numericScheduleId);
+
+        // D. Eliminar la función en Supabase
         const { error } = await this.supabaseService.client
           .from('funciones')
           .delete()
           .eq('id', numericScheduleId);
+
         if (error) console.error('Error eliminando función en Supabase:', error);
       } catch (e) {
         console.error('Error al eliminar función en Supabase:', e);
       }
     }
+
+    return { success: true, refundedCount, refundedAmount };
   }
 
   setSearchQuery(query: string): void {

@@ -1,86 +1,117 @@
-import { Component, input, output, computed } from '@angular/core';
+import { Component, input, output, signal, computed, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Movie, Schedule } from '../../models/movie';
-
-export interface DayScheduleGroup {
-  dayLabel: string;
-  dateKey: string;
-  schedules: Schedule[];
-}
+import { Review } from '../../models/review';
+import { ReviewService } from '../../services/review.service';
+import { MovieScheduleCalendar } from '../movie-schedule-calendar/movie-schedule-calendar';
 
 @Component({
   selector: 'app-movie-detail-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MovieScheduleCalendar],
   templateUrl: './movie-detail-modal.html',
   styleUrl: './movie-detail-modal.css'
 })
 export class MovieDetailModal {
+  private readonly reviewService = inject(ReviewService);
+
   readonly movie = input<Movie | null>(null);
   readonly close = output<void>();
   readonly scheduleSelected = output<{ movie: Movie; schedule: Schedule }>();
 
-  readonly dayScheduleGroups = computed<DayScheduleGroup[]>(() => {
-    const currentMovie = this.movie();
-    if (!currentMovie || !currentMovie.schedules || currentMovie.schedules.length === 0) {
-      return [];
-    }
+  readonly showReviews = signal<boolean>(false);
+  readonly reviews = signal<Review[]>([]);
+  readonly isLoadingReviews = signal<boolean>(false);
+  readonly currentPage = signal<number>(1);
+  readonly pageSize = 10;
 
-    const groupsMap = new Map<string, { dayLabel: string; schedules: Schedule[] }>();
-
-    for (const sched of currentMovie.schedules) {
-      let dateKey = 'sin-fecha';
-      let dayLabel = 'Próximas Funciones';
-
-      if (sched.fechaHoraInicio) {
-        const d = new Date(sched.fechaHoraInicio);
-        if (!isNaN(d.getTime())) {
-          dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-          const today = new Date();
-          const tomorrow = new Date();
-          tomorrow.setDate(today.getDate() + 1);
-
-          const isToday = d.toDateString() === today.toDateString();
-          const isTomorrow = d.toDateString() === tomorrow.toDateString();
-
-          const formattedDate = d.toLocaleDateString('es-ES', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long'
-          });
-
-          const capitalized = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
-
-          if (isToday) {
-            dayLabel = `Hoy • ${capitalized}`;
-          } else if (isTomorrow) {
-            dayLabel = `Mañana • ${capitalized}`;
-          } else {
-            dayLabel = capitalized;
-          }
-        }
-      }
-
-      if (!groupsMap.has(dateKey)) {
-        groupsMap.set(dateKey, { dayLabel, schedules: [] });
-      }
-      groupsMap.get(dateKey)!.schedules.push(sched);
-    }
-
-    const sortedKeys = Array.from(groupsMap.keys()).sort();
-    return sortedKeys.map(key => {
-      const group = groupsMap.get(key)!;
-      group.schedules.sort((a, b) => a.time.localeCompare(b.time));
-      return {
-        dateKey: key,
-        dayLabel: group.dayLabel,
-        schedules: group.schedules
-      };
-    });
+  readonly totalPages = computed(() => {
+    const total = this.reviews().length;
+    return Math.max(1, Math.ceil(total / this.pageSize));
   });
 
+  readonly paginatedReviews = computed(() => {
+    const page = this.currentPage();
+    const start = (page - 1) * this.pageSize;
+    return this.reviews().slice(start, start + this.pageSize);
+  });
+
+  constructor() {
+    // Cada vez que cambia la película o se abre el modal, resetear la vista y cargar reseñas si corresponde
+    effect(() => {
+      const currentMovie = this.movie();
+      if (currentMovie) {
+        this.showReviews.set(false);
+        this.currentPage.set(1);
+        this.reviews.set([]);
+      }
+    });
+  }
+
+  async loadReviews(): Promise<void> {
+    const currentMovie = this.movie();
+    if (!currentMovie) return;
+    this.isLoadingReviews.set(true);
+    try {
+      const res = await this.reviewService.getReviewsByMovie(currentMovie.id);
+      this.reviews.set(res.data);
+    } finally {
+      this.isLoadingReviews.set(false);
+    }
+  }
+
+  async openReviews(): Promise<void> {
+    this.showReviews.set(true);
+    this.currentPage.set(1);
+    await this.loadReviews();
+  }
+
+  showShowtimes(): void {
+    this.showReviews.set(false);
+  }
+
+  toggleReviewsView(): void {
+    if (this.showReviews()) {
+      this.showShowtimes();
+    } else {
+      this.openReviews();
+    }
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages()) {
+      this.currentPage.set(page);
+    }
+  }
+
+  prevPage(): void {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+  nextPage(): void {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  formatDate(dateStr?: string): string {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch {
+      return dateStr;
+    }
+  }
+
   onClose(): void {
+    this.showReviews.set(false);
     this.close.emit();
   }
 

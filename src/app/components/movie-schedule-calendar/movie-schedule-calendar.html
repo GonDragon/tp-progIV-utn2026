@@ -1,0 +1,508 @@
+<div class="calendar-wrapper space-y-4">
+
+  <!-- Calendar Month Navigation Header -->
+  <div class="flex items-center justify-between bg-neutral-900/90 p-3 sm:p-4 rounded-xl border border-neutral-700/80 shadow-md">
+    <div class="flex items-center gap-2 sm:gap-3">
+      <div class="w-8 h-8 rounded-lg bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] font-bold text-sm">
+        📅
+      </div>
+      <div>
+        <h4 class="text-sm sm:text-base font-bold text-white capitalize flex items-center gap-2">
+          {{ monthLabel() }}
+        </h4>
+        <span class="text-[11px] text-gray-400">
+          {{ movie()?.schedules?.length || 0 }} funciones programadas en total
+        </span>
+      </div>
+    </div>
+
+    <!-- Navigation Controls -->
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      @if (!isCurrentRealMonth()) {
+        <button
+          type="button"
+          (click)="goToCurrentMonth()"
+          class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-neutral-800 hover:bg-neutral-700 text-[#D4AF37] border border-neutral-700 transition-colors cursor-pointer"
+          title="Ir al mes actual">
+          Hoy
+        </button>
+      }
+
+      <button
+        type="button"
+        (click)="prevMonth()"
+        class="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-neutral-700 transition-colors cursor-pointer flex items-center justify-center text-xs sm:text-sm"
+        title="Mes anterior">
+        ◀
+      </button>
+
+      <button
+        type="button"
+        (click)="nextMonth()"
+        class="p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-gray-200 border border-neutral-700 transition-colors cursor-pointer flex items-center justify-center text-xs sm:text-sm"
+        title="Mes siguiente">
+        ▶
+      </button>
+    </div>
+  </div>
+
+  <!-- Calendar Weekday Header (Lun - Dom) -->
+  <div class="grid grid-cols-7 gap-1 sm:gap-2 text-center text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">
+    <div class="py-1">Lun</div>
+    <div class="py-1">Mar</div>
+    <div class="py-1">Mié</div>
+    <div class="py-1">Jue</div>
+    <div class="py-1">Vie</div>
+    <div class="py-1 text-[#D4AF37]">Sáb</div>
+    <div class="py-1 text-[#D4AF37]">Dom</div>
+  </div>
+
+  <!-- Calendar Days Grid -->
+  <div class="grid grid-cols-7 gap-1 sm:gap-2">
+    @for (day of calendarDays(); track day.dateKey + '-' + day.dayNumber) {
+      <div
+        (click)="openDayModal(day)"
+        [ngClass]="{
+          'opacity-40 bg-neutral-950 border-neutral-800': !day.isCurrentMonth,
+          'bg-neutral-900 border-neutral-700': day.isCurrentMonth && !day.isToday,
+          'bg-neutral-900 border-[#D4AF37] ring-1 ring-[#D4AF37]/50': day.isToday
+        }"
+        class="group relative min-h-[70px] sm:min-h-[85px] p-1.5 sm:p-2 rounded-xl border transition-all duration-150 flex flex-col justify-between cursor-pointer hover:border-[#D4AF37]/80 hover:bg-neutral-800/80 shadow-sm">
+
+        <!-- Day Header (Number + Badges) -->
+        <div class="flex items-center justify-between">
+          <span
+            [ngClass]="{
+              'text-[#D4AF37]': day.isToday,
+              'text-white': !day.isToday && day.isCurrentMonth,
+              'text-gray-500': !day.isCurrentMonth
+            }"
+            class="text-xs sm:text-sm font-bold leading-none">
+            {{ day.dayNumber }}
+          </span>
+
+          @if (day.isToday) {
+            <span class="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-[#D4AF37] font-bold border border-[#D4AF37]/40">
+              Hoy
+            </span>
+          }
+        </div>
+
+        <!-- Showtime Pills list: Only displays hours as required -->
+        <div class="mt-1 flex flex-wrap gap-1 items-center max-h-[44px] overflow-hidden">
+          @for (sched of day.schedules; track sched.id) {
+            <span
+              [ngClass]="{
+                'bg-neutral-800 text-gray-400 border-neutral-700': isSchedulePast(sched),
+                'bg-amber-500/15 text-[#D4AF37] border-[#D4AF37]/40': !isSchedulePast(sched)
+              }"
+              class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-sm">
+              {{ sched.time }}
+            </span>
+          } @empty {
+            <span class="text-[10px] text-gray-600 italic select-none hidden sm:inline">-</span>
+          }
+        </div>
+
+      </div>
+    }
+  </div>
+
+  <div class="flex items-center justify-between text-[11px] text-gray-400 px-1 pt-1">
+    <div class="flex items-center gap-3">
+      <span class="flex items-center gap-1.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-500/40 border border-[#D4AF37]"></span>
+        <span>Funciones activas</span>
+      </span>
+      <span class="flex items-center gap-1.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-neutral-700 border border-neutral-600"></span>
+        <span>Funciones pasadas</span>
+      </span>
+    </div>
+    <span class="text-gray-500 text-[10px]">
+      Haz click en un día para ver detalle de horarios
+    </span>
+  </div>
+
+</div>
+
+<!-- DAY DETAILS MODAL -->
+@if (selectedDay(); as day) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 overflow-y-auto">
+    <!-- Click backdrop to close -->
+    <div class="fixed inset-0" (click)="closeDayModal()"></div>
+
+    <div class="relative bg-neutral-900 border border-neutral-700 rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl space-y-5 my-8 z-10 overflow-hidden max-h-[90vh] flex flex-col">
+
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between border-b border-neutral-800 pb-3 shrink-0">
+        <div>
+          <span class="text-xs font-bold text-[#D4AF37] uppercase tracking-wider flex items-center gap-1.5">
+            📅 Funciones del Día
+          </span>
+          <h3 class="text-lg sm:text-xl font-black text-white capitalize mt-0.5">
+            {{ formatDayTitle(day.date) }}
+          </h3>
+          @if (movie(); as m) {
+            <p class="text-xs text-gray-400 mt-0.5">
+              🎬 {{ m.title }}
+            </p>
+          }
+        </div>
+        <button
+          type="button"
+          (click)="closeDayModal()"
+          class="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer text-lg leading-none"
+          title="Cerrar">
+          ✕
+        </button>
+      </div>
+
+      <!-- Refund Success Notification (if any function was deleted) -->
+      @if (deletionRefundSummary(); as summary) {
+        <div class="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span>✅</span>
+            <span>Función eliminada correctamente. Se reintegraron <strong>${{ summary.amount.toLocaleString('es-AR') }}</strong> a {{ summary.count }} comprador(es).</span>
+          </div>
+          <button
+            type="button"
+            (click)="deletionRefundSummary.set(null)"
+            class="text-emerald-400 hover:text-white text-xs font-bold px-1.5">
+            ✕
+          </button>
+        </div>
+      }
+
+      <!-- Modal Body / Content -->
+      <div class="overflow-y-auto space-y-4 pr-1">
+
+        <!-- Schedule List -->
+        @if (day.schedules.length > 0) {
+          <div class="space-y-3">
+            @for (sched of day.schedules; track sched.id) {
+              <div
+                [ngClass]="{
+                  'border-neutral-700 bg-neutral-800/40': !isSchedulePast(sched),
+                  'border-neutral-800 bg-neutral-900/60 opacity-80': isSchedulePast(sched)
+                }"
+                class="p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+
+                <!-- Info Left -->
+                <div class="space-y-2 flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xl font-black text-white">
+                      {{ sched.time }} hs
+                    </span>
+
+                    <span class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-[#D4AF37] font-bold border border-[#D4AF37]/30">
+                      {{ sched.format }}
+                    </span>
+
+                    <span class="text-xs px-2 py-0.5 rounded bg-neutral-800 text-gray-300 border border-neutral-700">
+                      {{ sched.language }}
+                    </span>
+
+                    @if (isSchedulePast(sched)) {
+                      <span class="text-[10px] px-2 py-0.5 rounded bg-neutral-800 text-gray-400 font-bold border border-neutral-700">
+                        Finalizada / Pasada
+                      </span>
+                    } @else {
+                      <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                        Disponible
+                      </span>
+                    }
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-3 text-xs text-gray-300">
+                    <span class="font-medium flex items-center gap-1">
+                      🏛️ {{ sched.room }}
+                    </span>
+                    <span>•</span>
+                    <span class="text-gray-400">
+                      Entrada: <strong class="text-white">${{ sched.basePrice || 5500 }}</strong>
+                    </span>
+                    @if (sched.isPresale) {
+                      <span>•</span>
+                      <span class="text-amber-400 font-semibold">
+                        🎟️ Preventa (${{ sched.presalePrice || 4500 }})
+                      </span>
+                    }
+                  </div>
+                </div>
+
+                <!-- Actions Right -->
+                <div class="shrink-0 flex items-center gap-2">
+                  <!-- Mode: CLIENT -->
+                  @if (mode() === 'client') {
+                    @if (isSchedulePast(sched)) {
+                      <button
+                        type="button"
+                        disabled
+                        class="px-4 py-2 bg-neutral-800 text-gray-500 text-xs font-semibold rounded-xl cursor-not-allowed border border-neutral-700/50"
+                        title="Las funciones pasadas no se pueden seleccionar para compra">
+                        No disponible
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        (click)="onSelectSchedule(sched)"
+                        class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5">
+                        <span>🎟️</span>
+                        <span>Comprar</span>
+                      </button>
+                    }
+                  }
+
+                  <!-- Mode: ADMIN -->
+                  @if (mode() === 'admin') {
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        (click)="startEditingSchedule(sched)"
+                        class="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-gray-200 text-xs font-semibold rounded-lg border border-neutral-700 transition-colors cursor-pointer flex items-center gap-1">
+                        <span>✏️</span>
+                        <span>Modificar</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        (click)="startDeletingSchedule(sched)"
+                        class="px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                        title="Eliminar función y reembolsar tickets">
+                        <span>🗑️</span>
+                        <span>Eliminar</span>
+                      </button>
+                    </div>
+                  }
+                </div>
+
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="p-8 text-center bg-neutral-800/30 rounded-2xl border border-dashed border-neutral-700 space-y-2">
+            <span class="text-3xl block">🎟️</span>
+            <p class="text-sm font-semibold text-gray-300">No hay funciones programadas para este día</p>
+            <p class="text-xs text-gray-500">Selecciona otro día en el calendario para consultar horarios disponibles.</p>
+          </div>
+        }
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="pt-3 border-t border-neutral-800 flex justify-end shrink-0">
+        <button
+          type="button"
+          (click)="closeDayModal()"
+          class="px-5 py-2 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold text-xs rounded-xl transition-colors cursor-pointer">
+          Cerrar
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
+
+<!-- ADMIN: EDIT SHOWTIME MODAL -->
+@if (editingSchedule(); as schedToEdit) {
+  <div class="fixed inset-0 z-60 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 overflow-y-auto">
+    <div class="fixed inset-0" (click)="cancelEditing()"></div>
+
+    <div class="relative bg-neutral-900 border border-neutral-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 my-8 z-20">
+
+      <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
+        <div>
+          <span class="text-xs font-bold text-[#D4AF37] uppercase tracking-wider">
+            ✏️ Modificar Función
+          </span>
+          <h4 class="text-base font-bold text-white mt-0.5">
+            {{ movie()?.title }}
+          </h4>
+        </div>
+        <button
+          type="button"
+          (click)="cancelEditing()"
+          class="text-gray-400 hover:text-white text-lg">
+          ✕
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <!-- Date & Time Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-300 mb-1">Fecha</label>
+            <input
+              type="date"
+              [(ngModel)]="editDateStr"
+              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-300 mb-1">Horario</label>
+            <input
+              type="time"
+              [(ngModel)]="editTime"
+              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]" />
+          </div>
+        </div>
+
+        <!-- Sala / Room -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-300 mb-1">Sala</label>
+          <select
+            [ngModel]="editSalaId"
+            (ngModelChange)="onSalaChange($event)"
+            class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]">
+            @for (sala of availableSalas(); track sala.id) {
+              <option [value]="sala.id">{{ sala.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Format & Language -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-300 mb-1">Formato</label>
+            <select
+              [(ngModel)]="editFormat"
+              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]">
+              <option value="2D">2D</option>
+              <option value="3D">3D</option>
+              <option value="4D">4D</option>
+              <option value="5D">5D</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-300 mb-1">Idioma</label>
+            <select
+              [(ngModel)]="editLanguage"
+              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]">
+              <option value="Castellano">Castellano</option>
+              <option value="Subtitulada">Subtitulada</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Price & Presale -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-300 mb-1">Precio Entrada ($)</label>
+            <input
+              type="number"
+              min="0"
+              step="100"
+              [(ngModel)]="editBasePrice"
+              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-300 mb-1">Preventa Especial</label>
+            <div class="flex items-center gap-2 mt-2">
+              <input
+                type="checkbox"
+                id="editIsPresale"
+                [(ngModel)]="editIsPresale"
+                class="rounded border-neutral-700 text-[#D4AF37] focus:ring-[#D4AF37] cursor-pointer" />
+              <label for="editIsPresale" class="text-xs text-gray-300 cursor-pointer">Habilitar preventa</label>
+            </div>
+          </div>
+        </div>
+
+        @if (editIsPresale) {
+          <div>
+            <label class="block text-xs font-semibold text-gray-300 mb-1">Precio Preventa ($)</label>
+            <input
+              type="number"
+              min="0"
+              step="100"
+              [(ngModel)]="editPresalePrice"
+              class="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-xs focus:outline-none focus:border-[#D4AF37]" />
+          </div>
+        }
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">
+        <button
+          type="button"
+          (click)="cancelEditing()"
+          class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-semibold rounded-xl transition-colors cursor-pointer">
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          [disabled]="isSavingEdit()"
+          (click)="saveEditedSchedule()"
+          class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center gap-1.5">
+          @if (isSavingEdit()) {
+            <span class="w-3.5 h-3.5 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></span>
+            <span>Guardando...</span>
+          } @else {
+            <span>Guardar Cambios</span>
+          }
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
+
+<!-- ADMIN: CONFIRM DELETE SHOWTIME MODAL (WITH REFUND NOTICE) -->
+@if (deletingSchedule(); as schedToDelete) {
+  <div class="fixed inset-0 z-60 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 overflow-y-auto">
+    <div class="fixed inset-0" (click)="cancelDeleting()"></div>
+
+    <div class="relative bg-neutral-900 border border-rose-500/40 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8 z-20">
+
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg shrink-0">
+          ⚠️
+        </div>
+        <div>
+          <h4 class="text-base font-bold text-white">
+            ¿Eliminar función del horario {{ schedToDelete.time }} hs?
+          </h4>
+          <p class="text-xs text-gray-400 mt-1">
+            Sala: <strong>{{ schedToDelete.room }}</strong> ({{ schedToDelete.format }} - {{ schedToDelete.language }})
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-rose-950/30 border border-rose-500/30 rounded-xl p-3 text-xs text-rose-200 space-y-1">
+        <p class="font-bold flex items-center gap-1">
+          <span>🔄</span> Política de Reembolso Automático:
+        </p>
+        <p class="text-rose-300 leading-relaxed">
+          Al eliminar esta función, se cancelarán todas las compras asociadas y se les reintegrará automáticamente el 100% de los tickets/dinero como saldo a favor en sus cuentas a todos los usuarios que hayan adquirido boletos para esta función.
+        </p>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button
+          type="button"
+          [disabled]="isDeletingSchedule()"
+          (click)="cancelDeleting()"
+          class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-semibold rounded-xl transition-colors cursor-pointer">
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          [disabled]="isDeletingSchedule()"
+          (click)="confirmDeleteSchedule()"
+          class="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center gap-1.5">
+          @if (isDeletingSchedule()) {
+            <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            <span>Eliminando y reembolsando...</span>
+          } @else {
+            <span>Confirmar Eliminación</span>
+          }
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

@@ -1,5 +1,6 @@
-import { Component, input, output, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, input, output, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { Movie, Schedule } from '../../../../models/movie';
 import { Seat } from '../../../../models/seat';
 import { PurchaseService, SALA_ROWS_CONFIG } from '../../../../services/purchase.service';
@@ -21,7 +22,7 @@ export interface RowViewData {
   templateUrl: './step-seats.html',
   styleUrl: './step-seats.css'
 })
-export class StepSeats implements OnInit {
+export class StepSeats implements OnInit, OnDestroy {
   private readonly purchaseService = inject(PurchaseService);
 
   readonly movie = input.required<Movie>();
@@ -36,6 +37,9 @@ export class StepSeats implements OnInit {
   readonly allSeats = signal<Seat[]>([]);
   readonly reservedSeatIds = signal<Set<number>>(new Set());
   readonly isLoadingSeats = signal<boolean>(true);
+
+  private realtimeChannel: RealtimeChannel | null = null;
+  private expirationInterval: any = null;
 
   readonly rowViews = computed<RowViewData[]>(() => {
     const seats = this.allSeats();
@@ -102,6 +106,45 @@ export class StepSeats implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.loadSalaSeatsAndReservations();
+
+    const sched = this.schedule();
+    const funcionId = Number(sched.id);
+
+    // Suscripción a cambios en tiempo real vía Supabase Realtime
+    this.realtimeChannel = this.purchaseService.subscribeToSeatReservations(
+      funcionId,
+      () => {
+        this.refreshReservations();
+      }
+    );
+
+    // Verificación periódica para descartar reservas expiradas automáticamente
+    this.expirationInterval = setInterval(() => {
+      this.refreshReservations();
+    }, 3000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.realtimeChannel) {
+      this.purchaseService.unsubscribe(this.realtimeChannel);
+      this.realtimeChannel = null;
+    }
+    if (this.expirationInterval) {
+      clearInterval(this.expirationInterval);
+      this.expirationInterval = null;
+    }
+  }
+
+  async refreshReservations(): Promise<void> {
+    try {
+      const sched = this.schedule();
+      if (!sched) return;
+      const funcionId = Number(sched.id);
+      const reserved = await this.purchaseService.getReservedSeatIds(funcionId);
+      this.reservedSeatIds.set(reserved);
+    } catch (e) {
+      console.warn('Error refrescando reservas en tiempo real:', e);
+    }
   }
 
   async loadSalaSeatsAndReservations(): Promise<void> {

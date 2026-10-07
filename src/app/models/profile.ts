@@ -58,4 +58,5 @@ export interface WatchedMovieItem {
   id: number;
   title: string;
   posterUrl: string;
+  hasReview?: boolean;
 }

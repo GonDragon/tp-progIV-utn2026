@@ -2,6 +2,8 @@ import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseService } from './supabase';
 import { AuthService } from './auth';
 import { PdfService } from './pdf.service';
+import { TicketService } from './ticket.service';
+import { ReviewService } from './review.service';
 import { UserProfileData, ActiveTicketItem, WatchedMovieItem } from '../models/profile';
 
 @Injectable({
@@ -11,6 +13,8 @@ export class ProfileService {
   private readonly supabase = inject(SupabaseService);
   private readonly authService = inject(AuthService);
   private readonly pdfService = inject(PdfService);
+  private readonly ticketService = inject(TicketService);
+  private readonly reviewService = inject(ReviewService);
 
   private readonly _profile = signal<UserProfileData | null>(null);
   private readonly _activeTickets = signal<ActiveTicketItem[]>([]);
@@ -184,6 +188,11 @@ export class ProfileService {
           continue;
         }
 
+        const isUsed = (row.estado_qr || '').toLowerCase() !== 'activo';
+        if (isUsed) {
+          continue;
+        }
+
         const funcion = Array.isArray(row.funciones) ? row.funciones[0] : row.funciones;
         const pelicula = funcion?.peliculas
           ? (Array.isArray(funcion.peliculas) ? funcion.peliculas[0] : funcion.peliculas)
@@ -192,6 +201,20 @@ export class ProfileService {
           ? (Array.isArray(funcion.salas) ? funcion.salas[0] : funcion.salas)
           : null;
         const butaca = Array.isArray(row.butacas) ? row.butacas[0] : row.butacas;
+
+        // Si la función ya terminó, no debe mostrarse el boleto activo
+        if (funcion?.fecha_hora_inicio) {
+          const startTime = new Date(funcion.fecha_hora_inicio).getTime();
+          if (!isNaN(startTime)) {
+            const durationMinutes = Number(pelicula?.duracion_minutos) || 120;
+            const endTime = startTime + durationMinutes * 60 * 1000;
+            const now = Date.now();
+
+            if (now >= endTime) {
+              continue;
+            }
+          }
+        }
 
         const candyItems: Array<{ nombre: string; cantidad: number; precio?: number }> = [];
         if (transaccion?.transacciones_candy && Array.isArray(transaccion.transacciones_candy)) {
@@ -303,6 +326,8 @@ export class ProfileService {
 
   private async fetchWatchedMovies(userId: string): Promise<void> {
     try {
+      const reviewedMovieIds = await this.reviewService.getUserReviewedMovieIds(userId);
+
       const { data, error } = await this.supabase.client
         .from('entradas_tickets')
         .select(`
@@ -358,7 +383,8 @@ export class ProfileService {
             movieMap.set(pelicula.id, {
               id: pelicula.id,
               title: pelicula.nombre,
-              posterUrl: pelicula.imagen_url || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=60'
+              posterUrl: pelicula.imagen_url || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=60',
+              hasReview: reviewedMovieIds.has(pelicula.id)
             });
           }
         }
@@ -379,6 +405,26 @@ export class ProfileService {
       console.error('Error al generar PDF de entrada:', e);
     } finally {
       this._isDownloadingPdf.set(null);
+    }
+  }
+
+  async autoRefundTicket(ticketId: number): Promise<{ success: boolean; message: string; refundAmount?: number }> {
+    this._isLoading.set(true);
+    this._error.set(null);
+    try {
+      const res = await this.ticketService.refundTicket(ticketId);
+      if (res.success) {
+        await this.loadProfileData();
+      } else {
+        this._error.set(res.message);
+      }
+      return res;
+    } catch (err: any) {
+      const msg = err.message || 'Error al procesar la devolución automática';
+      this._error.set(msg);
+      return { success: false, message: msg };
+    } finally {
+      this._isLoading.set(false);
     }
   }
 }

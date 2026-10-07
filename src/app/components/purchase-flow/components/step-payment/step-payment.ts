@@ -55,8 +55,21 @@ export class StepPayment implements OnInit {
     return this.candyItems().reduce((acc, curr) => acc + (curr.precio * curr.cantidad), 0);
   });
 
-  readonly grandTotal = computed(() => {
+  readonly rawSubtotal = computed(() => {
     return this.ticketsSubtotal() + this.candySubtotal();
+  });
+
+  readonly availableSaldoFavor = computed(() => {
+    return Number(this.currentUser()?.saldo_favor || 0);
+  });
+
+  readonly saldoFavorDiscount = computed(() => {
+    if (!this.currentUser()) return 0;
+    return Math.min(this.rawSubtotal(), this.availableSaldoFavor());
+  });
+
+  readonly grandTotal = computed(() => {
+    return Math.max(0, this.rawSubtotal() - this.saldoFavorDiscount());
   });
 
   readonly currentUser = computed(() => this.authService.currentUser());

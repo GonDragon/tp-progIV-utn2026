@@ -73,6 +73,26 @@ export class AdminValidation {
     }
   }
 
+  async handleRefundTicket(): Promise<void> {
+    const ticket = this.currentTicket();
+    if (!ticket) return;
+
+    this.feedback.set(null);
+    const result = await this.ticketService.refundTicket(ticket.id);
+
+    if (result.success) {
+      this.feedback.set({
+        type: 'success',
+        message: result.message
+      });
+    } else {
+      this.feedback.set({
+        type: 'error',
+        message: result.message
+      });
+    }
+  }
+
   handleGoBack(): void {
     this.ticketService.clearCurrentTicket();
     this.feedback.set(null);
