@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { Movie } from '../../models/movie';
 
 @Component({
@@ -8,8 +8,8 @@ import { Movie } from '../../models/movie';
   styleUrl: './highlighted-movies.css'
 })
 export class HighlightedMovies {
-  @Input({ required: true }) movies: Movie[] = [];
-  @Output() movieSelected = new EventEmitter<Movie>();
+  readonly movies = input.required<Movie[]>();
+  readonly movieSelected = output<Movie>();
 
   onSelectMovie(movie: Movie): void {
     this.movieSelected.emit(movie);

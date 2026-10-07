@@ -150,6 +150,86 @@ export class AdminService {
     this.auditService.log(action, category, details);
   }
 
+  // --- AUTOMATIC ROOM ALLOCATION ALGORITHM ---
+  // Requirements:
+  // 1. Assign room automatically without schedule overlap.
+  // 2. Minimum 30-minute buffer between screenings in the same room.
+  allocateAutomaticRoom(
+    timeString: string, // "HH:MM"
+    durationMinutes: number
+  ): { success: boolean; room?: string; reason?: string } {
+    const [reqHours, reqMinutes] = timeString.split(':').map(Number);
+    if (isNaN(reqHours) || isNaN(reqMinutes)) {
+      return { success: false, reason: 'Formato de hora inválido' };
+    }
+
+    const proposedStart = reqHours * 60 + reqMinutes;
+    const proposedEnd = proposedStart + durationMinutes;
+
+    // Collect all existing schedules and their occupied intervals [start, end + 30] per room
+    const movies = this.movieService.movies();
+    const roomOccupancy: Record<string, { start: number; end: number; movieTitle: string }[]> = {};
+
+    this.availableRooms.forEach(room => {
+      roomOccupancy[room] = [];
+    });
+
+    movies.forEach(movie => {
+      movie.schedules?.forEach(sched => {
+        const [h, m] = sched.time.split(':').map(Number);
+        if (!isNaN(h) && !isNaN(m)) {
+          const sStart = h * 60 + m;
+          const sEnd = sStart + movie.duration; // End of movie
+          const sBufferedEnd = sEnd + 30; // 30-minute mandatory buffer
+
+          // Normalise room name match
+          const matchingRoom = this.availableRooms.find(r =>
+            r.toLowerCase().includes(sched.room.toLowerCase()) || sched.room.toLowerCase().includes(r.toLowerCase())
+          ) || sched.room;
+
+          if (!roomOccupancy[matchingRoom]) {
+            roomOccupancy[matchingRoom] = [];
+          }
+          roomOccupancy[matchingRoom].push({
+            start: sStart,
+            end: sBufferedEnd,
+            movieTitle: movie.title
+          });
+        }
+      });
+    });
+
+    // Check each room to find an available slot
+    for (const room of this.availableRooms) {
+      const busySlots = roomOccupancy[room] || [];
+      let isRoomFree = true;
+
+      for (const slot of busySlots) {
+        // Overlap condition:
+        // A conflict occurs if the proposed screening [proposedStart, proposedEnd + 30] overlaps with [slot.start, slot.end]
+        const proposedBufferedEnd = proposedEnd + 30;
+        const overlaps = Math.max(proposedStart, slot.start) < Math.min(proposedBufferedEnd, slot.end);
+
+        if (overlaps) {
+          isRoomFree = false;
+          break;
+        }
+      }
+
+      if (isRoomFree) {
+        return {
+          success: true,
+          room
+        };
+      }
+    }
+
+    return {
+      success: false,
+      reason: 'No hay salas con el margen mínimo de 30 minutos disponible en ese horario.'
+    };
+  }
+
   // --- CANDY BAR ABM ---
   addCandyProduct(product: CandyProduct): void {
     this.candyService.createProduct({

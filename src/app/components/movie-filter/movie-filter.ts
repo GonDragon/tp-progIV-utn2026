@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 @Component({
@@ -9,13 +9,13 @@ import { FormsModule } from '@angular/forms';
   styleUrl: './movie-filter.css'
 })
 export class MovieFilter {
-  @Input({ required: true }) genres: string[] = [];
-  @Input({ required: true }) selectedGenres: string[] = [];
-  @Input({ required: true }) searchQuery: string = '';
+  readonly genres = input.required<string[]>();
+  readonly selectedGenres = input.required<string[]>();
+  readonly searchQuery = input.required<string>();
 
-  @Output() searchChange = new EventEmitter<string>();
-  @Output() genreToggled = new EventEmitter<string>();
-  @Output() clearFilters = new EventEmitter<void>();
+  readonly searchChange = output<string>();
+  readonly genreToggled = output<string>();
+  readonly clearFilters = output<void>();
 
   onSearchInput(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
@@ -31,6 +31,6 @@ export class MovieFilter {
   }
 
   isGenreSelected(genre: string): boolean {
-    return (this.selectedGenres || []).includes(genre);
+    return this.selectedGenres().includes(genre);
   }
 }

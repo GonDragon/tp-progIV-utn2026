@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Movie } from '../../../../../../models/movie';
 import { PosterUpload } from '../poster-upload/poster-upload';
@@ -21,13 +21,13 @@ export interface MovieFormData {
   templateUrl: './movie-form-modal.html',
   styleUrl: './movie-form-modal.css'
 })
-export class MovieFormModal implements OnChanges {
-  @Input() movie: Movie | null = null;
-  @Input() availableGenres: string[] = [];
-  @Input() isSaving = false;
+export class MovieFormModal {
+  readonly movie = input<Movie | null>(null);
+  readonly availableGenres = input<string[]>([]);
+  readonly isSaving = input<boolean>(false);
 
-  @Output() save = new EventEmitter<MovieFormData>();
-  @Output() close = new EventEmitter<void>();
+  readonly save = output<MovieFormData>();
+  readonly close = output<void>();
 
   movieTitle = '';
   movieSynopsis = '';
@@ -37,18 +37,21 @@ export class MovieFormModal implements OnChanges {
   movieImageUrl = '';
   movieRegularPrice = 5500;
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (this.movie) {
-      this.movieTitle = this.movie.title;
-      this.movieSynopsis = this.movie.synopsis;
-      this.movieDuration = this.movie.duration;
-      this.movieAgeRestriction = this.movie.ageRestriction || 'ATP';
-      this.selectedGenres = this.movie.genres && this.movie.genres.length > 0 ? [...this.movie.genres] : ['Acción'];
-      this.movieImageUrl = this.movie.imageUrl || '';
-      this.movieRegularPrice = this.movie.regularPrice || 5500;
-    } else {
-      this.resetForm();
-    }
+  constructor() {
+    effect(() => {
+      const current = this.movie();
+      if (current) {
+        this.movieTitle = current.title;
+        this.movieSynopsis = current.synopsis;
+        this.movieDuration = current.duration;
+        this.movieAgeRestriction = current.ageRestriction || 'ATP';
+        this.selectedGenres = current.genres && current.genres.length > 0 ? [...current.genres] : ['Acción'];
+        this.movieImageUrl = current.imageUrl || '';
+        this.movieRegularPrice = current.regularPrice || 5500;
+      } else {
+        this.resetForm();
+      }
+    });
   }
 
   resetForm(): void {
@@ -75,7 +78,7 @@ export class MovieFormModal implements OnChanges {
     if (!this.movieTitle.trim()) return;
 
     this.save.emit({
-      id: this.movie?.id,
+      id: this.movie()?.id,
       title: this.movieTitle.trim(),
       synopsis: this.movieSynopsis.trim() || 'Sin sinopsis disponible.',
       duration: Number(this.movieDuration) || 120,

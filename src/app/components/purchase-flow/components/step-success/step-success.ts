@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, signal, OnInit } from '@angular/core';
+import { Component, input, output, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CompletedPurchaseResult } from '../../../../models/purchase';
 import { PdfService } from '../../../../services/pdf.service';
@@ -12,8 +12,8 @@ import { PdfService } from '../../../../services/pdf.service';
 export class StepSuccess implements OnInit {
   private readonly pdfService = inject(PdfService);
 
-  @Input({ required: true }) result!: CompletedPurchaseResult;
-  @Output() finish = new EventEmitter<void>();
+  readonly result = input.required<CompletedPurchaseResult>();
+  readonly finish = output<void>();
 
   readonly qrDataUrls = signal<Map<number, string>>(new Map());
   readonly isGeneratingPdf = signal<boolean>(false);
@@ -25,7 +25,7 @@ export class StepSuccess implements OnInit {
   async generateQrs(): Promise<void> {
     const QRCode = await import('qrcode');
     const map = new Map<number, string>();
-    const tickets = this.result?.tickets || [];
+    const tickets = this.result().tickets;
 
     for (const t of tickets) {
       try {
@@ -47,10 +47,9 @@ export class StepSuccess implements OnInit {
   }
 
   async onDownloadPdf(): Promise<void> {
-    if (!this.result) return;
     this.isGeneratingPdf.set(true);
     try {
-      await this.pdfService.generateTicketPdf(this.result);
+      await this.pdfService.generateTicketPdf(this.result());
     } catch (e) {
       console.error('Error al descargar PDF:', e);
     } finally {

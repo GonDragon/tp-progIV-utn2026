@@ -13,9 +13,9 @@
 
     <div class="px-4 py-2 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center gap-3">
       <div class="text-right">
-        <span class="text-[10px] text-gray-400 block uppercase font-bold">Adiciones: {{ totalItemsCount }}</span>
+        <span class="text-[10px] text-gray-400 block uppercase font-bold">Adiciones: {{ totalItemsCount() }}</span>
         <span class="text-sm sm:text-base font-black text-[#D4AF37]">
-          ${{ totalCandyAmount.toLocaleString('es-AR') }}
+          ${{ totalCandyAmount().toLocaleString('es-AR') }}
         </span>
       </div>
     </div>

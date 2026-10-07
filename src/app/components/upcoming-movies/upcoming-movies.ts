@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { Movie } from '../../models/movie';
 
 @Component({
@@ -8,8 +8,8 @@ import { Movie } from '../../models/movie';
   styleUrl: './upcoming-movies.css'
 })
 export class UpcomingMovies {
-  @Input({ required: true }) upcomingMovies: Movie[] = [];
-  @Output() alertToggled = new EventEmitter<string>();
+  readonly upcomingMovies = input.required<Movie[]>();
+  readonly alertToggled = output<string>();
 
   onToggleAlert(movieId: string): void {
     this.alertToggled.emit(movieId);

@@ -19,9 +19,9 @@
   </div>
 
   <!-- Upcoming Grid -->
-  @if (upcomingMovies.length > 0) {
+  @if (upcomingMovies().length > 0) {
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-      @for (movie of upcomingMovies; track movie.id) {
+      @for (movie of upcomingMovies(); track movie.id) {
         <div class="flex flex-col bg-neutral-800/80 rounded-2xl border border-neutral-700/80 shadow-lg overflow-hidden hover:border-purple-500/50 hover:shadow-purple-500/10 hover:shadow-xl transition-all duration-300 group">
 
           <!-- Release Date Badge & Age Badge -->

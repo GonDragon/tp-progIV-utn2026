@@ -1,4 +1,4 @@
-@if (movie && schedule) {
+@if (movie() && schedule()) {
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-5 overflow-y-auto">
 
     <!-- Modal Backdrop -->
@@ -45,8 +45,8 @@
         <!-- STEP 1: QUANTITY -->
         @if (currentStep() === 'quantity') {
           <app-step-quantity
-            [movie]="movie!"
-            [schedule]="schedule!"
+            [movie]="movie()!"
+            [schedule]="schedule()!"
             [quantity]="ticketQuantity()"
             [isAuthenticated]="isAuthenticated()"
             (quantityChange)="onQuantityChange($event)"
@@ -58,8 +58,8 @@
         <!-- STEP 2: SEATS MAP -->
         @if (currentStep() === 'seats') {
           <app-step-seats
-            [movie]="movie!"
-            [schedule]="schedule!"
+            [movie]="movie()!"
+            [schedule]="schedule()!"
             [requiredQuantity]="ticketQuantity()"
             [selectedSeats]="selectedSeats()"
             (seatToggled)="onSeatToggled($event)"
@@ -72,7 +72,7 @@
         @if (currentStep() === 'seats-confirm') {
           <app-step-seats-confirm
             [selectedSeats]="selectedSeats()"
-            [schedule]="schedule!"
+            [schedule]="schedule()!"
             (next)="goToStep('candy')"
             (back)="goToStep('seats')"
           />
@@ -91,8 +91,8 @@
         <!-- STEP 5: PAYMENT & SUMMARY -->
         @if (currentStep() === 'payment') {
           <app-step-payment
-            [movie]="movie!"
-            [schedule]="schedule!"
+            [movie]="movie()!"
+            [schedule]="schedule()!"
             [selectedSeats]="selectedSeats()"
             [candyItems]="candyItems()"
             [isProcessing]="isProcessing()"

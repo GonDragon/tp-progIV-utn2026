@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, input, output, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Movie, Schedule } from '../../../../models/movie';
@@ -16,49 +16,61 @@ import { VIP_SURCHARGE } from '../../../../services/purchase.service';
 export class StepPayment implements OnInit {
   private readonly authService = inject(AuthService);
 
-  @Input({ required: true }) movie!: Movie;
-  @Input({ required: true }) schedule!: Schedule;
-  @Input({ required: true }) selectedSeats: Seat[] = [];
-  @Input({ required: true }) candyItems: SelectedCandyItem[] = [];
-  @Input() isProcessing = false;
-  @Input() errorMessage: string | null = null;
+  readonly movie = input.required<Movie>();
+  readonly schedule = input.required<Schedule>();
+  readonly selectedSeats = input.required<Seat[]>();
+  readonly candyItems = input.required<SelectedCandyItem[]>();
+  readonly isProcessing = input<boolean>(false);
+  readonly errorMessage = input<string | null>(null);
 
-  @Output() confirmPurchase = new EventEmitter<{ customerName: string; customerEmail: string }>();
-  @Output() back = new EventEmitter<void>();
+  readonly confirmPurchase = output<{ customerName: string; customerEmail: string }>();
+  readonly back = output<void>();
 
   customerNameInput = signal<string>('');
   customerEmailInput = signal<string>('');
 
   readonly vipSurcharge = VIP_SURCHARGE;
 
-  get baseTicketPrice(): number {
-    const s = this.schedule;
-    if (!s) return 5500;
+  readonly baseTicketPrice = computed(() => {
+    const s = this.schedule();
     if (s.isPresale && s.presalePrice != null) {
       return s.presalePrice;
     }
     return s.basePrice || 5500;
-  }
+  });
 
-  get vipSeatsCount(): number {
-    return (this.selectedSeats || []).filter(s => s.tipo === 'VIP').length;
-  }
+  readonly vipSeatsCount = computed(() => {
+    return this.selectedSeats().filter(s => s.tipo === 'VIP').length;
+  });
 
-  get totalVipSurcharge(): number {
-    return this.vipSeatsCount * this.vipSurcharge;
-  }
+  readonly totalVipSurcharge = computed(() => {
+    return this.vipSeatsCount() * this.vipSurcharge;
+  });
 
-  get ticketsSubtotal(): number {
-    return ((this.selectedSeats?.length || 0) * this.baseTicketPrice) + this.totalVipSurcharge;
-  }
+  readonly ticketsSubtotal = computed(() => {
+    return (this.selectedSeats().length * this.baseTicketPrice()) + this.totalVipSurcharge();
+  });
 
-  get candySubtotal(): number {
-    return (this.candyItems || []).reduce((acc, curr) => acc + (curr.precio * curr.cantidad), 0);
-  }
+  readonly candySubtotal = computed(() => {
+    return this.candyItems().reduce((acc, curr) => acc + (curr.precio * curr.cantidad), 0);
+  });
 
-  get grandTotal(): number {
-    return this.ticketsSubtotal + this.candySubtotal;
-  }
+  readonly rawSubtotal = computed(() => {
+    return this.ticketsSubtotal() + this.candySubtotal();
+  });
+
+  readonly availableSaldoFavor = computed(() => {
+    return Number(this.currentUser()?.saldo_favor || 0);
+  });
+
+  readonly saldoFavorDiscount = computed(() => {
+    if (!this.currentUser()) return 0;
+    return Math.min(this.rawSubtotal(), this.availableSaldoFavor());
+  });
+
+  readonly grandTotal = computed(() => {
+    return Math.max(0, this.rawSubtotal() - this.saldoFavorDiscount());
+  });
 
   readonly currentUser = computed(() => this.authService.currentUser());
 
@@ -80,7 +92,7 @@ export class StepPayment implements OnInit {
   }
 
   onConfirm(): void {
-    if (!this.isFormValid() || this.isProcessing) return;
+    if (!this.isFormValid() || this.isProcessing()) return;
 
     let finalName = this.customerNameInput().trim();
     let finalEmail = this.customerEmailInput().trim();

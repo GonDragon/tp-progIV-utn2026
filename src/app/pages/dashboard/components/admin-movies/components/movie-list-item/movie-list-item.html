@@ -7,34 +7,34 @@
       <!-- Movie Poster with image from Supabase bucket 'images' or neutral fallback -->
       <div
         class="relative w-16 h-22 rounded-xl bg-neutral-900 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-md border border-neutral-700 text-center overflow-hidden">
-        @if (movie.imageUrl) {
+        @if (movie().imageUrl) {
           <img
-            [src]="movie.imageUrl"
-            [alt]="movie.title"
+            [src]="movie().imageUrl"
+            [alt]="movie().title"
             class="w-full h-full object-cover" />
         } @else {
-          <span class="line-clamp-2 px-1 text-gray-400">{{ movie.title }}</span>
+          <span class="line-clamp-2 px-1 text-gray-400">{{ movie().title }}</span>
         }
       </div>
 
       <div class="space-y-1.5 flex-1 min-w-0">
         <div class="flex flex-wrap items-center gap-2">
-          <h3 class="text-lg font-bold text-white truncate">{{ movie.title }}</h3>
+          <h3 class="text-lg font-bold text-white truncate">{{ movie().title }}</h3>
 
           <!-- Age Badge -->
           <span
             class="text-[10px] font-bold px-2 py-0.5 rounded-md"
-            [class.bg-emerald-600]="movie.ageRestriction === 'ATP' || movie.ageRestriction === 'Ninguna'"
-            [class.text-white]="movie.ageRestriction === 'ATP' || movie.ageRestriction === 'Ninguna'"
-            [class.bg-amber-600]="movie.ageRestriction === '+13'"
-            [class.text-white]="movie.ageRestriction === '+13'"
-            [class.bg-rose-600]="movie.ageRestriction === '+18'"
-            [class.text-white]="movie.ageRestriction === '+18'">
-            {{ movie.ageRestriction }}
+            [class.bg-emerald-600]="movie().ageRestriction === 'ATP' || movie().ageRestriction === 'Ninguna'"
+            [class.text-white]="movie().ageRestriction === 'ATP' || movie().ageRestriction === 'Ninguna'"
+            [class.bg-amber-600]="movie().ageRestriction === '+13'"
+            [class.text-white]="movie().ageRestriction === '+13'"
+            [class.bg-rose-600]="movie().ageRestriction === '+18'"
+            [class.text-white]="movie().ageRestriction === '+18'">
+            {{ movie().ageRestriction }}
           </span>
 
           <!-- Visibility Badge -->
-          @if (movie.isVisibleOnHome !== false) {
+          @if (movie().isVisibleOnHome !== false) {
             <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
               Visible en Inicio
             </span>
@@ -45,28 +45,28 @@
           }
 
           <!-- Presale Badge -->
-          @if (movie.isPresaleEnabled) {
+          @if (movie().isPresaleEnabled) {
             <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40">
-              Preventa Activa (${{ movie.presalePrice }})
+              Preventa Activa (${{ movie().presalePrice }})
             </span>
           }
         </div>
 
         <p class="text-xs text-gray-300 line-clamp-2 leading-relaxed">
-          {{ movie.synopsis }}
+          {{ movie().synopsis }}
         </p>
 
         <div class="flex flex-wrap items-center gap-3 text-xs text-gray-400">
           <span class="flex items-center gap-1">
-            ⏱️ {{ movie.duration }} min
+            ⏱️ {{ movie().duration }} min
           </span>
           <span>•</span>
           <span class="flex items-center gap-1">
-            🏷️ {{ movie.genres.join(', ') }}
+            🏷️ {{ movie().genres.join(', ') }}
           </span>
           <span>•</span>
           <span class="text-amber-400 font-medium">
-            ★ {{ movie.rating.toFixed(1) }} ({{ movie.ticketsSold }} entradas vendidas)
+            ★ {{ movie().rating.toFixed(1) }} ({{ movie().ticketsSold }} entradas vendidas)
           </span>
         </div>
 
@@ -77,7 +77,7 @@
             (click)="toggleCalendar()"
             class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-700 border border-neutral-700 text-xs text-amber-300 font-semibold transition-colors cursor-pointer shadow-sm">
             <span>📅</span>
-            <span>{{ showCalendar() ? 'Ocultar Calendario' : 'Ver / Administrar Calendario' }} ({{ movie.schedules?.length || 0 }} funciones)</span>
+            <span>{{ showCalendar() ? 'Ocultar Calendario' : 'Ver / Administrar Calendario' }} ({{ movie().schedules?.length || 0 }} funciones)</span>
           </button>
         </div>
       </div>
@@ -97,8 +97,8 @@
           type="button"
           (click)="onToggleVisibility()"
           class="flex-1 px-3 py-1.5 bg-neutral-700/80 hover:bg-neutral-700 text-xs text-gray-200 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
-          [title]="movie.isVisibleOnHome === false ? 'Mostrar en Inicio' : 'Ocultar de Inicio'">
-          {{ movie.isVisibleOnHome === false ? '👁️ Mostrar' : '🙈 Ocultar' }}
+          [title]="movie().isVisibleOnHome === false ? 'Mostrar en Inicio' : 'Ocultar de Inicio'">
+          {{ movie().isVisibleOnHome === false ? '👁️ Mostrar' : '🙈 Ocultar' }}
         </button>
         <button
           type="button"
@@ -124,7 +124,7 @@
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="text-sm font-bold text-[#D4AF37]">🎬 Panel de Cartelera & Funciones:</span>
-          <span class="text-xs text-white font-semibold">{{ movie.title }}</span>
+          <span class="text-xs text-white font-semibold">{{ movie().title }}</span>
         </div>
         <button
           type="button"
@@ -135,7 +135,7 @@
       </div>
 
       <app-movie-schedule-calendar
-        [movie]="movie"
+        [movie]="movie()"
         [mode]="'admin'"
         (scheduleUpdated)="onScheduleUpdated($event)"
         (scheduleDeleted)="onScheduleDeleted($event)" />

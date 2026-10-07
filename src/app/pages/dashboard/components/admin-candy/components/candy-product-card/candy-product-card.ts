@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CandyProduct } from '../../../../../../models/candy';
 
@@ -9,9 +9,9 @@ import { CandyProduct } from '../../../../../../models/candy';
   templateUrl: './candy-product-card.html'
 })
 export class CandyProductCard {
-  @Input({ required: true }) product!: CandyProduct;
-  @Output() edit = new EventEmitter<CandyProduct>();
-  @Output() delete = new EventEmitter<CandyProduct>();
+  readonly product = input.required<CandyProduct>();
+  readonly edit = output<CandyProduct>();
+  readonly delete = output<CandyProduct>();
 
   getCategoryIcon(category: string): string {
     switch (category?.toLowerCase()) {
