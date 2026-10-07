@@ -73,32 +73,60 @@ export class PurchaseFlow {
     }
   });
 
-  onQuantityChange(q: number): void {
+  async onQuantityChange(q: number): Promise<void> {
     this.ticketQuantity.set(q);
-    // If quantity is reduced below current selected seats, trim the selected seats
+    // Si la cantidad se reduce, deseleccionar los asientos excedentes y liberar sus reservas
     if (this.selectedSeats().length > q) {
-      this.selectedSeats.set(this.selectedSeats().slice(0, q));
+      const s = this.schedule();
+      const funcionId = s ? Number(s.id) : null;
+      const toKeep = this.selectedSeats().slice(0, q);
+      const toRemove = this.selectedSeats().slice(q);
+      this.selectedSeats.set(toKeep);
+
+      if (funcionId) {
+        for (const seat of toRemove) {
+          await this.purchaseService.releaseSeatReservation(funcionId, seat.id);
+        }
+      }
     }
   }
 
-  onSeatToggled(seat: Seat): void {
+  async onSeatToggled(seat: Seat): Promise<void> {
+    const s = this.schedule();
+    if (!s) return;
+    const funcionId = Number(s.id);
+
     const current = [...this.selectedSeats()];
     const index = current.findIndex(s => s.id === seat.id || (s.fila === seat.fila && s.columna === seat.columna));
 
     if (index >= 0) {
-      // Remove
-      current.splice(index, 1);
+      // Deselección: se remueve y se elimina obligatoriamente la reserva temporal
+      const removed = current.splice(index, 1)[0];
       this.selectedSeats.set(current);
+      await this.purchaseService.releaseSeatReservation(funcionId, removed.id);
     } else {
-      // Add if under required quantity
+      // Selección: si está dentro de la cantidad requerida
       if (current.length < this.ticketQuantity()) {
-        current.push(seat);
-        this.selectedSeats.set(current);
+        const res = await this.purchaseService.reserveSeat(funcionId, seat.id);
+        if (res.success) {
+          current.push(seat);
+          this.selectedSeats.set(current);
+        } else if (res.error) {
+          console.warn('No se pudo reservar la butaca:', res.error);
+        }
       } else {
-        // If at limit, replace the first seat or alert
-        current.shift();
-        current.push(seat);
-        this.selectedSeats.set(current);
+        // Si se alcanzó el límite, reemplazar la primera butaca
+        const removed = current.shift();
+        if (removed) {
+          await this.purchaseService.releaseSeatReservation(funcionId, removed.id);
+        }
+        const res = await this.purchaseService.reserveSeat(funcionId, seat.id);
+        if (res.success) {
+          current.push(seat);
+          this.selectedSeats.set(current);
+        } else if (res.error) {
+          console.warn('No se pudo reservar la butaca:', res.error);
+        }
       }
     }
   }
@@ -137,6 +165,12 @@ export class PurchaseFlow {
   }
 
   onCloseModal(): void {
+    const s = this.schedule();
+    if (s && this.currentStep() !== 'success') {
+      const funcionId = Number(s.id);
+      this.purchaseService.releaseAllReservationsForSession(funcionId);
+      this.selectedSeats.set([]);
+    }
     this.close.emit();
   }
 

@@ -148,3 +148,13 @@ CREATE TABLE log_actividad (
 
 ALTER TABLE funciones
 ADD COLUMN precio_preventa DECIMAL(10, 2);
+
+-- 9. RESERVA DE BUTACAS
+CREATE TABLE reservas_temporales (
+                                   id SERIAL PRIMARY KEY,
+                                   funcion_id INT REFERENCES funciones(id) ON DELETE CASCADE,
+                                   butaca_id INT REFERENCES butacas(id) ON DELETE CASCADE,
+                                   session_id UUID NOT NULL, -- session_id para anónimos o id de perfil si está autenticado
+                                   expira_en TIMESTAMP NOT NULL DEFAULT (NOW() + INTERVAL '5 minutes'),
+                                   UNIQUE(funcion_id, butaca_id) -- Evita que dos personas reserven la misma butaca en la misma función
+);
