@@ -20,8 +20,8 @@ export class MovieService {
   private readonly auditService = inject(AuditService);
   private readonly authService = inject(AuthService);
 
-  private readonly _movies = signal<Movie[]>([]);
-  private readonly _upcomingMovies = signal<Movie[]>([]);
+  private readonly _allMovies = signal<Movie[]>([]);
+  private readonly _upcomingAlerts = signal<Set<string>>(new Set());
   private readonly _selectedGenres = signal<string[]>([]);
   private readonly _searchQuery = signal<string>('');
   private readonly _genres = signal<Genre[]>([]);
@@ -50,18 +50,34 @@ export class MovieService {
       'Terror'
     ];
   }
+  readonly allMovies = this._allMovies.asReadonly();
   readonly genres = this._genres.asReadonly();
   readonly salas = this._salas.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
-
-  readonly movies = this._movies.asReadonly();
-  readonly upcomingMovies = this._upcomingMovies.asReadonly();
   readonly selectedGenres = this._selectedGenres.asReadonly();
   readonly searchQuery = this._searchQuery.asReadonly();
 
-  // Top 3 best-selling movies
+  // Cartelera: Únicamente películas con funciones (futuras o pasadas)
+  readonly movies = computed(() => {
+    return this._allMovies().filter(m => m.schedules && m.schedules.length > 0);
+  });
+
+  // Próximamente: Únicamente películas sin ninguna función
+  readonly upcomingMovies = computed(() => {
+    const alerts = this._upcomingAlerts();
+    return this._allMovies()
+      .filter(m => !m.schedules || m.schedules.length === 0)
+      .map(m => ({
+        ...m,
+        isUpcoming: true,
+        releaseDate: m.releaseDate || 'Próximamente',
+        notificationSubscribed: alerts.has(m.id)
+      }));
+  });
+
+  // Top 3 best-selling movies (en cartelera)
   readonly topSellingMovies = computed(() => {
-    return [...this._movies()]
+    return [...this.movies()]
       .sort((a, b) => b.ticketsSold - a.ticketsSold)
       .slice(0, 3);
   });
@@ -71,7 +87,7 @@ export class MovieService {
     const query = this._searchQuery().trim().toLowerCase();
     const genres = this._selectedGenres();
 
-    return this._movies().filter(movie => {
+    return this.movies().filter(movie => {
       const matchesQuery = query === '' ||
         movie.title.toLowerCase().includes(query) ||
         movie.synopsis.toLowerCase().includes(query);
@@ -267,9 +283,9 @@ export class MovieService {
 
         const mappedMovies: Movie[] = filteredRows.map((row: any) => this.mapMovieRow(row, ticketsSoldByMovie));
 
-        this._movies.set(mappedMovies);
+        this._allMovies.set(mappedMovies);
       } else {
-        this._movies.set([]);
+        this._allMovies.set([]);
       }
     } catch (err) {
       console.warn('Error procesando películas de Supabase:', err);
@@ -369,7 +385,7 @@ export class MovieService {
         }
       }
 
-      // 2. Consulta con Lazy Loading a Supabase con paginación
+      // 2. Consulta con Lazy Loading a Supabase con paginación (únicamente con funciones: cartelera)
       let query = this.supabaseService.client
         .from('peliculas')
         .select(`
@@ -385,7 +401,7 @@ export class MovieService {
               nombre
             )
           ),
-          funciones (
+          funciones!inner (
             id,
             pelicula_id,
             sala_id,
@@ -526,7 +542,7 @@ export class MovieService {
 
   async addMovie(movie: Movie): Promise<void> {
     // 1. In-memory update
-    this._movies.update(current => [movie, ...current]);
+    this._allMovies.update(current => [movie, ...current]);
 
     // 2. Supabase insert
     try {
@@ -555,7 +571,7 @@ export class MovieService {
         }
 
         // Update in-memory ID to match Supabase ID
-        this._movies.update(current =>
+        this._allMovies.update(current =>
           current.map(m => m.id === movie.id ? { ...m, id: newDbId } : m)
         );
       }
@@ -565,7 +581,7 @@ export class MovieService {
   }
 
   async updateMovie(updatedMovie: Movie): Promise<void> {
-    this._movies.update(current =>
+    this._allMovies.update(current =>
       current.map(m => m.id === updatedMovie.id ? { ...m, ...updatedMovie } : m)
     );
 
@@ -595,7 +611,7 @@ export class MovieService {
   }
 
   async deleteMovie(movieId: string): Promise<void> {
-    this._movies.update(current => current.filter(m => m.id !== movieId));
+    this._allMovies.update(current => current.filter(m => m.id !== movieId));
 
     const numericId = Number(movieId);
     if (!isNaN(numericId)) {
@@ -665,7 +681,7 @@ export class MovieService {
     if (!schedules || schedules.length === 0) return;
 
     // Update local state first with temp schedules
-    this._movies.update(current =>
+    this._allMovies.update(current =>
       current.map(m => {
         if (m.id === movieId) {
           const existing = m.schedules || [];
@@ -736,7 +752,7 @@ export class MovieService {
             }
           });
 
-          this._movies.update(current =>
+          this._allMovies.update(current =>
             current.map(m => {
               if (m.id === movieId && m.schedules) {
                 return {
@@ -762,7 +778,7 @@ export class MovieService {
   }
 
   async removeSchedule(movieId: string, scheduleId: string): Promise<void> {
-    this._movies.update(current =>
+    this._allMovies.update(current =>
       current.map(m => {
         if (m.id === movieId && m.schedules) {
           return { ...m, schedules: m.schedules.filter(s => s.id !== scheduleId) };
@@ -804,17 +820,19 @@ export class MovieService {
   }
 
   toggleUpcomingAlert(movieId: string): void {
-    this._upcomingMovies.update(list =>
-      list.map(movie =>
-        movie.id === movieId
-          ? { ...movie, notificationSubscribed: !movie.notificationSubscribed }
-          : movie
-      )
-    );
+    this._upcomingAlerts.update(set => {
+      const next = new Set(set);
+      if (next.has(movieId)) {
+        next.delete(movieId);
+      } else {
+        next.add(movieId);
+      }
+      return next;
+    });
   }
 
   toggleMovieVisibility(movieId: string): void {
-    this._movies.update(current =>
+    this._allMovies.update(current =>
       current.map(m =>
         m.id === movieId
           ? { ...m, isVisibleOnHome: m.isVisibleOnHome === false ? true : false }
@@ -832,10 +850,10 @@ export class MovieService {
       presaleEndDate?: string;
     }
   ): void {
-    const movie = this._movies().find(m => m.id === movieId);
+    const movie = this._allMovies().find(m => m.id === movieId);
     const price = config.presalePrice ?? movie?.presalePrice ?? 4500;
 
-    this._movies.update(current =>
+    this._allMovies.update(current =>
       current.map(m => {
         if (m.id === movieId) {
           return {

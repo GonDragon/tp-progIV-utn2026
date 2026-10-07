@@ -323,7 +323,7 @@ export class ScheduleModal {
     const roomOccupancyMap = new Map<string, Array<{ start: number; end: number; title: string }>>();
     availableRooms.forEach(r => roomOccupancyMap.set(r.nombre.toLowerCase(), []));
 
-    const movies = this.movieService.movies();
+    const movies = this.movieService.allMovies();
     movies.forEach(m => {
       m.schedules?.forEach(s => {
         let sStartMs: number | null = null;
