@@ -1,4 +1,4 @@
-import { Component, effect, input, output, signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Combo } from '../../../../../../models/candy';
@@ -9,13 +9,13 @@ import { Combo } from '../../../../../../models/candy';
   imports: [CommonModule, FormsModule],
   templateUrl: './combo-modal.html'
 })
-export class ComboModal {
-  readonly isOpen = input.required<boolean>();
-  readonly combo = input<Combo | null>(null);
-  readonly isSaving = input<boolean>(false);
+export class ComboModal implements OnChanges {
+  @Input({ required: true }) isOpen = false;
+  @Input() combo: Combo | null = null;
+  @Input() isSaving = false;
 
-  readonly closeModal = output<void>();
-  readonly save = output<{
+  @Output() closeModal = new EventEmitter<void>();
+  @Output() save = new EventEmitter<{
     nombre: string;
     precio_fijo: number;
   }>();
@@ -24,23 +24,17 @@ export class ComboModal {
   precio_fijo = signal<number>(0);
   validationError = signal<string | null>(null);
 
-  constructor() {
-    effect(
-      () => {
-        const c = this.combo();
-        if (this.isOpen()) {
-          this.validationError.set(null);
-          if (c) {
-            this.nombre.set(c.nombre);
-            this.precio_fijo.set(c.precio_fijo);
-          } else {
-            this.nombre.set('');
-            this.precio_fijo.set(0);
-          }
-        }
-      },
-      { allowSignalWrites: true }
-    );
+  ngOnChanges(changes: SimpleChanges): void {
+    if (this.isOpen) {
+      this.validationError.set(null);
+      if (this.combo) {
+        this.nombre.set(this.combo.nombre);
+        this.precio_fijo.set(this.combo.precio_fijo);
+      } else {
+        this.nombre.set('');
+        this.precio_fijo.set(0);
+      }
+    }
   }
 
   onSubmit(): void {
@@ -63,7 +57,7 @@ export class ComboModal {
   }
 
   onClose(): void {
-    if (!this.isSaving()) {
+    if (!this.isSaving) {
       this.closeModal.emit();
     }
   }

@@ -1,4 +1,4 @@
-import { Component, input, output, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Movie, Schedule } from '../../../../models/movie';
 
@@ -9,43 +9,45 @@ import { Movie, Schedule } from '../../../../models/movie';
   templateUrl: './step-quantity.html'
 })
 export class StepQuantity {
-  readonly movie = input.required<Movie>();
-  readonly schedule = input.required<Schedule>();
-  readonly quantity = input<number>(1);
-  readonly isAuthenticated = input<boolean>(false);
+  @Input({ required: true }) movie!: Movie;
+  @Input({ required: true }) schedule!: Schedule;
+  @Input() quantity = 1;
+  @Input() isAuthenticated = false;
 
-  readonly quantityChange = output<number>();
-  readonly next = output<void>();
-  readonly cancel = output<void>();
+  @Output() quantityChange = new EventEmitter<number>();
+  @Output() next = new EventEmitter<void>();
+  @Output() cancel = new EventEmitter<void>();
 
-  readonly baseTicketPrice = computed(() => {
-    const s = this.schedule();
+  get baseTicketPrice(): number {
+    const s = this.schedule;
+    if (!s) return 5500;
     if (s.isPresale && s.presalePrice != null) {
       return s.presalePrice;
     }
     return s.basePrice || 5500;
-  });
+  }
 
-  readonly estimatedTotal = computed(() => {
-    return this.baseTicketPrice() * this.quantity();
-  });
+  get estimatedTotal(): number {
+    return this.baseTicketPrice * this.quantity;
+  }
 
-  readonly isUnauthenticatedAdultRestricted = computed(() => {
-    const m = this.movie();
-    const isAuth = this.isAuthenticated();
+  get isUnauthenticatedAdultRestricted(): boolean {
+    const m = this.movie;
+    const isAuth = this.isAuthenticated;
+    if (!m) return false;
     const age = (m.ageRestriction || '').trim();
     return !isAuth && (age === '+18' || age === '18');
-  });
+  }
 
   onIncrement(): void {
-    if (this.quantity() < 10) {
-      this.quantityChange.emit(this.quantity() + 1);
+    if (this.quantity < 10) {
+      this.quantityChange.emit(this.quantity + 1);
     }
   }
 
   onDecrement(): void {
-    if (this.quantity() > 1) {
-      this.quantityChange.emit(this.quantity() - 1);
+    if (this.quantity > 1) {
+      this.quantityChange.emit(this.quantity - 1);
     }
   }
 

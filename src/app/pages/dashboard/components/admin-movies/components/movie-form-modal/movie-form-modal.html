@@ -3,7 +3,7 @@
 
     <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
       <h3 class="text-lg font-bold text-white flex items-center gap-2">
-        <span>🎬</span> {{ movie() ? 'Editar Película' : 'Nueva Película' }}
+        <span>🎬</span> {{ movie ? 'Editar Película' : 'Nueva Película' }}
       </h3>
       <button
         type="button"
@@ -69,7 +69,7 @@
       <div>
         <label class="block text-xs font-semibold text-gray-300 mb-1.5">Géneros (selección múltiple)</label>
         <div class="flex flex-wrap gap-1.5">
-          @for (genre of availableGenres(); track genre) {
+          @for (genre of availableGenres; track genre) {
             <button
               type="button"
               (click)="toggleGenre(genre)"
@@ -90,19 +90,19 @@
         <button
           type="button"
           (click)="onCancel()"
-          [disabled]="isSaving()"
+          [disabled]="isSaving"
           class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-sm font-semibold rounded-xl cursor-pointer disabled:opacity-50">
           Cancelar
         </button>
         <button
           type="submit"
-          [disabled]="!movieTitle.trim() || isSaving()"
+          [disabled]="!movieTitle.trim() || isSaving"
           class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-sm font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2">
-          @if (isSaving()) {
+          @if (isSaving) {
             <div class="w-4 h-4 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></div>
             <span>Guardando...</span>
           } @else {
-            <span>{{ movie() ? 'Guardar Cambios' : 'Crear Película' }}</span>
+            <span>{{ movie ? 'Guardar Cambios' : 'Crear Película' }}</span>
           }
         </button>
       </div>

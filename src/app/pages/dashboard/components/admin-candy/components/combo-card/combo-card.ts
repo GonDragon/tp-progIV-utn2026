@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Combo } from '../../../../../../models/candy';
 
@@ -9,7 +9,7 @@ import { Combo } from '../../../../../../models/candy';
   templateUrl: './combo-card.html'
 })
 export class ComboCard {
-  readonly combo = input.required<Combo>();
-  readonly edit = output<Combo>();
-  readonly delete = output<Combo>();
+  @Input({ required: true }) combo!: Combo;
+  @Output() edit = new EventEmitter<Combo>();
+  @Output() delete = new EventEmitter<Combo>();
 }

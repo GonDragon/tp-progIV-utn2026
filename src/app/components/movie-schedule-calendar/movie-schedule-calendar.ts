@@ -1,4 +1,4 @@
-import { Component, input, output, inject, signal, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Movie, Schedule, Sala } from '../../models/movie';
@@ -26,12 +26,12 @@ export class MovieScheduleCalendar {
   readonly movieService = inject(MovieService);
   readonly adminService = inject(AdminService);
 
-  readonly movie = input<Movie | null>(null);
-  readonly mode = input<'client' | 'admin'>('client');
+  @Input() movie: Movie | null = null;
+  @Input() mode: 'client' | 'admin' = 'client';
 
-  readonly scheduleSelected = output<{ movie: Movie; schedule: Schedule }>();
-  readonly scheduleUpdated = output<{ movie: Movie; schedule: Schedule }>();
-  readonly scheduleDeleted = output<{ movie: Movie; schedule: Schedule }>();
+  @Output() scheduleSelected = new EventEmitter<{ movie: Movie; schedule: Schedule }>();
+  @Output() scheduleUpdated = new EventEmitter<{ movie: Movie; schedule: Schedule }>();
+  @Output() scheduleDeleted = new EventEmitter<{ movie: Movie; schedule: Schedule }>();
 
   // Calendar navigation state - initialized to current month and year
   readonly selectedYear = signal<number>(new Date().getFullYear());
@@ -76,7 +76,7 @@ export class MovieScheduleCalendar {
   readonly calendarDays = computed<CalendarDay[]>(() => {
     const year = this.selectedYear();
     const month = this.selectedMonth();
-    const currentMovie = this.movie();
+    const currentMovie = this.movie;
     const allSchedules = currentMovie?.schedules || [];
 
     const now = new Date();
@@ -240,7 +240,7 @@ export class MovieScheduleCalendar {
 
   // Client mode: Select schedule for purchase
   onSelectSchedule(schedule: Schedule): void {
-    const currentMovie = this.movie();
+    const currentMovie = this.movie;
     if (currentMovie && !this.isSchedulePast(schedule)) {
       this.closeDayModal();
       this.scheduleSelected.emit({ movie: currentMovie, schedule });
@@ -285,7 +285,7 @@ export class MovieScheduleCalendar {
   }
 
   async saveEditedSchedule(): Promise<void> {
-    const currentMovie = this.movie();
+    const currentMovie = this.movie;
     const currentSched = this.editingSchedule();
     if (!currentMovie || !currentSched) return;
 
@@ -344,7 +344,7 @@ export class MovieScheduleCalendar {
   }
 
   async confirmDeleteSchedule(): Promise<void> {
-    const currentMovie = this.movie();
+    const currentMovie = this.movie;
     const sched = this.deletingSchedule();
     if (!currentMovie || !sched) return;
 
