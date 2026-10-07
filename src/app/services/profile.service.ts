@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseService } from './supabase';
 import { AuthService } from './auth';
 import { PdfService } from './pdf.service';
+import { TicketService } from './ticket.service';
 import { UserProfileData, ActiveTicketItem, WatchedMovieItem } from '../models/profile';
 
 @Injectable({
@@ -11,6 +12,7 @@ export class ProfileService {
   private readonly supabase = inject(SupabaseService);
   private readonly authService = inject(AuthService);
   private readonly pdfService = inject(PdfService);
+  private readonly ticketService = inject(TicketService);
 
   private readonly _profile = signal<UserProfileData | null>(null);
   private readonly _activeTickets = signal<ActiveTicketItem[]>([]);
@@ -379,6 +381,26 @@ export class ProfileService {
       console.error('Error al generar PDF de entrada:', e);
     } finally {
       this._isDownloadingPdf.set(null);
+    }
+  }
+
+  async autoRefundTicket(ticketId: number): Promise<{ success: boolean; message: string; refundAmount?: number }> {
+    this._isLoading.set(true);
+    this._error.set(null);
+    try {
+      const res = await this.ticketService.refundTicket(ticketId);
+      if (res.success) {
+        await this.loadProfileData();
+      } else {
+        this._error.set(res.message);
+      }
+      return res;
+    } catch (err: any) {
+      const msg = err.message || 'Error al procesar la devolución automática';
+      this._error.set(msg);
+      return { success: false, message: msg };
+    } finally {
+      this._isLoading.set(false);
     }
   }
 }

@@ -11,6 +11,7 @@ export class TicketDetailsCard {
   isProcessing = input<boolean>(false);
 
   @Output() useTicket = new EventEmitter<void>();
+  @Output() refundTicket = new EventEmitter<void>();
   @Output() goBack = new EventEmitter<void>();
 
   formatDate(dateStr?: string): string {

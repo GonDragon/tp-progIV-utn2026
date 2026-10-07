@@ -212,6 +212,25 @@
 
     <!-- 4. Lista de Boletos Activos (comprados y aún no usados) -->
     <div class="space-y-4">
+
+      <!-- Feedback de Devolución -->
+      @if (refundFeedback(); as fb) {
+        <div
+          class="p-4 rounded-2xl border flex items-center justify-between gap-3 text-sm animate-fade-in shadow-md"
+          [class]="fb.type === 'success' ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300' : 'bg-rose-950/60 border-rose-500/50 text-rose-300'">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">{{ fb.type === 'success' ? '✅' : '❌' }}</span>
+            <span class="font-medium">{{ fb.message }}</span>
+          </div>
+          <button
+            type="button"
+            (click)="dismissRefundFeedback()"
+            class="text-gray-400 hover:text-white text-base cursor-pointer p-1">
+            ✕
+          </button>
+        </div>
+      }
+
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <span class="p-2.5 rounded-xl bg-amber-500/10 text-[#D4AF37] border border-[#D4AF37]/20">
@@ -338,22 +357,45 @@
                 </div>
               </div>
 
-              <!-- Action: Download PDF -->
-              <button
-                type="button"
-                (click)="onDownloadPdf(ticket, $event)"
-                [disabled]="profileService.isDownloadingPdf() === ticket.id"
-                class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-[#D4AF37] hover:from-amber-400 hover:to-amber-500 text-neutral-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 transition-all cursor-pointer disabled:opacity-50">
-                @if (profileService.isDownloadingPdf() === ticket.id) {
-                  <div class="w-4 h-4 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></div>
-                  <span>Generando PDF...</span>
+              <!-- Actions: Download PDF and Automatic Refund -->
+              <div class="space-y-2 pt-1">
+                <button
+                  type="button"
+                  (click)="onDownloadPdf(ticket, $event)"
+                  [disabled]="profileService.isDownloadingPdf() === ticket.id || isRefundingId() === ticket.id"
+                  class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-[#D4AF37] hover:from-amber-400 hover:to-amber-500 text-neutral-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 transition-all cursor-pointer disabled:opacity-50">
+                  @if (profileService.isDownloadingPdf() === ticket.id) {
+                    <div class="w-4 h-4 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></div>
+                    <span>Generando PDF...</span>
+                  } @else {
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Descargar Boleto en PDF</span>
+                  }
+                </button>
+
+                @if (canRefundTicket(ticket)) {
+                  <button
+                    type="button"
+                    (click)="onAutoRefund(ticket, $event)"
+                    [disabled]="isRefundingId() === ticket.id || profileService.isDownloadingPdf() === ticket.id"
+                    class="w-full py-2.5 px-4 rounded-xl bg-neutral-800 hover:bg-rose-950/80 border border-neutral-700 hover:border-rose-500/60 text-gray-300 hover:text-rose-300 font-bold text-xs flex items-center justify-center gap-2 shadow transition-all cursor-pointer disabled:opacity-50">
+                    @if (isRefundingId() === ticket.id) {
+                      <div class="w-4 h-4 border-2 border-rose-400 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Procesando Devolución...</span>
+                    } @else {
+                      <span>🔄 Devolución automática</span>
+                    }
+                  </button>
                 } @else {
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span>Descargar Boleto en PDF</span>
+                  <div class="text-center py-2 px-3 rounded-xl bg-neutral-950/60 border border-neutral-800 text-[11px] text-gray-400 flex items-center justify-center gap-1.5"
+                       [title]="getRefundDisabledReason(ticket)">
+                    <span>⏱️</span>
+                    <span>{{ getRefundDisabledReason(ticket) }}</span>
+                  </div>
                 }
-              </button>
+              </div>
 
             </div>
           }

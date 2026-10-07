@@ -415,7 +415,44 @@ export class PurchaseService {
         candyTotal += item.precio * item.cantidad;
       }
 
-      const grandTotal = ticketsTotal + candyTotal;
+      const rawTotal = ticketsTotal + candyTotal;
+      let grandTotal = rawTotal;
+      let saldoDiscount = 0;
+
+      // Descuento automático por saldo a favor si el cliente está autenticado
+      if (currentUser && perfilId) {
+        try {
+          const { data: perfilData } = await this.supabase.client
+            .from('perfiles')
+            .select('saldo_favor, puntos_fidelidad')
+            .eq('id', perfilId)
+            .maybeSingle();
+
+          const currentSaldo = Number(perfilData?.saldo_favor ?? currentUser.saldo_favor ?? 0);
+          saldoDiscount = Math.min(rawTotal, currentSaldo);
+          grandTotal = Math.max(0, rawTotal - saldoDiscount);
+
+          const newSaldo = currentSaldo - saldoDiscount;
+          const currentPoints = Number(perfilData?.puntos_fidelidad ?? currentUser.puntos_fidelidad ?? 0);
+          const pointsEarned = Math.floor(grandTotal / 1000);
+          const newPoints = currentPoints + pointsEarned;
+
+          await this.supabase.client
+            .from('perfiles')
+            .update({
+              saldo_favor: newSaldo,
+              puntos_fidelidad: newPoints
+            })
+            .eq('id', perfilId);
+
+          this.authService.updateLocalUser({
+            saldo_favor: newSaldo,
+            puntos_fidelidad: newPoints
+          });
+        } catch (saldoErr) {
+          console.warn('Error al aplicar saldo a favor como descuento:', saldoErr);
+        }
+      }
 
       // 2. Insert into transacciones
       const { data: txData, error: txError } = await this.supabase.client
@@ -491,7 +528,8 @@ export class PurchaseService {
         ? `${currentUser.nombre} ${currentUser.apellido}`
         : `${customerName} (${customerEmail})`;
 
-      const actionText = `Compra #${transaccionId} de ${selectedSeats.length} entradas para "${movie.title}" por $${grandTotal.toLocaleString('es-AR')} realizada por ${buyerInfo}`;
+      const discountInfo = saldoDiscount > 0 ? ` (Descuento saldo a favor: $${saldoDiscount.toLocaleString('es-AR')})` : '';
+      const actionText = `Compra #${transaccionId} de ${selectedSeats.length} entradas para "${movie.title}" por $${grandTotal.toLocaleString('es-AR')}${discountInfo} realizada por ${buyerInfo}`;
 
       try {
         await this.supabase.client
@@ -503,22 +541,6 @@ export class PurchaseService {
           });
       } catch (logErr) {
         console.warn('Error registrando log de actividad:', logErr);
-      }
-
-      // 6. If user logged in, add fidelity points (e.g. 1 point per $1000 spent)
-      if (currentUser && perfilId) {
-        try {
-          const pointsEarned = Math.floor(grandTotal / 1000);
-          if (pointsEarned > 0) {
-            const currentPoints = currentUser.puntos_fidelidad ?? 0;
-            await this.supabase.client
-              .from('perfiles')
-              .update({ puntos_fidelidad: currentPoints + pointsEarned })
-              .eq('id', perfilId);
-          }
-        } catch (ptsErr) {
-          console.warn('Error sumando puntos de fidelidad:', ptsErr);
-        }
       }
 
       // Build Result
