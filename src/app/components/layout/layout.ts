@@ -37,6 +37,9 @@ export class Layout {
     if (url.includes('busqueda') || url.includes('buscar') || url.includes('search')) {
       return 'Búsqueda de Películas';
     }
+    if (url.includes('perfil') || url.includes('profile')) {
+      return 'Mi Perfil';
+    }
     return 'Cartelera y Funciones de CineIV';
   });
 
@@ -62,12 +65,10 @@ export class Layout {
 
   goToProfile(): void {
     const user = this.authService.currentUser();
-    if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
-      this.router.navigate(['/dashboard']);
+    if (user && user.rol === 'cliente') {
+      this.router.navigate(['/perfil']);
     } else if (!user) {
       this.router.navigate(['/login']);
-    } else {
-      this.router.navigate(['/']);
     }
   }
 }

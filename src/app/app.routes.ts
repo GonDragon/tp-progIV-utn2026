@@ -4,7 +4,8 @@ import { Dashboard } from './pages/dashboard/dashboard';
 import { Login } from './pages/login/login';
 import { Registro } from './pages/registro/registro';
 import { Busqueda } from './pages/busqueda/busqueda';
-import { dashboardGuard, loginGuard, principalGuard, registerGuard } from './guards/auth-guard';
+import { Perfil } from './pages/perfil/perfil';
+import { dashboardGuard, loginGuard, principalGuard, registerGuard, perfilGuard } from './guards/auth-guard';
 
 export const routes: Routes = [
   {
@@ -24,6 +25,15 @@ export const routes: Routes = [
   {
     path: 'search',
     redirectTo: 'busqueda'
+  },
+  {
+    path: 'perfil',
+    component: Perfil,
+    canActivate: [perfilGuard]
+  },
+  {
+    path: 'profile',
+    redirectTo: 'perfil'
   },
   {
     path: 'dashboard',

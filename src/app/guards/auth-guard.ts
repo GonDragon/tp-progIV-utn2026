@@ -66,3 +66,23 @@ export const principalGuard: CanActivateFn = (route, state) => {
 
   return true;
 };
+
+export const perfilGuard: CanActivateFn = (route, state) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (!authService.isAuthenticated()) {
+    return router.createUrlTree(['/login']);
+  }
+
+  const user = authService.currentUser();
+  if (user && user.rol === 'cliente') {
+    return true;
+  }
+
+  if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+    return router.createUrlTree(['/dashboard']);
+  }
+
+  return router.createUrlTree(['/']);
+};
