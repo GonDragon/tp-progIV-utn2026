@@ -188,6 +188,11 @@ export class ProfileService {
           continue;
         }
 
+        const isUsed = (row.estado_qr || '').toLowerCase() !== 'activo';
+        if (isUsed) {
+          continue;
+        }
+
         const funcion = Array.isArray(row.funciones) ? row.funciones[0] : row.funciones;
         const pelicula = funcion?.peliculas
           ? (Array.isArray(funcion.peliculas) ? funcion.peliculas[0] : funcion.peliculas)
@@ -196,6 +201,20 @@ export class ProfileService {
           ? (Array.isArray(funcion.salas) ? funcion.salas[0] : funcion.salas)
           : null;
         const butaca = Array.isArray(row.butacas) ? row.butacas[0] : row.butacas;
+
+        // Si la función ya terminó, no debe mostrarse el boleto activo
+        if (funcion?.fecha_hora_inicio) {
+          const startTime = new Date(funcion.fecha_hora_inicio).getTime();
+          if (!isNaN(startTime)) {
+            const durationMinutes = Number(pelicula?.duracion_minutos) || 120;
+            const endTime = startTime + durationMinutes * 60 * 1000;
+            const now = Date.now();
+
+            if (now >= endTime) {
+              continue;
+            }
+          }
+        }
 
         const candyItems: Array<{ nombre: string; cantidad: number; precio?: number }> = [];
         if (transaccion?.transacciones_candy && Array.isArray(transaccion.transacciones_candy)) {
