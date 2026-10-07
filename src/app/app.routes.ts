@@ -3,6 +3,7 @@ import { Principal } from './pages/principal/principal';
 import { Dashboard } from './pages/dashboard/dashboard';
 import { Login } from './pages/login/login';
 import { Registro } from './pages/registro/registro';
+import { Busqueda } from './pages/busqueda/busqueda';
 import { dashboardGuard, loginGuard, principalGuard, registerGuard } from './guards/auth-guard';
 
 export const routes: Routes = [
@@ -10,6 +11,19 @@ export const routes: Routes = [
     path: '',
     component: Principal,
     canActivate: [principalGuard]
+  },
+  {
+    path: 'busqueda',
+    component: Busqueda,
+    canActivate: [principalGuard]
+  },
+  {
+    path: 'buscar',
+    redirectTo: 'busqueda'
+  },
+  {
+    path: 'search',
+    redirectTo: 'busqueda'
   },
   {
     path: 'dashboard',

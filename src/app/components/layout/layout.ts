@@ -34,6 +34,9 @@ export class Layout {
     if (url.includes('registro') || url.includes('register')) {
       return 'Registro de Cliente';
     }
+    if (url.includes('busqueda') || url.includes('buscar') || url.includes('search')) {
+      return 'Búsqueda de Películas';
+    }
     return 'Cartelera y Funciones de CineIV';
   });
 
@@ -54,12 +57,7 @@ export class Layout {
   }
 
   goToSearch(): void {
-    this.router.navigate(['/']).then(() => {
-      const searchInput = document.querySelector('input[type="text"]') as HTMLElement;
-      if (searchInput) {
-        searchInput.focus();
-      }
-    });
+    this.router.navigate(['/busqueda']);
   }
 
   goToProfile(): void {

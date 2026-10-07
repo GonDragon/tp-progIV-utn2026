@@ -6,19 +6,9 @@
     (movieSelected)="onMovieSelected($event)"
   />
 
-  <!-- 2. Movie Search & Multi-Genre Filter -->
-  <app-movie-filter
-    [genres]="movieService.allGenres"
-    [selectedGenres]="movieService.selectedGenres()"
-    [searchQuery]="movieService.searchQuery()"
-    (searchChange)="onSearchChange($event)"
-    (genreToggled)="onGenreToggled($event)"
-    (clearFilters)="onClearFilters()"
-  />
-
-  <!-- 3. Available Movies Billboard Section -->
+  <!-- 2. Available Movies Billboard Section (Only 3 movies and link 'Ver más') -->
   <section class="w-full">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between mb-4 mt-8">
       <div class="flex items-center gap-2">
         <span class="p-2 rounded-lg bg-blue-500/10 text-blue-400">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,48 +18,60 @@
         <div>
           <h2 class="text-xl md:text-2xl font-bold text-white tracking-wide flex items-center gap-2">
             Cartelera
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              {{ movieService.filteredMovies().length }} disponibles
-            </span>
           </h2>
           <p class="text-xs text-gray-400">Selecciona una película para ver funciones y horarios completos</p>
         </div>
       </div>
+
+      <!-- Link "Ver más" que te manda a la pantalla de búsqueda -->
+      <a
+        routerLink="/busqueda"
+        class="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#D4AF37] hover:text-[#f3da87] transition-colors cursor-pointer bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 px-3.5 py-2 rounded-xl border border-[#D4AF37]/30 shadow-sm">
+        <span>Ver más</span>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </a>
     </div>
 
-    <!-- Movies List -->
-    @if (movieService.filteredMovies().length > 0) {
+    <!-- Movies List (Only 3 movies) -->
+    @if (movieService.movies().length > 0) {
       <div class="space-y-4">
-        @for (movie of movieService.filteredMovies(); track movie.id) {
+        @for (movie of movieService.movies().slice(0, 3); track movie.id) {
           <app-movie-card
             [movie]="movie"
             (movieSelected)="onMovieSelected($event)"
           />
         }
       </div>
+
+      <div class="pt-4 text-center">
+        <a
+          routerLink="/busqueda"
+          class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-[#D4AF37] hover:text-[#f3da87] border border-[#D4AF37]/40 font-semibold text-sm transition-all shadow-md cursor-pointer">
+          <span>Ver más películas en cartelera</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+      </div>
     } @else {
-      <!-- Empty state when no movies match filter -->
+      <!-- Empty state when no movies -->
       <div class="flex flex-col items-center justify-center py-16 px-4 bg-neutral-800/40 rounded-2xl border border-neutral-700/60 text-center">
         <div class="p-4 rounded-full bg-neutral-800 text-gray-400 mb-3">
           <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h3 class="text-lg font-bold text-white mb-1">No se encontraron películas</h3>
-        <p class="text-sm text-gray-400 max-w-md mb-4">
-          No hay resultados para la búsqueda o los géneros seleccionados. Prueba cambiando los filtros.
+        <h3 class="text-lg font-bold text-white mb-1">No hay películas en cartelera</h3>
+        <p class="text-sm text-gray-400 max-w-md">
+          Próximamente agregaremos nuevas películas a la cartelera.
         </p>
-        <button
-          type="button"
-          (click)="onClearFilters()"
-          class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-bold text-xs rounded-xl shadow cursor-pointer">
-          Restablecer todos los filtros
-        </button>
       </div>
     }
   </section>
 
-  <!-- 4. "Próximamente" Section (Upcoming releases with alert toggles) -->
+  <!-- 3. "Próximamente" Section (Upcoming releases with alert toggles) -->
   <app-upcoming-movies
     [upcomingMovies]="movieService.upcomingMovies()"
     (alertToggled)="onToggleUpcomingAlert($event)"

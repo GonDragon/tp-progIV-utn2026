@@ -4,6 +4,14 @@ import { SupabaseService } from './supabase';
 import { AuditService } from './audit.service';
 import { AuthService } from './auth';
 
+export interface PaginatedMoviesResult {
+  movies: Movie[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -257,59 +265,7 @@ export class MovieService {
           }
         }
 
-        const mappedMovies: Movie[] = filteredRows.map((row: any) => {
-          const genres: string[] = (row.peliculas_generos || [])
-            .map((pg: any) => pg.generos?.nombre)
-            .filter((name: string | undefined): name is string => !!name);
-
-          const schedules: Schedule[] = (row.funciones || []).map((f: any) => {
-            let timeStr = '16:00';
-            if (f.fecha_hora_inicio) {
-              const d = new Date(f.fecha_hora_inicio);
-              if (!isNaN(d.getTime())) {
-                const hh = String(d.getHours()).padStart(2, '0');
-                const mm = String(d.getMinutes()).padStart(2, '0');
-                timeStr = `${hh}:${mm}`;
-              }
-            }
-            return {
-              id: String(f.id),
-              time: timeStr,
-              format: f.formato || '2D',
-              language: f.idioma || 'Castellano',
-              room: f.salas?.nombre || `Sala ${f.sala_id}`,
-              isPresale: !!f.en_preventa,
-              basePrice: Number(f.precio_base) || 5500,
-              presalePrice: f.precio_preventa != null ? Number(f.precio_preventa) : undefined,
-              salaId: f.sala_id,
-              fechaHoraInicio: f.fecha_hora_inicio
-            };
-          });
-
-          const ratings: number[] = (row.resenas || [])
-            .map((r: any) => Number(r.calificacion))
-            .filter((c: number) => !isNaN(c));
-          const ratingAvg = ratings.length > 0
-            ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
-            : 5.0;
-
-          const soldCount = ticketsSoldByMovie.get(row.id) || 0;
-
-          return {
-            id: String(row.id),
-            title: row.nombre,
-            synopsis: row.sinopsis || 'Sin sinopsis disponible.',
-            duration: Number(row.duracion_minutos) || 120,
-            imageUrl: row.imagen_url || undefined,
-            ageRestriction: (row.restriccion_edad as any) || 'ATP',
-            genres: genres.length > 0 ? genres : ['Acción'],
-            rating: ratingAvg,
-            reviewsCount: ratings.length > 0 ? ratings.length : 0,
-            ticketsSold: soldCount,
-            isVisibleOnHome: true,
-            schedules
-          };
-        });
+        const mappedMovies: Movie[] = filteredRows.map((row: any) => this.mapMovieRow(row, ticketsSoldByMovie));
 
         this._movies.set(mappedMovies);
       } else {
@@ -319,6 +275,227 @@ export class MovieService {
       console.warn('Error procesando películas de Supabase:', err);
     } finally {
       this._isLoading.set(false);
+    }
+  }
+
+  private mapMovieRow(row: any, ticketsSoldByMovie: Map<number, number>): Movie {
+    const genres: string[] = (row.peliculas_generos || [])
+      .map((pg: any) => pg.generos?.nombre)
+      .filter((name: string | undefined): name is string => !!name);
+
+    const schedules: Schedule[] = (row.funciones || []).map((f: any) => {
+      let timeStr = '16:00';
+      if (f.fecha_hora_inicio) {
+        const d = new Date(f.fecha_hora_inicio);
+        if (!isNaN(d.getTime())) {
+          const hh = String(d.getHours()).padStart(2, '0');
+          const mm = String(d.getMinutes()).padStart(2, '0');
+          timeStr = `${hh}:${mm}`;
+        }
+      }
+      return {
+        id: String(f.id),
+        time: timeStr,
+        format: f.formato || '2D',
+        language: f.idioma || 'Castellano',
+        room: f.salas?.nombre || `Sala ${f.sala_id}`,
+        isPresale: !!f.en_preventa,
+        basePrice: Number(f.precio_base) || 5500,
+        presalePrice: f.precio_preventa != null ? Number(f.precio_preventa) : undefined,
+        salaId: f.sala_id,
+        fechaHoraInicio: f.fecha_hora_inicio
+      };
+    });
+
+    const ratings: number[] = (row.resenas || [])
+      .map((r: any) => Number(r.calificacion))
+      .filter((c: number) => !isNaN(c));
+    const ratingAvg = ratings.length > 0
+      ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
+      : 5.0;
+
+    const soldCount = ticketsSoldByMovie.get(row.id) || 0;
+
+    return {
+      id: String(row.id),
+      title: row.nombre,
+      synopsis: row.sinopsis || 'Sin sinopsis disponible.',
+      duration: Number(row.duracion_minutos) || 120,
+      imageUrl: row.imagen_url || undefined,
+      ageRestriction: (row.restriccion_edad as any) || 'ATP',
+      genres: genres.length > 0 ? genres : ['Acción'],
+      rating: ratingAvg,
+      reviewsCount: ratings.length > 0 ? ratings.length : 0,
+      ticketsSold: soldCount,
+      isVisibleOnHome: true,
+      schedules
+    };
+  }
+
+  async getPaginatedMovies(options: {
+    page?: number;
+    pageSize?: number;
+    searchQuery?: string;
+    genres?: string[];
+  } = {}): Promise<PaginatedMoviesResult> {
+    const page = Math.max(1, options.page || 1);
+    const pageSize = Math.max(1, options.pageSize || 5);
+    const searchQuery = (options.searchQuery || '').trim();
+    const genres = options.genres || [];
+
+    try {
+      // 1. Si hay géneros seleccionados, filtrar IDs de películas correspondientes
+      let matchingMovieIds: number[] | null = null;
+      if (genres.length > 0) {
+        const { data: pgData, error: pgError } = await this.supabaseService.client
+          .from('peliculas_generos')
+          .select('pelicula_id, generos!inner(nombre)')
+          .in('generos.nombre', genres);
+
+        if (pgError) {
+          console.warn('Error al consultar géneros para paginación:', pgError);
+        }
+
+        if (pgData && pgData.length > 0) {
+          matchingMovieIds = [...new Set(pgData.map((pg: any) => pg.pelicula_id))];
+        } else {
+          return {
+            movies: [],
+            totalCount: 0,
+            page,
+            pageSize,
+            totalPages: 0
+          };
+        }
+      }
+
+      // 2. Consulta con Lazy Loading a Supabase con paginación
+      let query = this.supabaseService.client
+        .from('peliculas')
+        .select(`
+          id,
+          nombre,
+          sinopsis,
+          duracion_minutos,
+          imagen_url,
+          restriccion_edad,
+          peliculas_generos (
+            generos (
+              id,
+              nombre
+            )
+          ),
+          funciones (
+            id,
+            pelicula_id,
+            sala_id,
+            fecha_hora_inicio,
+            formato,
+            idioma,
+            precio_base,
+            en_preventa,
+            precio_preventa,
+            salas (
+              id,
+              nombre
+            )
+          ),
+          resenas (
+            calificacion
+          )
+        `, { count: 'exact' });
+
+      if (matchingMovieIds !== null) {
+        query = query.in('id', matchingMovieIds);
+      }
+
+      if (searchQuery) {
+        query = query.or(`nombre.ilike.%${searchQuery}%,sinopsis.ilike.%${searchQuery}%`);
+      }
+
+      // Filtro de edad para cliente
+      const currentUser = this.authService.currentUser();
+      if (currentUser && currentUser.rol === 'cliente' && currentUser.fecha_nacimiento) {
+        const age = this.calculateUserAge(currentUser.fecha_nacimiento);
+        if (age !== null) {
+          if (age < 13) {
+            query = query.not('restriccion_edad', 'ilike', '%13%').not('restriccion_edad', 'ilike', '%18%');
+          } else if (age < 18) {
+            query = query.not('restriccion_edad', 'ilike', '%18%');
+          }
+        }
+      }
+
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, count, error } = await query
+        .order('id', { ascending: false })
+        .range(from, to);
+
+      if (error) {
+        console.warn('Error al obtener películas paginadas:', error);
+        return {
+          movies: [],
+          totalCount: 0,
+          page,
+          pageSize,
+          totalPages: 0
+        };
+      }
+
+      const totalCount = count ?? 0;
+      const totalPages = Math.ceil(totalCount / pageSize);
+
+      if (!data || data.length === 0) {
+        return {
+          movies: [],
+          totalCount,
+          page,
+          pageSize,
+          totalPages
+        };
+      }
+
+      // Obtener estadísticas de tickets únicamente para las películas de esta página
+      const movieIds = data.map((r: any) => r.id);
+      const ticketsSoldByMovie = new Map<number, number>();
+      try {
+        const { data: ticketsData } = await this.supabaseService.client
+          .from('entradas_tickets')
+          .select('id, funcion_id, funciones!inner(pelicula_id)')
+          .in('funciones.pelicula_id', movieIds);
+
+        if (ticketsData) {
+          for (const item of ticketsData as any[]) {
+            const mId = item.funciones?.pelicula_id;
+            if (mId != null) {
+              ticketsSoldByMovie.set(mId, (ticketsSoldByMovie.get(mId) || 0) + 1);
+            }
+          }
+        }
+      } catch (tErr) {
+        console.warn('Error al obtener conteo de tickets para películas paginadas:', tErr);
+      }
+
+      const movies = data.map((row: any) => this.mapMovieRow(row, ticketsSoldByMovie));
+
+      return {
+        movies,
+        totalCount,
+        page,
+        pageSize,
+        totalPages
+      };
+    } catch (err) {
+      console.warn('Error in getPaginatedMovies:', err);
+      return {
+        movies: [],
+        totalCount: 0,
+        page,
+        pageSize,
+        totalPages: 0
+      };
     }
   }
 

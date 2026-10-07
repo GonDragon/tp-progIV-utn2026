@@ -1,9 +1,8 @@
 import { Component, inject, effect, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth';
 import { MovieService } from '../../services/movie.service';
 import { HighlightedMovies } from '../../components/highlighted-movies/highlighted-movies';
-import { MovieFilter } from '../../components/movie-filter/movie-filter';
 import { MovieCard } from '../../components/movie-card/movie-card';
 import { UpcomingMovies } from '../../components/upcoming-movies/upcoming-movies';
 import { MovieDetailModal } from '../../components/movie-detail-modal/movie-detail-modal';
@@ -15,8 +14,8 @@ import { CompletedPurchaseResult } from '../../models/purchase';
   selector: 'app-principal',
   standalone: true,
   imports: [
+    RouterLink,
     HighlightedMovies,
-    MovieFilter,
     MovieCard,
     UpcomingMovies,
     MovieDetailModal,
@@ -51,19 +50,6 @@ export class Principal {
     this.selectedMovie.set(null);
   }
 
-  onSearchChange(query: string): void {
-    this.movieService.setSearchQuery(query);
-  }
-
-  onGenreToggled(genre: string): void {
-    this.movieService.toggleGenre(genre);
-  }
-
-  onClearFilters(): void {
-    this.movieService.setSearchQuery('');
-    this.movieService.clearGenreFilters();
-  }
-
   onToggleUpcomingAlert(movieId: string): void {
     this.movieService.toggleUpcomingAlert(movieId);
   }
@@ -83,5 +69,9 @@ export class Principal {
   onPurchaseCompleted(result: CompletedPurchaseResult): void {
     // Refresh movie data to update tickets sold and top selling stats from Supabase
     this.movieService.loadMovies();
+  }
+
+  goToSearch(): void {
+    this.router.navigate(['/busqueda']);
   }
 }

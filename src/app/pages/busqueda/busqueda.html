@@ -1,0 +1,155 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+  <!-- Header Section -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-800 pb-4">
+    <div class="flex items-center gap-3">
+      <div class="p-2.5 rounded-xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-xl sm:text-2xl font-bold text-white tracking-wide">
+          Búsqueda de Películas
+        </h1>
+        <p class="text-xs text-gray-400">Encuentra tus películas favoritas por título, descripción o género</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Multi-Genre Filter Component -->
+  <app-movie-filter
+    [genres]="movieService.allGenres"
+    [selectedGenres]="selectedGenres()"
+    [searchQuery]="searchQuery()"
+    (searchChange)="onSearchChange($event)"
+    (genreToggled)="onGenreToggled($event)"
+    (clearFilters)="onClearFilters()"
+  />
+
+  <!-- Search Results Section -->
+  <section class="w-full space-y-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <h2 class="text-lg md:text-xl font-bold text-white tracking-wide flex items-center gap-2">
+          Resultados
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/30">
+            {{ totalCount() }} película{{ totalCount() === 1 ? '' : 's' }}
+          </span>
+        </h2>
+      </div>
+
+      @if (totalPages() > 1) {
+        <span class="text-xs text-gray-400">
+          Página <strong class="text-white">{{ currentPage() }}</strong> de <strong class="text-white">{{ totalPages() }}</strong>
+        </span>
+      }
+    </div>
+
+    <!-- Loading State -->
+    @if (isLoading()) {
+      <div class="space-y-4 py-8">
+        <div class="flex flex-col items-center justify-center gap-3 text-[#D4AF37]">
+          <svg class="w-10 h-10 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span class="text-sm font-medium text-gray-300">Cargando películas...</span>
+        </div>
+      </div>
+    } @else if (movies().length > 0) {
+      <!-- Movies List (5 per page) -->
+      <div class="space-y-4">
+        @for (movie of movies(); track movie.id) {
+          <app-movie-card
+            [movie]="movie"
+            (movieSelected)="onMovieSelected($event)"
+          />
+        }
+      </div>
+
+      <!-- Pagination Controls -->
+      @if (totalPages() > 1) {
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 pb-4 border-t border-neutral-800">
+          <p class="text-xs text-gray-400 order-2 sm:order-1">
+            Mostrando {{ (currentPage() - 1) * pageSize + 1 }} - {{ (currentPage() - 1) * pageSize + movies().length }} de {{ totalCount() }} películas
+          </p>
+
+          <div class="flex items-center gap-1 sm:gap-2 order-1 sm:order-2">
+            <!-- Botón Anterior -->
+            <button
+              type="button"
+              (click)="goToPage(currentPage() - 1)"
+              [disabled]="currentPage() === 1 || isLoading()"
+              class="px-3 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 text-xs font-medium text-gray-300 hover:bg-neutral-700 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              <span>Anterior</span>
+            </button>
+
+            <!-- Números de Página -->
+            @for (page of getPageNumbers(); track page) {
+              <button
+                type="button"
+                (click)="goToPage(page)"
+                [disabled]="isLoading()"
+                [class]="page === currentPage()
+                  ? 'w-8 h-8 rounded-lg bg-[#D4AF37] text-neutral-950 font-bold text-xs flex items-center justify-center shadow-md'
+                  : 'w-8 h-8 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white text-xs font-medium flex items-center justify-center transition-all cursor-pointer'">
+                {{ page }}
+              </button>
+            }
+
+            <!-- Botón Siguiente -->
+            <button
+              type="button"
+              (click)="goToPage(currentPage() + 1)"
+              [disabled]="currentPage() >= totalPages() || isLoading()"
+              class="px-3 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 text-xs font-medium text-gray-300 hover:bg-neutral-700 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1 cursor-pointer">
+              <span>Siguiente</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      }
+    } @else {
+      <!-- Empty State -->
+      <div class="flex flex-col items-center justify-center py-16 px-4 bg-neutral-800/40 rounded-2xl border border-neutral-700/60 text-center">
+        <div class="p-4 rounded-full bg-neutral-800 text-gray-400 mb-3">
+          <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-1">No se encontraron películas</h3>
+        <p class="text-sm text-gray-400 max-w-md mb-4">
+          No hay resultados para la búsqueda o los filtros seleccionados. Prueba con otros términos o restablece los filtros.
+        </p>
+        <button
+          type="button"
+          (click)="onClearFilters()"
+          class="px-4 py-2 bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-bold text-xs rounded-xl shadow cursor-pointer">
+          Restablecer todos los filtros
+        </button>
+      </div>
+    }
+  </section>
+
+</div>
+
+<!-- Movie Details & Schedules Modal Panel -->
+<app-movie-detail-modal
+  [movie]="selectedMovie()"
+  (close)="onCloseMovieModal()"
+  (scheduleSelected)="onScheduleSelected($event)"
+/>
+
+<!-- Ticket Purchase Flow Wizard Modal -->
+<app-purchase-flow
+  [movie]="purchaseMovie()"
+  [schedule]="purchaseSchedule()"
+  (close)="onClosePurchaseFlow()"
+  (purchaseCompleted)="onPurchaseCompleted($event)"
+/>
