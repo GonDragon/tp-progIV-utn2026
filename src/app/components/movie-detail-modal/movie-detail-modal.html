@@ -59,7 +59,7 @@
 
           <!-- Metadata & Full Synopsis -->
           <div class="flex-1 space-y-3">
-            <!-- Badges Bar: Genres, Duration, Rating -->
+            <!-- Badges Bar: Genres, Duration, Rating, Reviews Button -->
             <div class="flex flex-wrap items-center gap-2">
               @for (genre of m.genres; track genre) {
                 <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-neutral-900 text-gray-200 border border-neutral-700">
@@ -78,6 +78,17 @@
                 <span class="text-xs font-bold text-white">{{ m.rating.toFixed(1) }}</span>
                 <span class="text-[10px] text-gray-400">({{ m.reviewsCount }} reseñas)</span>
               </div>
+
+              <!-- Botón Ver Reseñas -->
+              <button
+                type="button"
+                (click)="openReviews()"
+                class="text-xs font-bold px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500/20 to-[#D4AF37]/30 hover:from-amber-500/30 hover:to-[#D4AF37]/40 text-[#D4AF37] border border-[#D4AF37]/40 flex items-center gap-1.5 cursor-pointer transition-all shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <span>Ver reseñas</span>
+              </button>
             </div>
 
             <!-- Full Synopsis -->
@@ -90,22 +101,156 @@
           </div>
         </div>
 
-        <!-- Section: Próximas Funciones y Horarios en Formato Calendario -->
-        <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-              <span class="text-[#D4AF37]">📅</span> Próximas Funciones y Horarios
-            </h3>
-            <span class="text-xs text-gray-400">
-              {{ m.schedules?.length || 0 }} funciones disponibles
-            </span>
-          </div>
+        <!-- Section Navigation Tabs -->
+        <div class="flex items-center gap-2 border-b border-neutral-800 pb-2">
+          <button
+            type="button"
+            (click)="showShowtimes()"
+            class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2"
+            [class.bg-[#D4AF37]]="!showReviews()"
+            [class.text-neutral-950]="!showReviews()"
+            [class.bg-neutral-800]="showReviews()"
+            [class.text-gray-300]="showReviews()">
+            <span>📅</span>
+            <span>Funciones y Horarios</span>
+          </button>
 
-          <app-movie-schedule-calendar
-            [movie]="m"
-            [mode]="'client'"
-            (scheduleSelected)="onSelectSchedule($event.schedule)" />
+          <button
+            type="button"
+            (click)="openReviews()"
+            class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-2"
+            [class.bg-[#D4AF37]]="showReviews()"
+            [class.text-neutral-950]="showReviews()"
+            [class.bg-neutral-800]="!showReviews()"
+            [class.text-gray-300]="!showReviews()">
+            <span>💬</span>
+            <span>Ver reseñas</span>
+            @if (reviews().length > 0) {
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                    [class.bg-neutral-900]="showReviews()"
+                    [class.text-[#D4AF37]]="showReviews()"
+                    [class.bg-neutral-700]="!showReviews()"
+                    [class.text-gray-200]="!showReviews()">
+                {{ reviews().length }}
+              </span>
+            }
+          </button>
         </div>
+
+        @if (!showReviews()) {
+          <!-- Section: Próximas Funciones y Horarios en Formato Calendario -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                <span class="text-[#D4AF37]">📅</span> Próximas Funciones y Horarios
+              </h3>
+              <span class="text-xs text-gray-400">
+                {{ m.schedules?.length || 0 }} funciones disponibles
+              </span>
+            </div>
+
+            <app-movie-schedule-calendar
+              [movie]="m"
+              [mode]="'client'"
+              (scheduleSelected)="onSelectSchedule($event.schedule)" />
+          </div>
+        } @else {
+          <!-- Section: Reseñas de Usuarios Paginadas de a 10 -->
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                <span class="text-amber-400">★</span> Reseñas de Espectadores
+              </h3>
+              <span class="text-xs text-gray-400">
+                {{ reviews().length }} {{ reviews().length === 1 ? 'reseña' : 'reseñas' }} registradas
+              </span>
+            </div>
+
+            @if (isLoadingReviews()) {
+              <div class="flex flex-col items-center justify-center py-12 text-[#D4AF37] space-y-3">
+                <div class="w-8 h-8 border-3 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-xs text-gray-400">Cargando reseñas...</p>
+              </div>
+            } @else if (reviews().length === 0) {
+              <div class="flex flex-col items-center justify-center py-12 px-4 bg-neutral-800/40 rounded-2xl border border-neutral-700/50 text-center space-y-2">
+                <div class="p-3 rounded-full bg-neutral-800 text-amber-400">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <h4 class="text-sm font-bold text-white">No hay reseñas todavía</h4>
+                <p class="text-xs text-gray-400 max-w-sm">
+                  Esta película aún no tiene reseñas de espectadores. ¡Las opiniones de los clientes aparecerán aquí!
+                </p>
+              </div>
+            } @else {
+              <!-- Reviews List (Paginated, 10 items max per page) -->
+              <div class="space-y-3">
+                @for (rev of paginatedReviews(); track rev.id) {
+                  <div class="p-4 bg-neutral-800/60 rounded-2xl border border-neutral-700/60 space-y-2">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2.5">
+                        <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-600 to-[#D4AF37] text-neutral-950 font-black text-xs flex items-center justify-center">
+                          {{ (rev.perfiles?.nombre?.charAt(0) || 'U').toUpperCase() }}
+                        </div>
+                        <span class="text-xs font-bold text-white">
+                          {{ rev.perfiles ? (rev.perfiles.nombre + ' ' + rev.perfiles.apellido) : 'Espectador' }}
+                        </span>
+                      </div>
+
+                      <div class="flex items-center gap-1.5">
+                        <div class="flex text-amber-400 text-xs">
+                          @for (s of [1, 2, 3, 4, 5]; track s) {
+                            <span [class.text-neutral-600]="s > rev.calificacion">★</span>
+                          }
+                        </div>
+                        @if (rev.fecha_creacion) {
+                          <span class="text-[11px] text-gray-400 ml-1">
+                            • {{ formatDate(rev.fecha_creacion) }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    <p class="text-xs sm:text-sm text-gray-200 leading-relaxed pl-9">
+                      {{ rev.comentario }}
+                    </p>
+                  </div>
+                }
+              </div>
+
+              <!-- Pagination Controls (10 reseñas por página) -->
+              @if (totalPages() > 1) {
+                <div class="flex items-center justify-between pt-3 border-t border-neutral-800">
+                  <button
+                    type="button"
+                    (click)="prevPage()"
+                    [disabled]="currentPage() === 1"
+                    class="px-3.5 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
+                    <span>←</span>
+                    <span>Anterior</span>
+                  </button>
+
+                  <div class="flex items-center gap-1.5 text-xs">
+                    <span class="text-gray-400">Página</span>
+                    <span class="font-bold text-[#D4AF37]">{{ currentPage() }}</span>
+                    <span class="text-gray-400">de</span>
+                    <span class="font-bold text-white">{{ totalPages() }}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    (click)="nextPage()"
+                    [disabled]="currentPage() === totalPages()"
+                    class="px-3.5 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
+                    <span>Siguiente</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              }
+            }
+          </div>
+        }
 
       </div>
 

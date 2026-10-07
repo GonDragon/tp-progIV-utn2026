@@ -3,6 +3,7 @@ import { SupabaseService } from './supabase';
 import { AuthService } from './auth';
 import { PdfService } from './pdf.service';
 import { TicketService } from './ticket.service';
+import { ReviewService } from './review.service';
 import { UserProfileData, ActiveTicketItem, WatchedMovieItem } from '../models/profile';
 
 @Injectable({
@@ -13,6 +14,7 @@ export class ProfileService {
   private readonly authService = inject(AuthService);
   private readonly pdfService = inject(PdfService);
   private readonly ticketService = inject(TicketService);
+  private readonly reviewService = inject(ReviewService);
 
   private readonly _profile = signal<UserProfileData | null>(null);
   private readonly _activeTickets = signal<ActiveTicketItem[]>([]);
@@ -305,6 +307,8 @@ export class ProfileService {
 
   private async fetchWatchedMovies(userId: string): Promise<void> {
     try {
+      const reviewedMovieIds = await this.reviewService.getUserReviewedMovieIds(userId);
+
       const { data, error } = await this.supabase.client
         .from('entradas_tickets')
         .select(`
@@ -360,7 +364,8 @@ export class ProfileService {
             movieMap.set(pelicula.id, {
               id: pelicula.id,
               title: pelicula.nombre,
-              posterUrl: pelicula.imagen_url || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=60'
+              posterUrl: pelicula.imagen_url || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=60',
+              hasReview: reviewedMovieIds.has(pelicula.id)
             });
           }
         }
