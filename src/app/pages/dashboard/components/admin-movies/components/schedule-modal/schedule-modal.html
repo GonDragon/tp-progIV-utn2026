@@ -7,7 +7,7 @@
         <h3 class="text-lg font-bold text-white flex items-center gap-2">
           <span>⏰</span> Programar Función
         </h3>
-        @if (movie(); as m) {
+        @if (movie; as m) {
           <p class="text-xs text-amber-400 font-medium">{{ m.title }} ({{ m.duration }} min)</p>
         }
       </div>
@@ -65,7 +65,7 @@
           @if (singleDate && scheduleTime) {
             <div class="sm:col-span-2 text-xs text-amber-400/90 font-medium bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-lg flex items-center justify-between">
               <span>⏱️ Finalización calculada: <strong>{{ calculatedEndTime }} hs</strong></span>
-              <span class="text-[10px] text-gray-400">Duración: {{ movie()?.duration || 120 }} min</span>
+              <span class="text-[10px] text-gray-400">Duración: {{ movie?.duration || 120 }} min</span>
             </div>
           }
         </div>
@@ -295,16 +295,16 @@
       <button
         type="button"
         (click)="onCancel()"
-        [disabled]="isSaving()"
+        [disabled]="isSaving"
         class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-semibold rounded-xl cursor-pointer disabled:opacity-50">
         Cancelar
       </button>
       <button
         type="button"
         (click)="onConfirm()"
-        [disabled]="!hasSearchedRooms || isSaving() || roomAssignments.length === 0"
+        [disabled]="!hasSearchedRooms || isSaving || roomAssignments.length === 0"
         class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
-        @if (isSaving()) {
+        @if (isSaving) {
           <div class="w-4 h-4 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></div>
           <span>Guardando funciones...</span>
         } @else {

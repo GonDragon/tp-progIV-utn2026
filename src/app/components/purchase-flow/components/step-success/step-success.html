@@ -12,7 +12,7 @@
       Tu compra ha sido procesada y registrada en el sistema.
     </p>
     <div class="inline-block px-3 py-1 rounded-full bg-neutral-900 border border-neutral-700 text-xs font-mono text-[#D4AF37] font-bold">
-      Transacción #{{ result().transaccionId }} • {{ result().fechaCompra }}
+      Transacción #{{ result.transaccionId }} • {{ result.fechaCompra }}
     </div>
   </div>
 
@@ -23,7 +23,7 @@
     </h4>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      @for (ticket of result().tickets; track ticket.ticketId) {
+      @for (ticket of result.tickets; track ticket.ticketId) {
         <div class="bg-neutral-900 border border-neutral-700/80 rounded-2xl p-4 flex flex-col items-center justify-between text-center space-y-3 shadow-md">
           <div class="space-y-0.5">
             <span class="text-xs font-black text-[#D4AF37] uppercase tracking-wider">
@@ -58,25 +58,25 @@
   <div class="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-4 text-xs sm:text-sm text-left space-y-2">
     <div class="flex items-center justify-between text-gray-300">
       <span>Película:</span>
-      <strong class="text-white">{{ result().movie.title }}</strong>
+      <strong class="text-white">{{ result.movie.title }}</strong>
     </div>
     <div class="flex items-center justify-between text-gray-300">
       <span>Función & Sala:</span>
-      <span class="text-white">{{ result().schedule.time }} hs • {{ result().schedule.format }} • {{ result().schedule.room }}</span>
+      <span class="text-white">{{ result.schedule.time }} hs • {{ result.schedule.format }} • {{ result.schedule.room }}</span>
     </div>
     <div class="flex items-center justify-between text-gray-300">
       <span>Comprador:</span>
-      <span class="text-white">{{ result().customerName }} ({{ result().customerEmail }})</span>
+      <span class="text-white">{{ result.customerName }} ({{ result.customerEmail }})</span>
     </div>
-    @if (result().candyItems.length > 0) {
+    @if (result.candyItems.length > 0) {
       <div class="flex items-center justify-between text-gray-300">
         <span>Candy Bar:</span>
-        <span class="text-gray-200">{{ result().candyItems.length }} ítems agregados</span>
+        <span class="text-gray-200">{{ result.candyItems.length }} ítems agregados</span>
       </div>
     }
     <div class="flex items-center justify-between pt-2 border-t border-neutral-800 text-sm sm:text-base font-bold text-white">
       <span>Total Abonado:</span>
-      <span class="text-[#D4AF37] font-black">${{ result().montoTotal.toLocaleString('es-AR') }}</span>
+      <span class="text-[#D4AF37] font-black">${{ result.montoTotal.toLocaleString('es-AR') }}</span>
     </div>
   </div>
 

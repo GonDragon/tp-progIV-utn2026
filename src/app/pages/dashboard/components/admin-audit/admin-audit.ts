@@ -31,6 +31,8 @@ export class AdminAudit {
   readonly selectedAction = signal<string>('todos');
   readonly selectedRole = signal<string>('todos');
   readonly searchQuery = signal<string>('');
+  readonly startDate = signal<string>('');
+  readonly endDate = signal<string>('');
 
   // Modal state
   readonly isModalOpen = signal<boolean>(false);
@@ -39,6 +41,18 @@ export class AdminAudit {
   // Toast
   readonly toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
   private toastTimer: any = null;
+
+  readonly visiblePages = computed<number[]>(() => {
+    const current = this.auditService.currentPage();
+    const total = this.auditService.totalPages();
+    const pages: number[] = [];
+    const start = Math.max(1, current - 2);
+    const end = Math.min(total, current + 2);
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  });
 
   readonly filteredLogs = computed<AuditLogEntry[]>(() => {
     const logs = this.auditService.logs();
@@ -84,8 +98,53 @@ export class AdminAudit {
   }
 
   async reload(): Promise<void> {
-    await this.auditService.loadLogs();
+    await this.auditService.loadLogs(this.auditService.currentPage(), this.startDate(), this.endDate());
     this.showToast('Registros de auditoría sincronizados con Supabase.');
+  }
+
+  async onStartDateChange(date: string): Promise<void> {
+    this.startDate.set(date);
+    await this.auditService.loadLogs(1, date, this.endDate());
+  }
+
+  async onEndDateChange(date: string): Promise<void> {
+    this.endDate.set(date);
+    await this.auditService.loadLogs(1, this.startDate(), date);
+  }
+
+  async setPage(page: number): Promise<void> {
+    if (page < 1 || page > this.auditService.totalPages()) return;
+    await this.auditService.loadLogs(page, this.startDate(), this.endDate());
+  }
+
+  async handleDownloadCSV(): Promise<void> {
+    try {
+      this.showToast('Obteniendo registros para exportar...');
+      const logs = await this.auditService.fetchLogsForExport(this.startDate(), this.endDate());
+      if (logs.length === 0) {
+        this.showToast('No se encontraron registros en el rango de fechas seleccionado.', 'error');
+        return;
+      }
+      this.auditService.exportToCSV(logs);
+      this.showToast(`Se descargaron exitosamente ${logs.length} registros en formato CSV.`);
+    } catch (err: any) {
+      this.showToast('Error al descargar el archivo CSV.', 'error');
+    }
+  }
+
+  async handleDownloadXLSX(): Promise<void> {
+    try {
+      this.showToast('Obteniendo registros para exportar...');
+      const logs = await this.auditService.fetchLogsForExport(this.startDate(), this.endDate());
+      if (logs.length === 0) {
+        this.showToast('No se encontraron registros en el rango de fechas seleccionado.', 'error');
+        return;
+      }
+      this.auditService.exportToXLSX(logs);
+      this.showToast(`Se descargaron exitosamente ${logs.length} registros en formato XLSX.`);
+    } catch (err: any) {
+      this.showToast('Error al descargar el archivo XLSX.', 'error');
+    }
   }
 
   openManualLogModal(): void {
@@ -113,10 +172,13 @@ export class AdminAudit {
     }
   }
 
-  resetFilters(): void {
+  async resetFilters(): Promise<void> {
     this.selectedCategory.set('todos');
     this.selectedAction.set('todos');
     this.selectedRole.set('todos');
     this.searchQuery.set('');
+    this.startDate.set('');
+    this.endDate.set('');
+    await this.auditService.loadLogs(1, '', '');
   }
 }

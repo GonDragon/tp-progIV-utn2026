@@ -1,4 +1,4 @@
-import { Component, input, output, inject, computed, signal, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CandyService } from '../../../../services/candy.service';
 import { SelectedCandyItem } from '../../../../models/purchase';
@@ -13,20 +13,21 @@ import { CandyProduct, Combo } from '../../../../models/candy';
 export class StepCandy implements OnInit {
   readonly candyService = inject(CandyService);
 
-  readonly selectedItems = input.required<SelectedCandyItem[]>();
-  readonly itemsChange = output<SelectedCandyItem[]>();
-  readonly next = output<void>();
-  readonly back = output<void>();
+  @Input({ required: true }) selectedItems: SelectedCandyItem[] = [];
+
+  @Output() itemsChange = new EventEmitter<SelectedCandyItem[]>();
+  @Output() next = new EventEmitter<void>();
+  @Output() back = new EventEmitter<void>();
 
   readonly activeTab = signal<'combos' | 'productos'>('combos');
 
-  readonly totalCandyAmount = computed(() => {
-    return this.selectedItems().reduce((acc, curr) => acc + (curr.precio * curr.cantidad), 0);
-  });
+  get totalCandyAmount(): number {
+    return (this.selectedItems || []).reduce((acc, curr) => acc + (curr.precio * curr.cantidad), 0);
+  }
 
-  readonly totalItemsCount = computed(() => {
-    return this.selectedItems().reduce((acc, curr) => acc + curr.cantidad, 0);
-  });
+  get totalItemsCount(): number {
+    return (this.selectedItems || []).reduce((acc, curr) => acc + curr.cantidad, 0);
+  }
 
   async ngOnInit(): Promise<void> {
     if (this.candyService.products().length === 0 || this.candyService.combos().length === 0) {
@@ -35,12 +36,12 @@ export class StepCandy implements OnInit {
   }
 
   getQuantity(id: number, type: 'producto' | 'combo'): number {
-    const item = this.selectedItems().find(i => i.id === id && i.tipo === type);
+    const item = (this.selectedItems || []).find(i => i.id === id && i.tipo === type);
     return item ? item.cantidad : 0;
   }
 
   incrementProduct(product: CandyProduct): void {
-    const current = [...this.selectedItems()];
+    const current = [...(this.selectedItems || [])];
     const index = current.findIndex(i => i.id === product.id && i.tipo === 'producto');
 
     if (index >= 0) {
@@ -63,7 +64,7 @@ export class StepCandy implements OnInit {
   }
 
   decrementProduct(product: CandyProduct): void {
-    const current = [...this.selectedItems()];
+    const current = [...(this.selectedItems || [])];
     const index = current.findIndex(i => i.id === product.id && i.tipo === 'producto');
 
     if (index >= 0) {
@@ -80,7 +81,7 @@ export class StepCandy implements OnInit {
   }
 
   incrementCombo(combo: Combo): void {
-    const current = [...this.selectedItems()];
+    const current = [...(this.selectedItems || [])];
     const index = current.findIndex(i => i.id === combo.id && i.tipo === 'combo');
 
     if (index >= 0) {
@@ -102,7 +103,7 @@ export class StepCandy implements OnInit {
   }
 
   decrementCombo(combo: Combo): void {
-    const current = [...this.selectedItems()];
+    const current = [...(this.selectedItems || [])];
     const index = current.findIndex(i => i.id === combo.id && i.tipo === 'combo');
 
     if (index >= 0) {

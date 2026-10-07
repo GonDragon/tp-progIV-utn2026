@@ -1,17 +1,17 @@
-@if (isOpen()) {
+@if (isOpen) {
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
     <div class="bg-neutral-900 border border-neutral-700/80 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
 
       <!-- Modal Header -->
       <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
         <h3 class="text-lg font-bold text-white flex items-center gap-2">
-          <span>{{ product() ? '✏️' : '🍿' }}</span>
-          <span>{{ product() ? 'Editar Producto Candy' : 'Nuevo Producto Candy' }}</span>
+          <span>{{ product ? '✏️' : '🍿' }}</span>
+          <span>{{ product ? 'Editar Producto Candy' : 'Nuevo Producto Candy' }}</span>
         </h3>
         <button
           type="button"
           (click)="onClose()"
-          [disabled]="isSaving()"
+          [disabled]="isSaving"
           class="text-gray-400 hover:text-white cursor-pointer text-lg disabled:opacity-40">
           ✕
         </button>
@@ -38,7 +38,7 @@
             name="nombre"
             placeholder="Ej: Pochoclos Salados Grandes"
             required
-            [disabled]="isSaving()"
+            [disabled]="isSaving"
             class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37] placeholder-gray-500 disabled:opacity-50" />
         </div>
 
@@ -50,7 +50,7 @@
             [ngModel]="categoria()"
             (ngModelChange)="categoria.set($event)"
             name="categoria"
-            [disabled]="isSaving()"
+            [disabled]="isSaving"
             class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37] cursor-pointer disabled:opacity-50">
             @for (cat of categories; track cat) {
               <option [value]="cat">{{ cat }}</option>
@@ -72,7 +72,7 @@
               step="50"
               placeholder="0"
               required
-              [disabled]="isSaving()"
+              [disabled]="isSaving"
               class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37] placeholder-gray-500 disabled:opacity-50" />
           </div>
 
@@ -88,7 +88,7 @@
               min="0"
               step="50"
               placeholder="0"
-              [disabled]="isSaving()"
+              [disabled]="isSaving"
               class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37] placeholder-gray-500 disabled:opacity-50" />
           </div>
         </div>
@@ -98,20 +98,20 @@
           <button
             type="button"
             (click)="onClose()"
-            [disabled]="isSaving()"
+            [disabled]="isSaving"
             class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-bold rounded-xl cursor-pointer transition-colors disabled:opacity-50">
             Cancelar
           </button>
           <button
             type="submit"
-            [disabled]="isSaving() || !nombre().trim()"
+            [disabled]="isSaving || !nombre().trim()"
             class="px-5 py-2 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-bold rounded-xl shadow cursor-pointer transition-all disabled:opacity-50 flex items-center gap-1.5">
-            @if (isSaving()) {
+            @if (isSaving) {
               <span class="animate-spin text-sm">⏳</span>
               <span>Guardando...</span>
             } @else {
               <span>💾</span>
-              <span>{{ product() ? 'Actualizar Producto' : 'Guardar Producto' }}</span>
+              <span>{{ product ? 'Actualizar Producto' : 'Guardar Producto' }}</span>
             }
           </button>
         </div>

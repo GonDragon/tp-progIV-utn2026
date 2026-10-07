@@ -1,0 +1,8 @@
+<button
+  type="button"
+  (click)="onSeatClick()"
+  [disabled]="seat.isReserved"
+  [title]="seat.isReserved ? ('Butaca ' + seat.code + ' (Ocupada)') : ('Butaca ' + seat.code + ' (' + seat.tipo + ')')"
+  [class]="seatClass">
+  {{ seat.code }}
+</button>

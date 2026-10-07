@@ -1,9 +1,10 @@
-import { Component, input, output, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { Movie, Schedule } from '../../../../models/movie';
 import { Seat } from '../../../../models/seat';
 import { PurchaseService, SALA_ROWS_CONFIG } from '../../../../services/purchase.service';
+import { SeatComponent } from '../../../seat/seat';
 
 export interface RowViewData {
   fila: string;
@@ -18,21 +19,21 @@ export interface RowViewData {
 @Component({
   selector: 'app-step-seats',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SeatComponent],
   templateUrl: './step-seats.html',
   styleUrl: './step-seats.css'
 })
 export class StepSeats implements OnInit, OnDestroy {
   private readonly purchaseService = inject(PurchaseService);
 
-  readonly movie = input.required<Movie>();
-  readonly schedule = input.required<Schedule>();
-  readonly requiredQuantity = input.required<number>();
-  readonly selectedSeats = input.required<Seat[]>();
+  @Input({ required: true }) movie!: Movie;
+  @Input({ required: true }) schedule!: Schedule;
+  @Input({ required: true }) requiredQuantity!: number;
+  @Input({ required: true }) selectedSeats: Seat[] = [];
 
-  readonly seatToggled = output<Seat>();
-  readonly next = output<void>();
-  readonly back = output<void>();
+  @Output() seatToggled = new EventEmitter<Seat>();
+  @Output() next = new EventEmitter<void>();
+  @Output() back = new EventEmitter<void>();
 
   readonly allSeats = signal<Seat[]>([]);
   readonly reservedSeatIds = signal<Set<number>>(new Set());
@@ -100,14 +101,15 @@ export class StepSeats implements OnInit, OnDestroy {
     return rows;
   });
 
-  readonly isSelectionComplete = computed(() => {
-    return this.selectedSeats().length === this.requiredQuantity();
-  });
+  get isSelectionComplete(): boolean {
+    return (this.selectedSeats?.length || 0) === this.requiredQuantity;
+  }
 
   async ngOnInit(): Promise<void> {
     await this.loadSalaSeatsAndReservations();
 
-    const sched = this.schedule();
+    const sched = this.schedule;
+    if (!sched) return;
     const funcionId = Number(sched.id);
 
     // Suscripción a cambios en tiempo real vía Supabase Realtime
@@ -137,7 +139,7 @@ export class StepSeats implements OnInit, OnDestroy {
 
   async refreshReservations(): Promise<void> {
     try {
-      const sched = this.schedule();
+      const sched = this.schedule;
       if (!sched) return;
       const funcionId = Number(sched.id);
       const reserved = await this.purchaseService.getReservedSeatIds(funcionId);
@@ -149,7 +151,11 @@ export class StepSeats implements OnInit, OnDestroy {
 
   async loadSalaSeatsAndReservations(): Promise<void> {
     this.isLoadingSeats.set(true);
-    const sched = this.schedule();
+    const sched = this.schedule;
+    if (!sched) {
+      this.isLoadingSeats.set(false);
+      return;
+    }
     const salaId = sched.salaId || 1;
     const funcionId = Number(sched.id);
 
@@ -169,28 +175,7 @@ export class StepSeats implements OnInit, OnDestroy {
   }
 
   isSeatSelected(seat: Seat): boolean {
-    return this.selectedSeats().some(s => s.id === seat.id || (s.fila === seat.fila && s.columna === seat.columna));
-  }
-
-  getSeatClass(seat: Seat): string {
-    const isSelected = this.isSeatSelected(seat);
-    const classes = ['butaca'];
-
-    if (seat.tipo === 'Discapacidad') {
-      classes.push('butaca-accesible');
-    } else if (seat.tipo === 'VIP') {
-      classes.push('butaca-vip');
-    } else {
-      classes.push('butaca-normal');
-    }
-
-    if (seat.isReserved) {
-      classes.push('butaca-ocupada');
-    } else if (isSelected) {
-      classes.push('butaca-seleccionada');
-    }
-
-    return classes.join(' ');
+    return (this.selectedSeats || []).some(s => s.id === seat.id || (s.fila === seat.fila && s.columna === seat.columna));
   }
 
   onSelectSeat(seat: Seat): void {
@@ -199,7 +184,7 @@ export class StepSeats implements OnInit, OnDestroy {
   }
 
   onNext(): void {
-    if (this.isSelectionComplete()) {
+    if (this.isSelectionComplete) {
       this.next.emit();
     }
   }

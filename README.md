@@ -1,59 +1,85 @@
-# TpProgIVUtn2026
+# CineIV - Sistema Integral de Cine 🎬🍿
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.5.
+[![Angular](https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white)](https://angular.io/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 
-## Development server
+Proyecto final para la materia **Programación IV (UTN - 2026)**. Consiste en una aplicación web progresiva (PWA) completa para la gestión de un cine, incluyendo venta de entradas, candy bar, roles de empleado/administrador, y reportes financieros.
 
-To start a local development server, run:
+---
 
-```bash
-ng serve
-```
+## 🔗 Enlaces Importantes
+* **Aplicación Desplegada:** [https://prograiv.gondragon.com.ar/](https://prograiv.gondragon.com.ar/)
+* **Repositorio GitHub:** [https://github.com/GonDragon/tp-progIV-utn2026](https://github.com/GonDragon/tp-progIV-utn2026)
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+---
 
-## Code scaffolding
+## 🏛 Arquitectura del Proyecto
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+El sistema está construido bajo una arquitectura de **Frontend SPA (Single Page Application)** separada, utilizando un modelo de Backend-as-a-Service (BaaS).
 
-```bash
-ng generate component component-name
-```
+### Frontend (Cliente)
+* **Framework:** Angular 19+ (Standalone Components).
+* **Estilos:** CSS puro combinado con TailwindCSS para un diseño UI/UX responsivo y ágil.
+* **Navegación:** Enrutamiento modular estandarizado.
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+### Backend as a Service (BaaS)
+* **Plataforma:** Supabase.
+* **Base de Datos:** PostgreSQL (Estructura relacional para Funciones, Transacciones, Asientos y Fidelización).
+* **Autenticación:** Supabase Auth (Manejo de sesiones, JWT).
+* **Storage:** Almacenamiento de pósters y recursos estáticos.
 
-```bash
-ng generate --help
-```
+---
 
-## Building
+## 🛠 Decisiones Técnicas y Patrones de Diseño
 
-To build the project run:
+Para cumplir con los requerimientos técnicos y de negocio establecidos por los inversores y la cátedra, se tomaron las siguientes decisiones de implementación:
 
-```bash
-ng build
-```
+### 1. Lazy Loading y Optimización de Rutas
+Se implementó **Lazy Loading** (carga diferida) en el archivo de rutas principal (`app.routes.ts`) a través de la instrucción `loadComponent`. Esto evita que el código de los paneles administrativos o módulos pesados se descargue en el primer pintado (FCP), reduciendo drásticamente el tamaño del *bundle* inicial y mejorando el rendimiento para los clientes anónimos.
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+### 2. Sincronización en Tiempo Real (Supabase Realtime)
+Para el **Mapa de Selección de Asientos**, se configuró una suscripción de WebSockets (*Supabase Realtime*). Esto permite que el sistema detecte y bloquee visualmente las butacas que están siendo seleccionadas o compradas de manera simultánea por otros usuarios, evitando colisiones de transacciones.
 
-## Running unit tests
+### 3. PWA (Progressive Web App)
+El proyecto está configurado como PWA mediante `ngsw-config.json` y el `manifest.webmanifest`. Esto permite que la aplicación sea instalable en dispositivos móviles, mejore sus tiempos de carga mediante estrategias de caché (Service Workers) y ofrezca una experiencia visual nativa sin la barra del navegador.
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+### 4. Seguridad y Guardianes (Auth Guards)
+Se implementaron **Route Guards** (`canActivate`) personalizados para aislar el acceso a distintas rutas según los 4 roles del sistema:
+* **Anónimo:** Acceso a cartelera y proceso de compra.
+* **Autenticado (Cliente):** Acceso a "Mi Perfil" (Puntos, Historial, Cancelaciones a crédito).
+* **Empleado:** Acceso exclusivo a los componentes de Validación/Escáner QR (`qr-scanner`).
+* **Administrador:** Acceso a los dashboards, reportes exportables, ABM de películas y configuración de cupones.
 
-```bash
-ng test
-```
+### 5. Algoritmo de Asignación Automática de Salas
+En lugar de permitir que el administrador asigne salas manualmente con riesgo a colisión, la lógica de negocio se encarga de analizar los horarios solicitados. El algoritmo cruza la duración de la película con un **buffer obligatorio de 30 minutos por limpieza**, buscando un espacio disponible en la grilla de las salas existentes.
 
-## Running end-to-end tests
+### 6. Desacoplamiento (Smart & Dumb Components)
+Se siguió el principio de responsabilidad única. Pantallas como el Dashboard de Admin o el flujo de compra (`purchase-flow`) actúan como *Smart Components* (comunicación con servicios y DB), delegando el renderizado de la UI a *Dumb Components* (por ejemplo, `movie-card`, `seat`, `candy-product-card`) mediante decoradores `@Input()` y `@Output()`.
 
-For end-to-end (e2e) testing, run:
+---
 
-```bash
-ng e2e
-```
+## 🚀 Instalación y Despliegue Local
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Para clonar y ejecutar este proyecto en tu entorno local:
 
-## Additional Resources
+1. **Clonar el repositorio:**
+   ```bash
+   git clone https://github.com/GonDragon/tp-progIV-utn2026.git
+   ```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+2. **Instalar dependencias:**
+   ```bash
+   cd tp-progIV-utn2026
+   npm install
+   ```
+
+3. **Configurar variables de entorno:**
+  * Crear un archivo `src/environments/environment.development.ts`.
+  * Incluir las credenciales de la API de Supabase (`supabaseUrl` y `supabaseKey`).
+
+4. **Ejecutar el servidor de desarrollo:**
+   ```bash
+   npm start
+   ```
+   La aplicación estará disponible en `http://localhost:4200/`.

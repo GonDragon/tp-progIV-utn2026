@@ -1,4 +1,4 @@
-import { Component, input, output, inject, signal, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Movie, Schedule } from '../../models/movie';
 import { Seat } from '../../models/seat';
@@ -33,11 +33,11 @@ export class PurchaseFlow {
   private readonly authService = inject(AuthService);
   private readonly purchaseService = inject(PurchaseService);
 
-  readonly movie = input<Movie | null>(null);
-  readonly schedule = input<Schedule | null>(null);
+  @Input() movie: Movie | null = null;
+  @Input() schedule: Schedule | null = null;
 
-  readonly close = output<void>();
-  readonly purchaseCompleted = output<CompletedPurchaseResult>();
+  @Output() close = new EventEmitter<void>();
+  @Output() purchaseCompleted = new EventEmitter<CompletedPurchaseResult>();
 
   readonly currentStep = signal<PurchaseStep>('quantity');
   readonly ticketQuantity = signal<number>(1);
@@ -73,60 +73,32 @@ export class PurchaseFlow {
     }
   });
 
-  async onQuantityChange(q: number): Promise<void> {
+  onQuantityChange(q: number): void {
     this.ticketQuantity.set(q);
-    // Si la cantidad se reduce, deseleccionar los asientos excedentes y liberar sus reservas
+    // If quantity is reduced below current selected seats, trim the selected seats
     if (this.selectedSeats().length > q) {
-      const s = this.schedule();
-      const funcionId = s ? Number(s.id) : null;
-      const toKeep = this.selectedSeats().slice(0, q);
-      const toRemove = this.selectedSeats().slice(q);
-      this.selectedSeats.set(toKeep);
-
-      if (funcionId) {
-        for (const seat of toRemove) {
-          await this.purchaseService.releaseSeatReservation(funcionId, seat.id);
-        }
-      }
+      this.selectedSeats.set(this.selectedSeats().slice(0, q));
     }
   }
 
-  async onSeatToggled(seat: Seat): Promise<void> {
-    const s = this.schedule();
-    if (!s) return;
-    const funcionId = Number(s.id);
-
+  onSeatToggled(seat: Seat): void {
     const current = [...this.selectedSeats()];
     const index = current.findIndex(s => s.id === seat.id || (s.fila === seat.fila && s.columna === seat.columna));
 
     if (index >= 0) {
-      // Deselección: se remueve y se elimina obligatoriamente la reserva temporal
-      const removed = current.splice(index, 1)[0];
+      // Remove
+      current.splice(index, 1);
       this.selectedSeats.set(current);
-      await this.purchaseService.releaseSeatReservation(funcionId, removed.id);
     } else {
-      // Selección: si está dentro de la cantidad requerida
+      // Add if under required quantity
       if (current.length < this.ticketQuantity()) {
-        const res = await this.purchaseService.reserveSeat(funcionId, seat.id);
-        if (res.success) {
-          current.push(seat);
-          this.selectedSeats.set(current);
-        } else if (res.error) {
-          console.warn('No se pudo reservar la butaca:', res.error);
-        }
+        current.push(seat);
+        this.selectedSeats.set(current);
       } else {
-        // Si se alcanzó el límite, reemplazar la primera butaca
-        const removed = current.shift();
-        if (removed) {
-          await this.purchaseService.releaseSeatReservation(funcionId, removed.id);
-        }
-        const res = await this.purchaseService.reserveSeat(funcionId, seat.id);
-        if (res.success) {
-          current.push(seat);
-          this.selectedSeats.set(current);
-        } else if (res.error) {
-          console.warn('No se pudo reservar la butaca:', res.error);
-        }
+        // If at limit, replace the first seat or alert
+        current.shift();
+        current.push(seat);
+        this.selectedSeats.set(current);
       }
     }
   }
@@ -136,8 +108,8 @@ export class PurchaseFlow {
   }
 
   async onConfirmPurchase(customer: { customerName: string; customerEmail: string }): Promise<void> {
-    const m = this.movie();
-    const s = this.schedule();
+    const m = this.movie;
+    const s = this.schedule;
 
     if (!m || !s) return;
 
@@ -165,12 +137,6 @@ export class PurchaseFlow {
   }
 
   onCloseModal(): void {
-    const s = this.schedule();
-    if (s && this.currentStep() !== 'success') {
-      const funcionId = Number(s.id);
-      this.purchaseService.releaseAllReservationsForSession(funcionId);
-      this.selectedSeats.set([]);
-    }
     this.close.emit();
   }
 

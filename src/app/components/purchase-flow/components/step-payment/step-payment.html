@@ -11,10 +11,10 @@
   </div>
 
   <!-- Error Alert if failed -->
-  @if (errorMessage()) {
+  @if (errorMessage) {
     <div class="bg-rose-950/80 border border-rose-500 rounded-2xl p-4 text-xs sm:text-sm text-rose-200 flex items-center gap-3">
       <span class="text-lg">❌</span>
-      <span>{{ errorMessage() }}</span>
+      <span>{{ errorMessage }}</span>
     </div>
   }
 
@@ -23,8 +23,8 @@
 
     <!-- Movie & Schedule Row -->
     <div class="flex flex-col sm:flex-row gap-4 pb-4 border-b border-neutral-700/60 items-center sm:items-start">
-      @if (movie().imageUrl) {
-        <img [src]="movie().imageUrl" [alt]="movie().title" class="w-16 h-24 object-cover rounded-xl border border-neutral-700 shadow shrink-0" />
+      @if (movie.imageUrl) {
+        <img [src]="movie.imageUrl" [alt]="movie.title" class="w-16 h-24 object-cover rounded-xl border border-neutral-700 shadow shrink-0" />
       } @else {
         <div class="w-16 h-24 bg-neutral-900 rounded-xl border border-neutral-700 flex items-center justify-center text-xl shrink-0">
           🎬
@@ -33,17 +33,17 @@
 
       <div class="space-y-1 text-center sm:text-left flex-1">
         <span class="text-[11px] font-bold px-2 py-0.5 rounded shadow inline-block"
-              [class.bg-emerald-600]="movie().ageRestriction === 'ATP' || movie().ageRestriction === 'Ninguna'"
-              [class.text-white]="movie().ageRestriction === 'ATP' || movie().ageRestriction === 'Ninguna'"
-              [class.bg-amber-600]="movie().ageRestriction === '+13'"
-              [class.text-white]="movie().ageRestriction === '+13'"
-              [class.bg-rose-600]="movie().ageRestriction === '+18'"
-              [class.text-white]="movie().ageRestriction === '+18'">
-          {{ movie().ageRestriction }}
+              [class.bg-emerald-600]="movie.ageRestriction === 'ATP' || movie.ageRestriction === 'Ninguna'"
+              [class.text-white]="movie.ageRestriction === 'ATP' || movie.ageRestriction === 'Ninguna'"
+              [class.bg-amber-600]="movie.ageRestriction === '+13'"
+              [class.text-white]="movie.ageRestriction === '+13'"
+              [class.bg-rose-600]="movie.ageRestriction === '+18'"
+              [class.text-white]="movie.ageRestriction === '+18'">
+          {{ movie.ageRestriction }}
         </span>
-        <h4 class="text-base sm:text-lg font-bold text-white">{{ movie().title }}</h4>
+        <h4 class="text-base sm:text-lg font-bold text-white">{{ movie.title }}</h4>
         <p class="text-xs text-gray-300">
-          <strong class="text-[#D4AF37]">{{ schedule().time }} hs</strong> • {{ schedule().format }} ({{ schedule().language }}) • {{ schedule().room }}
+          <strong class="text-[#D4AF37]">{{ schedule.time }} hs</strong> • {{ schedule.format }} ({{ schedule.language }}) • {{ schedule.room }}
         </p>
       </div>
     </div>
@@ -54,18 +54,18 @@
       <!-- Tickets & Seats Breakdown -->
       <div class="space-y-2 bg-neutral-900/80 p-4 rounded-xl border border-neutral-700/70">
         <h5 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
-          <span>🪑</span> Entradas & Butacas ({{ selectedSeats().length }})
+          <span>🪑</span> Entradas & Butacas ({{ selectedSeats.length }})
         </h5>
 
         <div class="space-y-1.5">
-          @for (seat of selectedSeats(); track seat.id) {
+          @for (seat of selectedSeats; track seat.id) {
             <div class="flex items-center justify-between text-gray-300 text-xs">
               <span>
                 Butaca <strong class="text-white">{{ seat.code }}</strong>
                 ({{ seat.tipo === 'VIP' ? 'VIP 🌟' : (seat.tipo === 'Discapacidad' ? 'Accesible ♿' : 'Común') }})
               </span>
               <span class="font-semibold text-[#D4AF37]">
-                ${{ (baseTicketPrice() + (seat.tipo === 'VIP' ? vipSurcharge : 0)).toLocaleString('es-AR') }}
+                ${{ (baseTicketPrice + (seat.tipo === 'VIP' ? vipSurcharge : 0)).toLocaleString('es-AR') }}
               </span>
             </div>
           }
@@ -73,19 +73,19 @@
 
         <div class="pt-2 border-t border-neutral-800 flex items-center justify-between text-xs font-bold text-white">
           <span>Subtotal Entradas:</span>
-          <span class="text-[#D4AF37]">${{ ticketsSubtotal().toLocaleString('es-AR') }}</span>
+          <span class="text-[#D4AF37]">${{ ticketsSubtotal.toLocaleString('es-AR') }}</span>
         </div>
       </div>
 
       <!-- Candy Bar Breakdown -->
       <div class="space-y-2 bg-neutral-900/80 p-4 rounded-xl border border-neutral-700/70">
         <h5 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
-          <span>🍿</span> Candy Bar ({{ candyItems().length }} ítems)
+          <span>🍿</span> Candy Bar ({{ candyItems.length }} ítems)
         </h5>
 
-        @if (candyItems().length > 0) {
+        @if (candyItems.length > 0) {
           <div class="space-y-1.5">
-            @for (item of candyItems(); track item.id + item.tipo) {
+            @for (item of candyItems; track item.id + item.tipo) {
               <div class="flex items-center justify-between text-gray-300 text-xs">
                 <span>{{ item.cantidad }}x {{ item.nombre }}</span>
                 <span class="font-semibold text-[#D4AF37]">
@@ -96,7 +96,7 @@
           </div>
           <div class="pt-2 border-t border-neutral-800 flex items-center justify-between text-xs font-bold text-white">
             <span>Subtotal Candy Bar:</span>
-            <span class="text-[#D4AF37]">${{ candySubtotal().toLocaleString('es-AR') }}</span>
+            <span class="text-[#D4AF37]">${{ candySubtotal.toLocaleString('es-AR') }}</span>
           </div>
         } @else {
           <p class="text-xs text-gray-500 italic py-2">No agregaste productos de Candy Bar.</p>
@@ -152,44 +152,15 @@
       }
     </div>
 
-    <!-- Discount / Saldo a Favor Breakdown if available and applied -->
-    @if (currentUser() && availableSaldoFavor() > 0) {
-      <div class="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-between text-xs sm:text-sm animate-fade-in">
-        <div class="flex items-center gap-2">
-          <span class="text-base">💰</span>
-          <div>
-            <span class="font-bold text-emerald-300 block">Saldo a Favor Aplicado como Descuento</span>
-            <span class="text-[11px] text-emerald-400/80">
-              Saldo disponible en tu cuenta: ${{ availableSaldoFavor().toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-            </span>
-          </div>
-        </div>
-        <div class="text-right">
-          <span class="font-black text-emerald-400 font-mono text-sm sm:text-base">
-            -${{ saldoFavorDiscount().toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-          </span>
-        </div>
-      </div>
-    }
-
     <!-- Grand Total Highlight -->
     <div class="pt-4 border-t border-neutral-700/60 flex items-center justify-between">
       <div>
         <span class="text-xs text-gray-400 block uppercase font-bold tracking-wider">Monto Total a Pagar</span>
-        @if (saldoFavorDiscount() > 0) {
-          <span class="text-xs text-emerald-400 font-medium">Incluye descuento por saldo a favor</span>
-        } @else {
-          <span class="text-xs text-emerald-400 font-medium">Impuestos y cargos incluidos</span>
-        }
+        <span class="text-xs text-emerald-400 font-medium">Impuestos y cargos incluidos</span>
       </div>
       <div class="text-right">
-        @if (saldoFavorDiscount() > 0) {
-          <div class="text-xs text-gray-400 line-through font-mono">
-            ${{ rawSubtotal().toLocaleString('es-AR') }}
-          </div>
-        }
         <span class="text-2xl sm:text-3xl font-black text-[#D4AF37] font-mono tracking-tight">
-          ${{ grandTotal().toLocaleString('es-AR') }}
+          ${{ grandTotal.toLocaleString('es-AR') }}
         </span>
       </div>
     </div>
@@ -201,7 +172,7 @@
     <button
       type="button"
       (click)="onBack()"
-      [disabled]="isProcessing()"
+      [disabled]="isProcessing"
       class="w-full sm:w-auto px-5 py-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white font-semibold text-xs sm:text-sm transition-all cursor-pointer disabled:opacity-40">
       ← Volver a Candy Bar
     </button>
@@ -209,13 +180,13 @@
     <button
       type="button"
       (click)="onConfirm()"
-      [disabled]="!isFormValid() || isProcessing()"
+      [disabled]="!isFormValid() || isProcessing"
       class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-black text-sm sm:text-base flex items-center justify-center gap-3 shadow-xl shadow-[#D4AF37]/25 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95">
-      @if (isProcessing()) {
+      @if (isProcessing) {
         <div class="w-5 h-5 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></div>
         <span>Generando Compra...</span>
       } @else {
-        <span>Confirmar Compra (${{ grandTotal().toLocaleString('es-AR') }})</span>
+        <span>Confirmar Compra (${{ grandTotal.toLocaleString('es-AR') }})</span>
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
         </svg>

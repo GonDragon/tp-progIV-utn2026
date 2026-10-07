@@ -11,7 +11,7 @@
   </div>
 
   <!-- VIP Warning Notice if VIP seats are selected -->
-  @if (hasVipSeats()) {
+  @if (hasVipSeats) {
     <div class="bg-amber-950/60 border-2 border-amber-500 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-lg animate-in fade-in duration-300">
       <div class="p-2.5 rounded-xl bg-amber-500 text-neutral-950 shrink-0 font-bold text-lg shadow">
         ⚠️
@@ -21,7 +21,7 @@
           Aviso de Recargo: Butacas VIP Seleccionadas
         </h4>
         <p class="text-xs sm:text-sm text-amber-100/90 leading-relaxed font-medium">
-          Has seleccionado <strong>{{ vipSeatsCount() }} {{ vipSeatsCount() === 1 ? 'butaca VIP' : 'butacas VIP' }}</strong> (Filas R, S o T).
+          Has seleccionado <strong>{{ vipSeatsCount }} {{ vipSeatsCount === 1 ? 'butaca VIP' : 'butacas VIP' }}</strong> (Filas R, S o T).
           Las butacas VIP cuentan con asientos premium reclinables y tienen un <strong>recargo adicional de ${{ vipSurcharge.toLocaleString('es-AR') }} por butaca</strong> incluido en el total.
         </p>
       </div>
@@ -31,11 +31,11 @@
   <!-- Selected Seats Grid List -->
   <div class="bg-neutral-800/40 border border-neutral-700/60 rounded-2xl p-4 sm:p-5 space-y-4">
     <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">
-      Detalle de Butacas ({{ selectedSeats().length }})
+      Detalle de Butacas ({{ selectedSeats.length }})
     </h4>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      @for (seat of selectedSeats(); track seat.id) {
+      @for (seat of selectedSeats; track seat.id) {
         <div class="flex items-center justify-between p-3 rounded-xl bg-neutral-900 border border-neutral-700/80 shadow-sm">
           <div class="flex items-center gap-3">
             <!-- Seat Badge -->
@@ -68,7 +68,7 @@
 
           <div class="text-right">
             <span class="text-xs font-bold text-[#D4AF37]">
-              ${{ (baseTicketPrice() + (seat.tipo === 'VIP' ? vipSurcharge : 0)).toLocaleString('es-AR') }}
+              ${{ (baseTicketPrice + (seat.tipo === 'VIP' ? vipSurcharge : 0)).toLocaleString('es-AR') }}
             </span>
           </div>
         </div>
@@ -78,20 +78,20 @@
     <!-- Price Calculation Breakdown -->
     <div class="pt-4 border-t border-neutral-700/60 space-y-2 text-xs sm:text-sm">
       <div class="flex items-center justify-between text-gray-400">
-        <span>Entradas base ({{ selectedSeats().length }} × ${{ baseTicketPrice().toLocaleString('es-AR') }}):</span>
-        <span class="text-gray-200 font-semibold">${{ (selectedSeats().length * baseTicketPrice()).toLocaleString('es-AR') }}</span>
+        <span>Entradas base ({{ selectedSeats.length }} × ${{ baseTicketPrice.toLocaleString('es-AR') }}):</span>
+        <span class="text-gray-200 font-semibold">${{ (selectedSeats.length * baseTicketPrice).toLocaleString('es-AR') }}</span>
       </div>
 
-      @if (hasVipSeats()) {
+      @if (hasVipSeats) {
         <div class="flex items-center justify-between text-orange-400">
-          <span>Recargo Butacas VIP ({{ vipSeatsCount() }} × ${{ vipSurcharge.toLocaleString('es-AR') }}):</span>
-          <span class="font-bold">+${{ totalVipSurcharge().toLocaleString('es-AR') }}</span>
+          <span>Recargo Butacas VIP ({{ vipSeatsCount }} × ${{ vipSurcharge.toLocaleString('es-AR') }}):</span>
+          <span class="font-bold">+${{ totalVipSurcharge.toLocaleString('es-AR') }}</span>
         </div>
       }
 
       <div class="flex items-center justify-between pt-2 border-t border-neutral-700/40 text-sm sm:text-base">
         <span class="font-bold text-white">Subtotal Entradas:</span>
-        <span class="font-black text-[#D4AF37]">${{ totalSeatsAmount().toLocaleString('es-AR') }}</span>
+        <span class="font-black text-[#D4AF37]">${{ totalSeatsAmount.toLocaleString('es-AR') }}</span>
       </div>
     </div>
   </div>

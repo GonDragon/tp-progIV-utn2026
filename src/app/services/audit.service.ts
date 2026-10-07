@@ -2,6 +2,7 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { SupabaseService } from './supabase';
 import { AuthService } from './auth';
 import { AuditLogEntry, AuditActionType, AuditStats, LogActividadDB } from '../models/audit';
+import * as XLSX from 'xlsx';
 
 @Injectable({
   providedIn: 'root'
@@ -12,14 +13,35 @@ export class AuditService {
 
   private readonly _logs = signal<AuditLogEntry[]>([]);
   private readonly _isLoading = signal<boolean>(false);
+  private readonly _isExporting = signal<boolean>(false);
   private readonly _error = signal<string | null>(null);
+
+  private readonly _currentPage = signal<number>(1);
+  private readonly _pageSize = signal<number>(10);
+  private readonly _totalRecords = signal<number>(0);
+  private readonly _startDate = signal<string>('');
+  private readonly _endDate = signal<string>('');
 
   readonly logs = this._logs.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
+  readonly isExporting = this._isExporting.asReadonly();
   readonly error = this._error.asReadonly();
+
+  readonly currentPage = this._currentPage.asReadonly();
+  readonly pageSize = this._pageSize.asReadonly();
+  readonly totalRecords = this._totalRecords.asReadonly();
+  readonly startDate = this._startDate.asReadonly();
+  readonly endDate = this._endDate.asReadonly();
+
+  readonly totalPages = computed<number>(() => {
+    const total = this._totalRecords();
+    const size = this._pageSize();
+    return Math.max(1, Math.ceil(total / size));
+  });
 
   readonly stats = computed<AuditStats>(() => {
     const list = this._logs();
+    const total = this._totalRecords() || list.length;
     const todayStr = new Date().toISOString().split('T')[0];
 
     let adminCount = 0;
@@ -42,7 +64,7 @@ export class AuditService {
     });
 
     return {
-      totalLogs: list.length,
+      totalLogs: total,
       adminLogs: adminCount,
       employeeLogs: employeeCount,
       todayLogs: todayCount,
@@ -56,14 +78,27 @@ export class AuditService {
 
   /**
    * Carga el registro inmutable de auditoría directamente desde Supabase
+   * con paginación de 10 registros por página, orden descendente (más reciente arriba),
+   * y filtros opcionales de fecha inicio y fecha fin.
    */
-  async loadLogs(): Promise<AuditLogEntry[]> {
+  async loadLogs(
+    page: number = this._currentPage(),
+    startDate: string = this._startDate(),
+    endDate: string = this._endDate()
+  ): Promise<AuditLogEntry[]> {
     this._isLoading.set(true);
     this._error.set(null);
+    this._currentPage.set(page);
+    this._startDate.set(startDate);
+    this._endDate.set(endDate);
+
+    const pageSize = this._pageSize();
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
     try {
       // 1. Intentar consulta con JOIN a perfiles
-      const { data, error } = await this.supabase.client
+      let query = this.supabase.client
         .from('log_actividad')
         .select(`
           id,
@@ -77,16 +112,31 @@ export class AuditService {
             apellido,
             rol
           )
-        `)
-        .order('fecha_hora', { ascending: false });
+        `, { count: 'exact' });
+
+      if (startDate && startDate.trim()) {
+        const startIso = startDate.includes('T') ? startDate : `${startDate}T00:00:00`;
+        query = query.gte('fecha_hora', startIso);
+      }
+
+      if (endDate && endDate.trim()) {
+        const endIso = endDate.includes('T') ? endDate : `${endDate}T23:59:59.999`;
+        query = query.lte('fecha_hora', endIso);
+      }
+
+      query = query
+        .order('fecha_hora', { ascending: false })
+        .range(from, to);
+
+      const { data, count, error } = await query;
 
       if (error) {
         console.warn('Error en join con perfiles para log_actividad, intentando carga simple:', error.message);
-        // Fallback a consulta simple si hay problema con la relación en Supabase
-        return await this.loadLogsSimpleFallback();
+        return await this.loadLogsSimpleFallback(page, startDate, endDate);
       }
 
       const parsedLogs: AuditLogEntry[] = (data || []).map((row: any) => this.mapRowToEntry(row));
+      this._totalRecords.set(count ?? parsedLogs.length);
       this._logs.set(parsedLogs);
       return parsedLogs;
     } catch (err: any) {
@@ -98,13 +148,36 @@ export class AuditService {
     }
   }
 
-  private async loadLogsSimpleFallback(): Promise<AuditLogEntry[]> {
+  private async loadLogsSimpleFallback(
+    page: number,
+    startDate: string,
+    endDate: string
+  ): Promise<AuditLogEntry[]> {
+    const pageSize = this._pageSize();
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
     try {
+      let logsQuery = this.supabase.client
+        .from('log_actividad')
+        .select('id, perfil_id, accion, fecha_hora', { count: 'exact' });
+
+      if (startDate && startDate.trim()) {
+        const startIso = startDate.includes('T') ? startDate : `${startDate}T00:00:00`;
+        logsQuery = logsQuery.gte('fecha_hora', startIso);
+      }
+
+      if (endDate && endDate.trim()) {
+        const endIso = endDate.includes('T') ? endDate : `${endDate}T23:59:59.999`;
+        logsQuery = logsQuery.lte('fecha_hora', endIso);
+      }
+
+      logsQuery = logsQuery
+        .order('fecha_hora', { ascending: false })
+        .range(from, to);
+
       const [logsRes, profilesRes] = await Promise.all([
-        this.supabase.client
-          .from('log_actividad')
-          .select('id, perfil_id, accion, fecha_hora')
-          .order('fecha_hora', { ascending: false }),
+        logsQuery,
         this.supabase.client
           .from('perfiles')
           .select('id, email, nombre, apellido, rol')
@@ -125,6 +198,7 @@ export class AuditService {
         return this.mapRowToEntry({ ...row, perfiles: perf });
       });
 
+      this._totalRecords.set(logsRes.count ?? parsed.length);
       this._logs.set(parsed);
       return parsed;
     } catch (e: any) {
@@ -132,6 +206,164 @@ export class AuditService {
       this._error.set(e.message || 'Error al procesar logs');
       return [];
     }
+  }
+
+  /**
+   * Obtiene TODOS los logs que cumplen con el filtro de fechas (sin paginar),
+   * ordenados del más reciente al más antiguo, para ser descargados como CSV o XLSX.
+   */
+  async fetchLogsForExport(
+    startDate: string = this._startDate(),
+    endDate: string = this._endDate()
+  ): Promise<AuditLogEntry[]> {
+    this._isExporting.set(true);
+
+    try {
+      let query = this.supabase.client
+        .from('log_actividad')
+        .select(`
+          id,
+          perfil_id,
+          accion,
+          fecha_hora,
+          perfiles (
+            id,
+            email,
+            nombre,
+            apellido,
+            rol
+          )
+        `)
+        .order('fecha_hora', { ascending: false });
+
+      if (startDate && startDate.trim()) {
+        const startIso = startDate.includes('T') ? startDate : `${startDate}T00:00:00`;
+        query = query.gte('fecha_hora', startIso);
+      }
+
+      if (endDate && endDate.trim()) {
+        const endIso = endDate.includes('T') ? endDate : `${endDate}T23:59:59.999`;
+        query = query.lte('fecha_hora', endIso);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.warn('Error en join con perfiles para exportar logs, intentando carga simple:', error.message);
+        return await this.fetchLogsForExportFallback(startDate, endDate);
+      }
+
+      return (data || []).map((row: any) => this.mapRowToEntry(row));
+    } catch (err: any) {
+      console.error('Error al obtener logs para exportación:', err);
+      throw err;
+    } finally {
+      this._isExporting.set(false);
+    }
+  }
+
+  private async fetchLogsForExportFallback(
+    startDate: string,
+    endDate: string
+  ): Promise<AuditLogEntry[]> {
+    try {
+      let logsQuery = this.supabase.client
+        .from('log_actividad')
+        .select('id, perfil_id, accion, fecha_hora');
+
+      if (startDate && startDate.trim()) {
+        const startIso = startDate.includes('T') ? startDate : `${startDate}T00:00:00`;
+        logsQuery = logsQuery.gte('fecha_hora', startIso);
+      }
+
+      if (endDate && endDate.trim()) {
+        const endIso = endDate.includes('T') ? endDate : `${endDate}T23:59:59.999`;
+        logsQuery = logsQuery.lte('fecha_hora', endIso);
+      }
+
+      logsQuery = logsQuery.order('fecha_hora', { ascending: false });
+
+      const [logsRes, profilesRes] = await Promise.all([
+        logsQuery,
+        this.supabase.client
+          .from('perfiles')
+          .select('id, email, nombre, apellido, rol')
+      ]);
+
+      if (logsRes.error) {
+        throw new Error(logsRes.error.message);
+      }
+
+      const profileMap = new Map<string, any>();
+      (profilesRes.data || []).forEach((p: any) => {
+        if (p.id) profileMap.set(p.id, p);
+      });
+
+      return (logsRes.data || []).map((row: any) => {
+        const perf = row.perfil_id ? profileMap.get(row.perfil_id) : null;
+        return this.mapRowToEntry({ ...row, perfiles: perf });
+      });
+    } catch (e: any) {
+      console.error('Error en fallback de exportación:', e);
+      throw e;
+    }
+  }
+
+  /**
+   * Exporta una lista de logs a formato CSV y descarga el archivo.
+   */
+  exportToCSV(logs: AuditLogEntry[], filenamePrefix: string = 'auditoria_logs'): void {
+    const headers = ['ID', 'Fecha y Hora', 'Usuario', 'Email', 'Rol', 'Categoría', 'Acción', 'Detalles'];
+    const escapeCsv = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const rows = logs.map(l => [
+      escapeCsv(l.id),
+      escapeCsv(l.timestamp),
+      escapeCsv(l.userName),
+      escapeCsv(l.userEmail || ''),
+      escapeCsv(l.userRole),
+      escapeCsv(l.category),
+      escapeCsv(l.action),
+      escapeCsv(l.details)
+    ].join(','));
+
+    const csvContent = '\uFEFF' + [headers.map(h => `"${h}"`).join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `${filenamePrefix}_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Exporta una lista de logs a formato XLSX (Excel) y descarga el archivo.
+   */
+  exportToXLSX(logs: AuditLogEntry[], filenamePrefix: string = 'auditoria_logs'): void {
+    const data = logs.map(l => ({
+      'ID': l.id,
+      'Fecha y Hora': l.timestamp,
+      'Usuario': l.userName,
+      'Email': l.userEmail || '',
+      'Rol': l.userRole,
+      'Categoría': l.category,
+      'Acción': l.action,
+      'Detalles': l.details
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Logs de Auditoria');
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(workbook, `${filenamePrefix}_${dateStr}.xlsx`);
   }
 
   /**
@@ -206,7 +438,8 @@ export class AuditService {
             rawAccion: formattedAccion
           };
 
-      this._logs.update(current => [newEntry, ...current]);
+      // Recargar la primera página para mantener sincronía y conteo exacto
+      await this.loadLogs(1, this._startDate(), this._endDate());
       return true;
     } catch (err: any) {
       console.error('Excepción al registrar auditoría:', err);
