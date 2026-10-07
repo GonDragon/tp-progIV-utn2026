@@ -75,4 +75,8 @@ export class Login {
       this.password.set('cli123');
     }
   }
+
+  goToRegister(): void {
+    this.router.navigate(['/registro']);
+  }
 }

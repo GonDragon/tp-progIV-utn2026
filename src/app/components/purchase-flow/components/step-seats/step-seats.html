@@ -1,0 +1,197 @@
+<div class="space-y-5">
+
+  <!-- Header & Instructions -->
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-neutral-800/60 p-4 rounded-2xl border border-neutral-700/60">
+    <div>
+      <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+        <span>🪑</span> Selecciona tus Butacas
+      </h3>
+      <p class="text-xs text-gray-400">
+        Haz clic sobre las butacas libres para elegirlas según tu preferencia.
+      </p>
+    </div>
+
+    <!-- Selection Status Counter -->
+    <div class="px-4 py-2 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center gap-2.5">
+      <span class="text-xs text-gray-400 uppercase font-semibold">Seleccionadas:</span>
+      <span class="text-base font-black font-mono"
+            [class.text-amber-400]="!isSelectionComplete()"
+            [class.text-emerald-400]="isSelectionComplete()">
+        {{ selectedSeats().length }} / {{ requiredQuantity() }}
+      </span>
+      @if (isSelectionComplete()) {
+        <span class="text-emerald-400 text-xs font-bold">✓ Completo</span>
+      } @else {
+        <span class="text-amber-400 text-xs">Faltan {{ requiredQuantity() - selectedSeats().length }}</span>
+      }
+    </div>
+  </div>
+
+  <!-- Legend Bar -->
+  <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 py-2.5 px-4 bg-neutral-950/70 rounded-xl border border-neutral-800 text-xs">
+    <!-- Común / Normal (Azul oscuro) -->
+    <div class="flex items-center gap-2">
+      <div class="w-5 h-5 butaca butaca-normal text-[8px] pointer-events-none">
+        A1
+      </div>
+      <span class="text-gray-300 font-medium">Común (Azul oscuro)</span>
+    </div>
+
+    <!-- Discapacidad (Verde) -->
+    <div class="flex items-center gap-2">
+      <div class="w-5 h-5 butaca butaca-accesible !w-5 !h-5 text-[9px] pointer-events-none">
+        ♿
+      </div>
+      <span class="text-gray-300 font-medium">Accesible (Verde - J y K)</span>
+    </div>
+
+    <!-- VIP (Naranja) -->
+    <div class="flex items-center gap-2">
+      <div class="w-5 h-5 butaca butaca-vip text-[8px] pointer-events-none">
+        R1
+      </div>
+      <span class="text-amber-400 font-medium">VIP (Naranja +$1.500)</span>
+    </div>
+
+    <!-- Seleccionada (Dorado) -->
+    <div class="flex items-center gap-2">
+      <div class="w-5 h-5 butaca butaca-seleccionada text-[9px] pointer-events-none">
+        ✓
+      </div>
+      <span class="text-[#D4AF37] font-bold">Seleccionada</span>
+    </div>
+
+    <!-- Reservada (Apagada) -->
+    <div class="flex items-center gap-2">
+      <div class="w-5 h-5 butaca butaca-ocupada text-[9px] pointer-events-none">
+        X
+      </div>
+      <span class="text-gray-500">Ocupada / Reservada</span>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (isLoadingSeats()) {
+    <div class="py-20 text-center space-y-3">
+      <div class="w-10 h-10 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <p class="text-sm font-semibold text-gray-300">Cargando distribución de sala y disponibilidad...</p>
+    </div>
+  } @else {
+
+    <!-- Theater Sala Map Container (Scrollable Horizontally on small screens) -->
+    <div class="bg-neutral-950 p-4 sm:p-6 rounded-2xl border border-neutral-800 shadow-inner overflow-x-auto">
+
+      <!-- Cinema Screen Graphic (Top) -->
+      <div class="max-w-xl mx-auto mb-8 text-center">
+        <div class="w-full h-2.5 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent rounded-full shadow-[0_0_15px_rgba(212,175,55,0.8)] mb-2"></div>
+        <span class="text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] text-[#D4AF37]/80">
+          PANTALLA
+        </span>
+      </div>
+
+      <!-- Rows Layout Map -->
+      <div class="min-w-[680px] sm:min-w-[780px] space-y-2 py-2">
+        @for (row of rowViews(); track row.fila) {
+          <div [class]="row.isAccessible ? 'flex items-center gap-2 group py-1 px-1 bg-emerald-950/20 rounded-xl border border-emerald-600/30' : 'flex items-center gap-2 group py-0.5'">
+
+            <!-- Row Letter Label (Left) -->
+            <div class="w-7 text-center font-mono font-black text-xs shrink-0 select-none"
+                 [class.text-emerald-400]="row.isAccessible"
+                 [class.text-orange-400]="row.isVip"
+                 [class.text-gray-400]="!row.isAccessible && !row.isVip">
+              {{ row.fila }}
+              @if (row.isAccessible) {
+                <span class="text-[9px] block">♿</span>
+              }
+            </div>
+
+            <!-- Seat Columns Group (Col 1, Col 2, Col 3) -->
+            <div class="flex-1 flex items-center justify-between gap-4">
+
+              <!-- Column 1 (Left Wing) -->
+              <div class="flex items-center gap-1 shrink-0">
+                @for (seat of row.col1; track seat.code) {
+                  <button
+                    type="button"
+                    (click)="onSelectSeat(seat)"
+                    [disabled]="seat.isReserved"
+                    [title]="seat.isReserved ? ('Butaca ' + seat.code + ' (Ocupada)') : ('Butaca ' + seat.code + ' (' + seat.tipo + ')') "
+                    [class]="getSeatClass(seat)">
+                    {{ seat.code }}
+                  </button>
+                }
+              </div>
+
+              <!-- Passageway Aisle Indicator -->
+              <div class="w-1 border-r border-dashed border-neutral-800 self-stretch my-0.5"></div>
+
+              <!-- Column 2 (Center Main) -->
+              <div class="flex items-center gap-1 justify-center flex-1">
+                @for (seat of row.col2; track seat.code) {
+                  <button
+                    type="button"
+                    (click)="onSelectSeat(seat)"
+                    [disabled]="seat.isReserved"
+                    [title]="seat.isReserved ? ('Butaca ' + seat.code + ' (Ocupada)') : ('Butaca ' + seat.code + ' (' + seat.tipo + ')') "
+                    [class]="getSeatClass(seat)">
+                    {{ seat.code }}
+                  </button>
+                }
+              </div>
+
+              <!-- Passageway Aisle Indicator -->
+              <div class="w-1 border-r border-dashed border-neutral-800 self-stretch my-0.5"></div>
+
+              <!-- Column 3 (Right Wing) -->
+              <div class="flex items-center gap-1 shrink-0">
+                @for (seat of row.col3; track seat.code) {
+                  <button
+                    type="button"
+                    (click)="onSelectSeat(seat)"
+                    [disabled]="seat.isReserved"
+                    [title]="seat.isReserved ? ('Butaca ' + seat.code + ' (Ocupada)') : ('Butaca ' + seat.code + ' (' + seat.tipo + ')') "
+                    [class]="getSeatClass(seat)">
+                    {{ seat.code }}
+                  </button>
+                }
+              </div>
+
+            </div>
+
+            <!-- Row Letter Label (Right) -->
+            <div class="w-7 text-center font-mono font-black text-xs shrink-0 select-none"
+                 [class.text-emerald-400]="row.isAccessible"
+                 [class.text-orange-400]="row.isVip"
+                 [class.text-gray-400]="!row.isAccessible && !row.isVip">
+              {{ row.fila }}
+            </div>
+
+          </div>
+        }
+      </div>
+
+    </div>
+  }
+
+  <!-- Footer Navigation Actions -->
+  <div class="flex items-center justify-between pt-2">
+    <button
+      type="button"
+      (click)="onBack()"
+      class="px-5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white font-semibold text-xs sm:text-sm transition-all cursor-pointer">
+      ← Volver
+    </button>
+
+    <button
+      type="button"
+      (click)="onNext()"
+      [disabled]="!isSelectionComplete()"
+      class="px-6 py-3 rounded-xl bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#D4AF37]/20 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95">
+      <span>Confirmar Asientos</span>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+      </svg>
+    </button>
+  </div>
+
+</div>

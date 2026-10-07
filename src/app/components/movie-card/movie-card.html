@@ -1,7 +1,9 @@
-<div class="flex flex-col md:flex-row bg-neutral-800/80 rounded-2xl border border-neutral-700/80 shadow-lg overflow-hidden hover:border-[#D4AF37]/50 hover:shadow-xl transition-all duration-300 group">
+<div
+  (click)="onSelectMovie()"
+  class="flex flex-col sm:flex-row bg-neutral-800/80 rounded-2xl border border-neutral-700/80 shadow-lg overflow-hidden hover:border-[#D4AF37]/60 hover:shadow-xl hover:shadow-[#D4AF37]/5 transition-all duration-300 group cursor-pointer my-4">
 
   <!-- Movie Poster / Placeholder -->
-  <div class="relative md:w-56 shrink-0 aspect-[4/3] md:aspect-auto flex flex-col items-center justify-center p-6 text-center select-none shadow-inner overflow-hidden bg-neutral-900">
+  <div class="relative sm:w-48 md:w-56 shrink-0 aspect-[16/9] sm:aspect-auto flex flex-col items-center justify-center p-6 text-center select-none shadow-inner overflow-hidden bg-neutral-900">
 
     @if (movie().imageUrl) {
       <img
@@ -47,7 +49,7 @@
     }
   </div>
 
-  <!-- Content / Details & Schedules -->
+  <!-- Content / Details -->
   <div class="p-5 flex flex-col flex-1 justify-between">
     <div>
       <!-- Header with Genres and Rating -->
@@ -69,55 +71,34 @@
       </div>
 
       <!-- Title & Synopsis -->
-      <h3 class="text-xl font-bold text-white group-hover:text-[#D4AF37] transition-colors mb-2">
+      <h3 class="text-lg sm:text-xl font-bold text-white group-hover:text-[#D4AF37] transition-colors mb-2">
         {{ movie().title }}
       </h3>
-      <p class="text-sm text-gray-300 leading-relaxed mb-4">
+      <p class="text-sm text-gray-300 leading-relaxed line-clamp-2 sm:line-clamp-3 mb-4">
         {{ movie().synopsis }}
       </p>
     </div>
 
-    <!-- Schedules Section -->
-    @if (movie().schedules && movie().schedules!.length > 0) {
-      <div class="pt-4 border-t border-neutral-700/60">
-        <div class="flex items-center justify-between mb-2.5">
-          <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-            <svg class="w-4 h-4 text-[#D4AF37]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Funciones y Horarios Disponibles:
-          </span>
-          <span class="text-[11px] text-gray-400">Selecciona tu horario para comprar</span>
-        </div>
+    <!-- Actions / View showtimes and full info -->
+    <div class="pt-3 border-t border-neutral-700/60 flex items-center justify-between gap-2">
+      <span class="text-xs text-gray-400 font-medium flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-[#D4AF37]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>{{ movie().schedules?.length || 0 }} funciones disponibles</span>
+      </span>
 
-        <div class="flex flex-wrap gap-2.5">
-          @for (sched of movie().schedules; track sched.id) {
-            <button
-              type="button"
-              (click)="onSelectSchedule(sched)"
-              class="group/btn flex items-center gap-2 px-3 py-2 rounded-xl bg-neutral-900 border border-neutral-700 hover:border-[#D4AF37] hover:bg-[#D4AF37]/10 transition-all cursor-pointer shadow-sm">
-              <span class="text-sm font-bold text-white group-hover/btn:text-[#D4AF37]">
-                {{ sched.time }}
-              </span>
-              <span class="text-xs px-1.5 py-0.5 rounded bg-neutral-800 text-amber-300 font-semibold border border-amber-500/20">
-                {{ sched.format }}
-              </span>
-              <span class="text-xs text-gray-300">
-                {{ sched.language }}
-              </span>
-              <span class="text-[10px] text-gray-500">
-                {{ sched.room }}
-              </span>
-              @if (sched.isPresale) {
-                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-500/40">
-                  Preventa
-                </span>
-              }
-            </button>
-          }
-        </div>
-      </div>
-    }
+      <button
+        type="button"
+        (click)="onSelectMovie(); $event.stopPropagation()"
+        class="px-4 py-2 bg-[#D4AF37] group-hover:bg-[#b8952b] text-neutral-950 font-bold text-xs rounded-xl shadow transition-all cursor-pointer flex items-center gap-1.5">
+        <span>Ver funciones y horarios</span>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+
   </div>
 
 </div>

@@ -1,0 +1,170 @@
+<div class="space-y-6">
+
+  <!-- Header & Live Subtotal Banner -->
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-neutral-800/60 p-4 rounded-2xl border border-neutral-700/60">
+    <div>
+      <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+        <span>🍿</span> Candy Bar & Adiciones
+      </h3>
+      <p class="text-xs text-gray-400 mt-0.5">
+        Acompaña tu película con nuestros mejores combos, pochoclos, bebidas y snacks.
+      </p>
+    </div>
+
+    <div class="px-4 py-2 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center gap-3">
+      <div class="text-right">
+        <span class="text-[10px] text-gray-400 block uppercase font-bold">Adiciones: {{ totalItemsCount() }}</span>
+        <span class="text-sm sm:text-base font-black text-[#D4AF37]">
+          ${{ totalCandyAmount().toLocaleString('es-AR') }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs Navigation (Combos vs Productos) -->
+  <div class="flex rounded-xl bg-neutral-900 p-1 border border-neutral-800 max-w-md mx-auto">
+    <button
+      type="button"
+      (click)="activeTab.set('combos')"
+      [class]="activeTab() === 'combos'
+        ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-[#D4AF37] text-neutral-950 shadow-md transition-all cursor-pointer'
+        : 'flex-1 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition-all cursor-pointer'">
+      🍿 Combos de Cine ({{ candyService.combos().length }})
+    </button>
+    <button
+      type="button"
+      (click)="activeTab.set('productos')"
+      [class]="activeTab() === 'productos'
+        ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-[#D4AF37] text-neutral-950 shadow-md transition-all cursor-pointer'
+        : 'flex-1 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition-all cursor-pointer'">
+      🥤 Snacks & Bebidas ({{ candyService.products().length }})
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  @if (candyService.isLoading()) {
+    <div class="py-16 text-center space-y-3">
+      <div class="w-8 h-8 border-3 border-[#D4AF37] border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <p class="text-xs text-gray-400">Cargando productos de Candy Bar...</p>
+    </div>
+  } @else {
+
+    <!-- TAB 1: COMBOS -->
+    @if (activeTab() === 'combos') {
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (combo of candyService.combos(); track combo.id) {
+          <div class="bg-neutral-800/50 border border-neutral-700/70 rounded-2xl p-4 flex flex-col justify-between hover:border-amber-400/50 transition-all shadow-md">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="p-2 rounded-xl bg-amber-500/10 text-amber-400 text-lg">🍿</span>
+                <span class="text-xs font-bold px-2 py-0.5 rounded bg-neutral-900 text-gray-300 border border-neutral-700">
+                  Combo
+                </span>
+              </div>
+              <h4 class="text-sm font-bold text-white mb-1">{{ combo.nombre }}</h4>
+              <p class="text-base font-black text-[#D4AF37] mb-4">
+                ${{ combo.precio_fijo.toLocaleString('es-AR') }}
+              </p>
+            </div>
+
+            <!-- Increment / Decrement Counter Controls -->
+            <div class="flex items-center justify-between pt-3 border-t border-neutral-700/60">
+              <span class="text-xs text-gray-400">Cantidad:</span>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  (click)="decrementCombo(combo)"
+                  [disabled]="getQuantity(combo.id, 'combo') === 0"
+                  class="w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-700 text-white font-bold flex items-center justify-center hover:bg-neutral-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer">
+                  −
+                </button>
+                <span class="w-6 text-center text-sm font-bold font-mono"
+                      [class.text-[#D4AF37]]="getQuantity(combo.id, 'combo') > 0"
+                      [class.text-gray-500]="getQuantity(combo.id, 'combo') === 0">
+                  {{ getQuantity(combo.id, 'combo') }}
+                </span>
+                <button
+                  type="button"
+                  (click)="incrementCombo(combo)"
+                  class="w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-700 text-white font-bold flex items-center justify-center hover:bg-neutral-700 active:scale-95 transition-all cursor-pointer">
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- TAB 2: PRODUCTOS -->
+    @if (activeTab() === 'productos') {
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (prod of candyService.products(); track prod.id) {
+          <div class="bg-neutral-800/50 border border-neutral-700/70 rounded-2xl p-4 flex flex-col justify-between hover:border-amber-400/50 transition-all shadow-md">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="p-2 rounded-xl bg-purple-500/10 text-purple-400 text-lg">
+                  {{ prod.categoria === 'Bebidas' ? '🥤' : (prod.categoria === 'Pochoclos' ? '🍿' : '🍫') }}
+                </span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-neutral-900 text-gray-400 border border-neutral-700">
+                  {{ prod.categoria }}
+                </span>
+              </div>
+              <h4 class="text-sm font-bold text-white mb-1">{{ prod.nombre }}</h4>
+              <p class="text-base font-black text-[#D4AF37] mb-4">
+                ${{ prod.precio.toLocaleString('es-AR') }}
+              </p>
+            </div>
+
+            <!-- Increment / Decrement Counter Controls -->
+            <div class="flex items-center justify-between pt-3 border-t border-neutral-700/60">
+              <span class="text-xs text-gray-400">Cantidad:</span>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  (click)="decrementProduct(prod)"
+                  [disabled]="getQuantity(prod.id, 'producto') === 0"
+                  class="w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-700 text-white font-bold flex items-center justify-center hover:bg-neutral-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer">
+                  −
+                </button>
+                <span class="w-6 text-center text-sm font-bold font-mono"
+                      [class.text-[#D4AF37]]="getQuantity(prod.id, 'producto') > 0"
+                      [class.text-gray-500]="getQuantity(prod.id, 'producto') === 0">
+                  {{ getQuantity(prod.id, 'producto') }}
+                </span>
+                <button
+                  type="button"
+                  (click)="incrementProduct(prod)"
+                  class="w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-700 text-white font-bold flex items-center justify-center hover:bg-neutral-700 active:scale-95 transition-all cursor-pointer">
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+  }
+
+  <!-- Footer Navigation Actions -->
+  <div class="flex items-center justify-between pt-4 border-t border-neutral-800">
+    <button
+      type="button"
+      (click)="onBack()"
+      class="px-5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white font-semibold text-xs sm:text-sm transition-all cursor-pointer">
+      ← Volver a Asientos
+    </button>
+
+    <button
+      type="button"
+      (click)="onNext()"
+      class="px-6 py-3 rounded-xl bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#D4AF37]/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-95">
+      <span>Continuar al Pago</span>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+      </svg>
+    </button>
+  </div>
+
+</div>

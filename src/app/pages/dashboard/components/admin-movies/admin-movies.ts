@@ -47,7 +47,7 @@ export class AdminMovies {
   readonly adminMoviesList = computed(() => {
     const q = this.filterQuery().trim().toLowerCase();
     const g = this.filterGenre();
-    const movies = this.movieService.movies();
+    const movies = this.movieService.allMovies();
 
     return movies.filter(movie => {
       const matchesQ = !q || movie.title.toLowerCase().includes(q) || movie.synopsis.toLowerCase().includes(q);
@@ -58,7 +58,7 @@ export class AdminMovies {
 
   // Total scheduled showtimes counter
   readonly totalSchedulesCount = computed(() => {
-    return this.movieService.movies().reduce((acc, m) => acc + (m.schedules?.length || 0), 0);
+    return this.movieService.allMovies().reduce((acc, m) => acc + (m.schedules?.length || 0), 0);
   });
 
   openNewMovieForm(): void {
@@ -82,7 +82,7 @@ export class AdminMovies {
     try {
       if (formData.id) {
         // Edit existing movie
-        const existing = this.movieService.movies().find(m => m.id === formData.id);
+        const existing = this.movieService.allMovies().find(m => m.id === formData.id);
         const updated: Movie = {
           ...existing,
           id: formData.id,

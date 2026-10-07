@@ -1,0 +1,129 @@
+<div class="space-y-6">
+
+  <!-- Movie & Show Details Banner -->
+  <div class="flex flex-col sm:flex-row gap-4 bg-neutral-800/60 p-4 rounded-2xl border border-neutral-700/60 items-center sm:items-start">
+    @if (movie().imageUrl) {
+      <img [src]="movie().imageUrl" [alt]="movie().title" class="w-20 h-28 object-cover rounded-xl border border-neutral-700 shadow shrink-0" />
+    } @else {
+      <div class="w-20 h-28 bg-neutral-900 rounded-xl border border-neutral-700 flex items-center justify-center text-2xl shrink-0">
+        🎬
+      </div>
+    }
+
+    <div class="flex-1 text-center sm:text-left space-y-1.5">
+      <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+        <span class="text-xs font-bold px-2 py-0.5 rounded shadow"
+              [class.bg-emerald-600]="movie().ageRestriction === 'ATP' || movie().ageRestriction === 'Ninguna'"
+              [class.text-white]="movie().ageRestriction === 'ATP' || movie().ageRestriction === 'Ninguna'"
+              [class.bg-amber-600]="movie().ageRestriction === '+13'"
+              [class.text-white]="movie().ageRestriction === '+13'"
+              [class.bg-rose-600]="movie().ageRestriction === '+18'"
+              [class.text-white]="movie().ageRestriction === '+18'">
+          {{ movie().ageRestriction }}
+        </span>
+        <span class="text-xs text-gray-400 font-medium">⏱️ {{ movie().duration }} min</span>
+      </div>
+
+      <h3 class="text-lg sm:text-xl font-bold text-white">{{ movie().title }}</h3>
+
+      <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs text-gray-300">
+        <span class="px-2 py-0.5 rounded bg-neutral-900 border border-neutral-700 font-semibold text-[#D4AF37]">
+          🕒 {{ schedule().time }} hs
+        </span>
+        <span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-semibold">
+          {{ schedule().format }} • {{ schedule().language }}
+        </span>
+        <span class="text-gray-400 font-medium">
+          {{ schedule().room }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mandatory +18 unauthenticated warning notice -->
+  @if (isUnauthenticatedAdultRestricted()) {
+    <div class="bg-rose-950/70 border-2 border-rose-500 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-lg animate-in fade-in duration-300">
+      <div class="p-2 rounded-xl bg-rose-600 text-white shrink-0 shadow">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <div class="space-y-1">
+        <h4 class="text-sm sm:text-base font-black text-rose-300 uppercase tracking-wide">
+          Aviso Importante: Restricción de Edad (+18)
+        </h4>
+        <p class="text-xs sm:text-sm text-rose-100 leading-relaxed font-medium">
+          Estás realizando una compra como invitado (sin iniciar sesión) para una película clasificada <strong>+18</strong>.
+          <strong>No se permitirá el ingreso a menores de edad a la sala si no vienen acompañando a un adulto responsable</strong> que presente la entrada correspondiente.
+        </p>
+      </div>
+    </div>
+  }
+
+  <!-- Ticket Quantity Selection Card -->
+  <div class="bg-neutral-800/40 border border-neutral-700/60 rounded-2xl p-6 text-center space-y-5">
+    <div>
+      <h4 class="text-base sm:text-lg font-bold text-white mb-1">¿Cuántas entradas deseas comprar?</h4>
+      <p class="text-xs text-gray-400">Podrás seleccionar la ubicación de tus butacas en el siguiente paso (Máx. 10 por compra)</p>
+    </div>
+
+    <!-- Stepper Controls -->
+    <div class="flex items-center justify-center gap-6">
+      <button
+        type="button"
+        (click)="onDecrement()"
+        [disabled]="quantity() <= 1"
+        class="w-12 h-12 rounded-2xl bg-neutral-900 border border-neutral-700 text-white text-2xl font-bold flex items-center justify-center hover:bg-neutral-800 hover:border-amber-400 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow">
+        −
+      </button>
+
+      <div class="flex flex-col items-center justify-center min-w-[5rem]">
+        <span class="text-4xl sm:text-5xl font-black text-[#D4AF37] font-mono tracking-tight">
+          {{ quantity() }}
+        </span>
+        <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mt-1">
+          {{ quantity() === 1 ? 'Entrada' : 'Entradas' }}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        (click)="onIncrement()"
+        [disabled]="quantity() >= 10"
+        class="w-12 h-12 rounded-2xl bg-neutral-900 border border-neutral-700 text-white text-2xl font-bold flex items-center justify-center hover:bg-neutral-800 hover:border-amber-400 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow">
+        +
+      </button>
+    </div>
+
+    <!-- Price Summary Box -->
+    <div class="pt-4 border-t border-neutral-700/60 flex items-center justify-between max-w-sm mx-auto text-xs sm:text-sm">
+      <span class="text-gray-400">
+        Precio unitario base: <strong class="text-white">${{ baseTicketPrice().toLocaleString('es-AR') }}</strong>
+      </span>
+      <span class="text-gray-300">
+        Subtotal: <strong class="text-[#D4AF37] font-bold text-base sm:text-lg">${{ estimatedTotal().toLocaleString('es-AR') }}</strong>
+      </span>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="flex items-center justify-between pt-2">
+    <button
+      type="button"
+      (click)="onCancel()"
+      class="px-5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-gray-300 hover:text-white font-semibold text-xs sm:text-sm transition-all cursor-pointer">
+      Cancelar
+    </button>
+
+    <button
+      type="button"
+      (click)="onNext()"
+      class="px-6 py-3 rounded-xl bg-[#D4AF37] hover:bg-[#b8952b] text-neutral-950 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-[#D4AF37]/20 transition-all cursor-pointer hover:scale-[1.02] active:scale-95">
+      <span>Elegir Butacas</span>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+      </svg>
+    </button>
+  </div>
+
+</div>
