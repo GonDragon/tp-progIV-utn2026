@@ -44,22 +44,6 @@ CREATE TABLE resenas (
                        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO generos (nombre) VALUES
-                               ('Acción'),
-                               ('Animación'),
-                               ('Aventura'),
-                               ('Ciencia Ficción'),
-                               ('Comedia'),
-                               ('Crimen'),
-                               ('Documental'),
-                               ('Drama'),
-                               ('Fantasía'),
-                               ('Misterio'),
-                               ('Musical'),
-                               ('Romance'),
-                               ('Suspenso'),
-                               ('Terror');
-
 -- 3. INFRAESTRUCTURA DE SALAS
 CREATE TABLE salas (
                      id SERIAL PRIMARY KEY,
@@ -105,7 +89,8 @@ CREATE TABLE cupones (
                        id SERIAL PRIMARY KEY,
                        codigo VARCHAR(50) UNIQUE NOT NULL,
                        porcentaje_descuento DECIMAL(5, 2) NOT NULL,
-                       tipo_restriccion VARCHAR(100) DEFAULT 'Ninguna' -- 'Primera Compra', 'Mayores 50'
+                       activo BOOLEAN DEFAULT TRUE NOT NULL,
+                       usado BOOLEAN DEFAULT FALSE NOT NULL
 );
 
 -- 6. COMERCIO Y TRANSACCIONES
