@@ -143,3 +143,15 @@ CREATE TABLE reservas_temporales (
                                    expira_en TIMESTAMP NOT NULL DEFAULT (NOW() + INTERVAL '5 minutes'),
                                    UNIQUE(funcion_id, butaca_id) -- Evita que dos personas reserven la misma butaca en la misma función
 );
+
+-- 10. Configuraciones
+CREATE TABLE configuraciones (
+                               id SERIAL PRIMARY KEY,
+                               nombre VARCHAR(100) UNIQUE NOT NULL,
+                               valor DOUBLE PRECISION NOT NULL
+);
+
+INSERT INTO configuraciones (nombre, valor)
+VALUES
+  ('cuenta_nueva', 20.0),
+  ('mayores_50', 10.0);
