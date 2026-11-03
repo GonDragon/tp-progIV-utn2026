@@ -53,7 +53,8 @@ export class CouponService {
         id: item.id,
         codigo: item.codigo,
         porcentaje_descuento: Number(item.porcentaje_descuento),
-        tipo_restriccion: item.tipo_restriccion || 'Ninguna'
+        activo: item.activo !== undefined && item.activo !== null ? Boolean(item.activo) : true,
+        usado: Boolean(item.usado)
       }));
 
       this._coupons.set(coupons);
@@ -68,7 +69,7 @@ export class CouponService {
   async createCoupon(couponData: {
     codigo: string;
     porcentaje_descuento: number;
-    tipo_restriccion?: string;
+    activo?: boolean;
   }): Promise<Coupon | null> {
     this._isLoading.set(true);
     this._error.set(null);
@@ -76,7 +77,7 @@ export class CouponService {
       const payload = {
         codigo: couponData.codigo.trim().toUpperCase(),
         porcentaje_descuento: Number(couponData.porcentaje_descuento) || 0,
-        tipo_restriccion: couponData.tipo_restriccion?.trim() || 'Ninguna'
+        activo: couponData.activo !== undefined ? couponData.activo : true
       };
 
       const { data, error } = await this.supabase.client
@@ -95,11 +96,11 @@ export class CouponService {
         id: data.id,
         codigo: data.codigo,
         porcentaje_descuento: Number(data.porcentaje_descuento),
-        tipo_restriccion: data.tipo_restriccion || 'Ninguna'
+        activo: Boolean(data.activo)
       };
 
       this._coupons.update(list => [...list, newCoupon]);
-      await this.auditService.log('crear_cupon', 'Promociones & Cupones', `Creó el cupón "${newCoupon.codigo}" con ${newCoupon.porcentaje_descuento}% de descuento (Restricción: ${newCoupon.tipo_restriccion})`);
+      await this.auditService.log('crear_cupon', 'Promociones & Cupones', `Creó el cupón "${newCoupon.codigo}" con ${newCoupon.porcentaje_descuento}% de descuento`);
 
       return newCoupon;
     } catch (err: any) {
@@ -116,17 +117,19 @@ export class CouponService {
     couponData: {
       codigo: string;
       porcentaje_descuento: number;
-      tipo_restriccion?: string;
+      activo?: boolean;
     }
   ): Promise<boolean> {
     this._isLoading.set(true);
     this._error.set(null);
     try {
-      const payload = {
+      const payload: { codigo: string; porcentaje_descuento: number; activo?: boolean } = {
         codigo: couponData.codigo.trim().toUpperCase(),
-        porcentaje_descuento: Number(couponData.porcentaje_descuento) || 0,
-        tipo_restriccion: couponData.tipo_restriccion?.trim() || 'Ninguna'
+        porcentaje_descuento: Number(couponData.porcentaje_descuento) || 0
       };
+      if (couponData.activo !== undefined) {
+        payload.activo = couponData.activo;
+      }
 
       const { error } = await this.supabase.client
         .from('cupones')
@@ -183,20 +186,110 @@ export class CouponService {
   }
 
   async setWelcomeDiscountPercent(percent: number): Promise<boolean> {
-    const welcome = this._coupons().find(c => c.tipo_restriccion === 'Primera Compra');
-    if (welcome) {
-      return await this.updateCoupon(welcome.id, {
-        codigo: welcome.codigo,
-        porcentaje_descuento: percent,
-        tipo_restriccion: 'Primera Compra'
+    return this.updateConfiguracion('cuenta_nueva', percent);
+  }
+
+  async toggleCouponStatus(id: number, activo: boolean): Promise<boolean> {
+    this._isLoading.set(true);
+    this._error.set(null);
+    try {
+      const { error } = await this.supabase.client
+        .from('cupones')
+        .update({ activo })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error al actualizar estado del cupón:', error.message);
+        this._error.set(error.message);
+        return false;
+      }
+
+      this._coupons.update(list =>
+        list.map(item => (item.id === id ? { ...item, activo } : item))
+      );
+
+      const coupon = this._coupons().find(c => c.id === id);
+      await this.auditService.log(
+        'modificar_cupon',
+        'Promociones & Cupones',
+        `${activo ? 'Activó' : 'Desactivó'} el cupón "${coupon?.codigo || id}" (ID: ${id})`
+      );
+      return true;
+    } catch (err: any) {
+      console.error('Error en toggleCouponStatus:', err);
+      this._error.set(err.message || 'Error inesperado al cambiar estado del cupón');
+      return false;
+    } finally {
+      this._isLoading.set(false);
+    }
+  }
+
+  async loadConfiguraciones(): Promise<{ cuenta_nueva: number; mayores_50: number }> {
+    try {
+      const { data, error } = await this.supabase.client
+        .from('configuraciones')
+        .select('*');
+
+      if (error) {
+        console.error('Error al cargar configuraciones:', error.message);
+        return { cuenta_nueva: 20, mayores_50: 10 };
+      }
+
+      let cuenta_nueva = 20;
+      let mayores_50 = 10;
+
+      (data || []).forEach(row => {
+        if (row.nombre === 'cuenta_nueva') {
+          cuenta_nueva = Number(row.valor);
+        } else if (row.nombre === 'mayores_50') {
+          mayores_50 = Number(row.valor);
+        }
       });
-    } else {
-      const created = await this.createCoupon({
-        codigo: 'BIENVENIDA' + percent,
-        porcentaje_descuento: percent,
-        tipo_restriccion: 'Primera Compra'
-      });
-      return created !== null;
+
+      return { cuenta_nueva, mayores_50 };
+    } catch (err: any) {
+      console.error('Error cargando configuraciones:', err);
+      return { cuenta_nueva: 20, mayores_50: 10 };
+    }
+  }
+
+  async updateConfiguracion(nombre: string, valor: number): Promise<boolean> {
+    try {
+      const { data, error } = await this.supabase.client
+        .from('configuraciones')
+        .update({ valor })
+        .eq('nombre', nombre)
+        .select();
+
+      if (error) {
+        console.error(`Error al actualizar configuracion ${nombre}:`, error.message);
+        this._error.set(error.message);
+        return false;
+      }
+
+      if (!data || data.length === 0) {
+        const insertRes = await this.supabase.client
+          .from('configuraciones')
+          .insert({ nombre, valor });
+
+        if (insertRes.error) {
+          console.error(`Error al insertar configuracion ${nombre}:`, insertRes.error.message);
+          this._error.set(insertRes.error.message);
+          return false;
+        }
+      }
+
+      const label = nombre === 'cuenta_nueva' ? 'Nuevos usuarios' : nombre === 'mayores_50' ? 'Mayores de 50' : nombre;
+      await this.auditService.log(
+        'modificar_descuento',
+        'Promociones & Cupones',
+        `Actualizó porcentaje de descuento para "${label}" a ${valor}%`
+      );
+      return true;
+    } catch (err: any) {
+      console.error(`Error en updateConfiguracion ${nombre}:`, err);
+      this._error.set(err.message || 'Error inesperado al guardar configuración');
+      return false;
     }
   }
 
