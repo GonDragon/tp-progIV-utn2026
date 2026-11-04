@@ -75,7 +75,7 @@ export class CouponService {
     this._error.set(null);
     try {
       const payload = {
-        codigo: couponData.codigo.trim().toUpperCase(),
+        codigo: couponData.codigo.trim().toUpperCase().slice(0, 50),
         porcentaje_descuento: Number(couponData.porcentaje_descuento) || 0,
         activo: couponData.activo !== undefined ? couponData.activo : true
       };
@@ -325,7 +325,7 @@ export class CouponService {
       let appliedCoupon: Coupon | null = null;
 
       if (!hasTransactions) {
-        const welcomeCode = `${userId}-nuevo`;
+        const welcomeCode = `${userId}-nuevo`.slice(0, 50);
         const { data: existingCoupon, error: couponError } = await this.supabase.client
           .from('cupones')
           .select('*')
@@ -398,7 +398,10 @@ export class CouponService {
 
         if (birthDate && this.isBornMoreThan50YearsAgo(birthDate)) {
           const now = Math.floor(Date.now() / 1000);
-          const seniorCode = `${userId}-mayor50-${now}`;
+          const prefix = '-mayor50-';
+          const suffix = String(now);
+          const maxUserIdLen = Math.max(1, 50 - prefix.length - suffix.length);
+          const seniorCode = `${userId.slice(0, maxUserIdLen)}${prefix}${suffix}`.slice(0, 50);
           const discountPercent = Number(configs.mayores_50) || 10;
 
           const { data: seniorCouponData, error: seniorError } = await this.supabase.client
