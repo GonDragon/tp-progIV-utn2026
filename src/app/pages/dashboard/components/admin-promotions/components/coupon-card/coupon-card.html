@@ -3,7 +3,7 @@
     <!-- Header: Code badge & ID -->
     <div class="flex items-start justify-between gap-3 mb-3">
       <div class="flex items-center gap-2">
-        <span class="text-xl">{{ getRestrictionIcon(coupon().tipo_restriccion) }}</span>
+        <span class="text-xl">🎟️</span>
         <span class="text-sm font-mono font-black px-3 py-1 rounded-xl bg-neutral-900 border border-neutral-700 text-[#D4AF37] tracking-wider shadow-inner">
           {{ coupon().codigo }}
         </span>
@@ -19,24 +19,14 @@
         <span class="text-3xl font-black text-white">{{ coupon().porcentaje_descuento | number:'1.0-2' }}%</span>
         <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Descuento</span>
       </div>
-
-      <!-- Restriction Badge -->
-      <div class="mt-2.5">
-        <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border"
-              [ngClass]="getRestrictionBadgeClass(coupon().tipo_restriccion)">
-          {{ coupon().tipo_restriccion }}
-        </span>
-      </div>
-
-      <p class="text-xs text-gray-400 mt-2 line-clamp-2">
-        {{ getRestrictionDescription(coupon().tipo_restriccion) }}
-      </p>
     </div>
   </div>
 
   <!-- Footer Actions -->
   <div class="pt-3 border-t border-neutral-700/80 flex items-center justify-between gap-3 mt-3">
-    <span class="text-[11px] text-gray-500 font-mono">Cupón activo</span>
+    <span class="text-[11px] font-mono" [class]="coupon().activo !== false ? 'text-emerald-400' : 'text-rose-400'">
+      {{ coupon().activo !== false ? 'Cupón activo' : 'Cupón inactivo' }}
+    </span>
 
     <div class="flex items-center gap-1.5 shrink-0">
       <button

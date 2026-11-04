@@ -64,39 +64,6 @@
           </div>
         </div>
 
-        <!-- Restriction Type -->
-        <div>
-          <label class="block text-xs font-semibold text-gray-300 mb-1">
-            Tipo de Restricción / Condición
-          </label>
-          <select
-            [ngModel]="tipo_restriccion()"
-            (ngModelChange)="onRestrictionChange($event)"
-            name="tipo_restriccion"
-            class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] cursor-pointer">
-            <option value="Ninguna">Ninguna (Uso general)</option>
-            <option value="Primera Compra">Primera Compra (Nuevos registrados)</option>
-            <option value="Mayores 50">Mayores 50 (Clientes de 50+ años)</option>
-            <option value="Personalizada">Otra / Personalizada</option>
-          </select>
-        </div>
-
-        <!-- Custom Restriction text if selected -->
-        @if (isCustomRestriction()) {
-          <div>
-            <label class="block text-xs font-semibold text-gray-300 mb-1">
-              Nombre de la Restricción <span class="text-amber-400">*</span>
-            </label>
-            <input
-              type="text"
-              [ngModel]="customRestriction()"
-              (ngModelChange)="customRestriction.set($event)"
-              name="customRestriction"
-              placeholder="Ej. Estudiantes Universitarios"
-              class="w-full px-3.5 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-white text-sm focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]" />
-          </div>
-        }
-
         <!-- Actions -->
         <div class="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">
           <button

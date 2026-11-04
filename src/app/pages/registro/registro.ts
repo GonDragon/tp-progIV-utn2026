@@ -43,19 +43,13 @@ export class Registro {
   showSuccessModal = signal(false);
   registeredUserName = signal('');
 
-  readonly welcomeCoupon = computed(() => {
-    return this.couponService.coupons().find(c => c.tipo_restriccion === 'Primera Compra') || null;
-  });
-
-  readonly welcomeDiscount = computed(() => {
-    return this.welcomeCoupon()?.porcentaje_descuento ?? null;
-  });
-
-  readonly welcomeCode = computed(() => {
-    return this.welcomeCoupon()?.codigo ?? null;
-  });
+  readonly welcomeDiscount = signal<number>(20);
+  readonly welcomeCode = signal<string | null>(null);
 
   constructor() {
+    this.couponService.loadConfiguraciones().then(cfg => {
+      this.welcomeDiscount.set(cfg.cuenta_nueva);
+    });
     effect(() => {
       if (this.authService.isAuthenticated()) {
         const user = this.authService.currentUser();

@@ -1,75 +1,121 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CouponService } from '../../../../services/coupon.service';
 import { Coupon } from '../../../../models/coupon';
-import { CouponCard } from './components/coupon-card/coupon-card';
-import { CouponModal } from './components/coupon-modal/coupon-modal';
-import { WelcomeDiscountCard } from './components/welcome-discount-card/welcome-discount-card';
 
 @Component({
   selector: 'app-admin-promotions',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
-    CouponCard,
-    CouponModal,
-    WelcomeDiscountCard
+    FormsModule
   ],
   templateUrl: './admin-promotions.html',
   styleUrl: './admin-promotions.css'
 })
-export class AdminPromotions {
+export class AdminPromotions implements OnInit {
+  readonly Math = Math;
   readonly couponService = inject(CouponService);
 
+  // Configuration values for discounts
+  readonly cuentaNuevaPercent = signal<number>(20);
+  readonly mayores50Percent = signal<number>(10);
+  readonly isSavingCuentaNueva = signal<boolean>(false);
+  readonly isSavingMayores50 = signal<boolean>(false);
+  readonly isLoadingConfigs = signal<boolean>(false);
+
+  readonly errorCuentaNueva = signal<string | null>(null);
+  readonly errorMayores50 = signal<string | null>(null);
+
+  // Filters & Search
   readonly searchQuery = signal<string>('');
-  readonly selectedRestriction = signal<string>('all');
+  readonly statusFilter = signal<'all' | 'active' | 'inactive'>('all');
 
-  readonly restrictions = ['all', 'Ninguna', 'Primera Compra', 'Mayores 50'];
+  // Pagination (10 per page)
+  readonly pageSize = 10;
+  readonly currentPage = signal<number>(1);
 
-  // Welcome coupon
-  readonly welcomeCoupon = computed<Coupon | null>(() => {
-    return this.couponService.coupons().find(c =>
-      c.tipo_restriccion.toLowerCase().includes('primera') ||
-      c.tipo_restriccion.toLowerCase().includes('bienvenida')
-    ) || null;
-  });
-
-  // Modal State
-  readonly showCouponModal = signal(false);
-  readonly editingCoupon = signal<Coupon | null>(null);
-  readonly isSavingCoupon = signal(false);
-  readonly isSavingWelcome = signal(false);
-
-  // Delete State
-  readonly couponToDelete = signal<Coupon | null>(null);
-  readonly isDeleting = signal(false);
+  // Loading state for individual coupon toggle
+  readonly togglingCouponId = signal<number | null>(null);
 
   // Toast
   readonly toast = signal<{ message: string; type: 'success' | 'error' } | null>(null);
   private toastTimer: any = null;
 
-  // Filtered coupons
+  ngOnInit(): void {
+    this.loadConfigs();
+  }
+
+  async loadConfigs(): Promise<void> {
+    this.isLoadingConfigs.set(true);
+    try {
+      const configs = await this.couponService.loadConfiguraciones();
+      this.cuentaNuevaPercent.set(configs.cuenta_nueva);
+      this.mayores50Percent.set(configs.mayores_50);
+    } finally {
+      this.isLoadingConfigs.set(false);
+    }
+  }
+
   readonly filteredCoupons = computed(() => {
     const list = this.couponService.coupons();
     const query = this.searchQuery().trim().toLowerCase();
-    const restriction = this.selectedRestriction();
+    const status = this.statusFilter();
 
     return list.filter(coupon => {
-      const matchRestriction =
-        restriction === 'all' ||
-        coupon.tipo_restriccion.toLowerCase() === restriction.toLowerCase();
+      const isActivo = coupon.activo !== false;
+      const matchStatus =
+        status === 'all' ||
+        (status === 'active' && isActivo) ||
+        (status === 'inactive' && !isActivo);
 
       const matchQuery =
         !query ||
         coupon.codigo.toLowerCase().includes(query) ||
-        coupon.tipo_restriccion.toLowerCase().includes(query) ||
         String(coupon.id).includes(query) ||
         String(coupon.porcentaje_descuento).includes(query);
 
-      return matchRestriction && matchQuery;
+      return matchStatus && matchQuery;
     });
+  });
+
+  readonly totalPages = computed(() => {
+    const total = this.filteredCoupons().length;
+    return Math.max(1, Math.ceil(total / this.pageSize));
+  });
+
+  readonly paginatedCoupons = computed(() => {
+    const list = this.filteredCoupons();
+    const page = Math.min(this.currentPage(), this.totalPages());
+    const start = (page - 1) * this.pageSize;
+    return list.slice(start, start + this.pageSize);
+  });
+
+  readonly activeCouponsCount = computed(() => {
+    return this.couponService.coupons().filter(c => c.activo !== false).length;
+  });
+
+  readonly inactiveCouponsCount = computed(() => {
+    return this.couponService.coupons().filter(c => c.activo === false).length;
+  });
+
+  readonly pagesList = computed(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const pages: number[] = [];
+
+    // Always show reasonable page numbers
+    for (let i = 1; i <= total; i++) {
+      if (
+        i === 1 ||
+        i === total ||
+        (i >= current - 2 && i <= current + 2)
+      ) {
+        pages.push(i);
+      }
+    }
+    return pages;
   });
 
   private showToastMessage(message: string, type: 'success' | 'error' = 'success'): void {
@@ -80,92 +126,93 @@ export class AdminPromotions {
     }, 4000);
   }
 
-  reload(): void {
-    this.couponService.loadCoupons();
+  async reload(): Promise<void> {
+    await Promise.all([
+      this.couponService.loadCoupons(),
+      this.loadConfigs()
+    ]);
+    this.showToastMessage('Datos recargados correctamente.');
   }
 
-  // --- Coupon Modal Handlers ---
-  openNewCouponModal(): void {
-    this.editingCoupon.set(null);
-    this.showCouponModal.set(true);
+  onSearchChange(value: string): void {
+    this.searchQuery.set(value);
+    this.currentPage.set(1);
   }
 
-  openEditCouponModal(coupon: Coupon): void {
-    this.editingCoupon.set(coupon);
-    this.showCouponModal.set(true);
+  onStatusFilterChange(filter: 'all' | 'active' | 'inactive'): void {
+    this.statusFilter.set(filter);
+    this.currentPage.set(1);
   }
 
-  closeCouponModal(): void {
-    this.showCouponModal.set(false);
-    this.editingCoupon.set(null);
-  }
-
-  async saveCoupon(data: {
-    codigo: string;
-    porcentaje_descuento: number;
-    tipo_restriccion: string;
-  }): Promise<void> {
-    this.isSavingCoupon.set(true);
-    const editing = this.editingCoupon();
-
-    if (editing) {
-      const success = await this.couponService.updateCoupon(editing.id, data);
-      this.isSavingCoupon.set(false);
-      if (success) {
-        this.closeCouponModal();
-        this.showToastMessage(`Cupón "${data.codigo}" actualizado correctamente.`);
-      } else {
-        this.showToastMessage(this.couponService.error() || 'Error al actualizar cupón.', 'error');
-      }
-    } else {
-      const created = await this.couponService.createCoupon(data);
-      this.isSavingCoupon.set(false);
-      if (created) {
-        this.closeCouponModal();
-        this.showToastMessage(`Cupón "${data.codigo}" creado exitosamente.`);
-      } else {
-        this.showToastMessage(this.couponService.error() || 'Error al crear cupón.', 'error');
-      }
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages()) {
+      this.currentPage.set(page);
     }
   }
 
-  // --- Delete Handlers ---
-  confirmDeleteCoupon(coupon: Coupon): void {
-    this.couponToDelete.set(coupon);
-  }
-
-  cancelDelete(): void {
-    if (!this.isDeleting()) {
-      this.couponToDelete.set(null);
+  nextPage(): void {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
     }
   }
 
-  async executeDelete(): Promise<void> {
-    const item = this.couponToDelete();
-    if (!item) return;
+  prevPage(): void {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
 
-    this.isDeleting.set(true);
-    const success = await this.couponService.deleteCoupon(item.id);
-    this.isDeleting.set(false);
+  // --- Configuration Handlers ---
+  async saveCuentaNueva(): Promise<void> {
+    const val = Number(this.cuentaNuevaPercent());
+    if (isNaN(val) || val < 0 || val > 100) {
+      this.errorCuentaNueva.set('El porcentaje debe estar entre 0 y 100.');
+      return;
+    }
+    this.errorCuentaNueva.set(null);
+    this.isSavingCuentaNueva.set(true);
+
+    const success = await this.couponService.updateConfiguracion('cuenta_nueva', val);
+    this.isSavingCuentaNueva.set(false);
 
     if (success) {
-      this.couponToDelete.set(null);
-      this.showToastMessage(`Cupón "${item.codigo}" eliminado correctamente.`);
+      this.showToastMessage(`Descuento nuevos usuarios actualizado al ${val}%.`);
     } else {
-      this.showToastMessage(this.couponService.error() || 'Error al eliminar cupón.', 'error');
+      this.showToastMessage(this.couponService.error() || 'Error al guardar descuento cuenta nueva.', 'error');
     }
   }
 
-  // --- Welcome Discount Handler ---
-  async saveWelcomeDiscount(percent: number): Promise<void> {
-    this.isSavingWelcome.set(true);
-    const success = await this.couponService.setWelcomeDiscountPercent(percent);
-    this.isSavingWelcome.set(false);
+  async saveMayores50(): Promise<void> {
+    const val = Number(this.mayores50Percent());
+    if (isNaN(val) || val < 0 || val > 100) {
+      this.errorMayores50.set('El porcentaje debe estar entre 0 y 100.');
+      return;
+    }
+    this.errorMayores50.set(null);
+    this.isSavingMayores50.set(true);
+
+    const success = await this.couponService.updateConfiguracion('mayores_50', val);
+    this.isSavingMayores50.set(false);
 
     if (success) {
-      this.showToastMessage(`Porcentaje de primera compra establecido al ${percent}%.`);
+      this.showToastMessage(`Descuento mayores de 50 actualizado al ${val}%.`);
     } else {
-      this.showToastMessage(this.couponService.error() || 'Error al guardar descuento de primera compra.', 'error');
+      this.showToastMessage(this.couponService.error() || 'Error al guardar descuento mayores de 50.', 'error');
+    }
+  }
+
+  // --- Toggle Coupon Active / Inactive ---
+  async toggleCouponActive(coupon: Coupon): Promise<void> {
+    const newStatus = coupon.activo === false; // If false -> true, if undefined/true -> false
+    this.togglingCouponId.set(coupon.id);
+
+    const success = await this.couponService.toggleCouponStatus(coupon.id, newStatus);
+    this.togglingCouponId.set(null);
+
+    if (success) {
+      this.showToastMessage(`Cupón "${coupon.codigo}" ${newStatus ? 'activado' : 'desactivado'} correctamente.`);
+    } else {
+      this.showToastMessage(this.couponService.error() || 'Error al cambiar estado del cupón.', 'error');
     }
   }
 }

@@ -6,6 +6,7 @@ import { AuditService } from './audit.service';
 import { Seat, SeatType, SalaRowLayout } from '../models/seat';
 import { Movie, Schedule } from '../models/movie';
 import { SelectedCandyItem, CompletedPurchaseResult } from '../models/purchase';
+import { Coupon } from '../models/coupon';
 
 export const SALA_ROWS_CONFIG: SalaRowLayout[] = [
   // Filas A a I: Regulares (Normales)
@@ -387,12 +388,13 @@ export class PurchaseService {
     candyItems: SelectedCandyItem[];
     customerName: string;
     customerEmail: string;
+    coupon?: Coupon | null;
   }): Promise<{ success: boolean; result?: CompletedPurchaseResult; error?: string }> {
     this._isLoading.set(true);
     this._error.set(null);
 
     try {
-      const { movie, schedule, selectedSeats, candyItems, customerName, customerEmail } = params;
+      const { movie, schedule, selectedSeats, candyItems, customerName, customerEmail, coupon } = params;
       const currentUser = this.authService.currentUser();
       const perfilId = currentUser ? currentUser.id : null;
       const funcionId = Number(schedule.id);
@@ -416,7 +418,13 @@ export class PurchaseService {
       }
 
       const rawTotal = ticketsTotal + candyTotal;
-      let grandTotal = rawTotal;
+      let couponDiscount = 0;
+      if (coupon && Number(coupon.porcentaje_descuento) > 0) {
+        couponDiscount = (rawTotal * Number(coupon.porcentaje_descuento)) / 100;
+      }
+      const totalAfterCoupon = Math.max(0, rawTotal - couponDiscount);
+
+      let grandTotal = totalAfterCoupon;
       let saldoDiscount = 0;
 
       // Descuento automático por saldo a favor si el cliente está autenticado
@@ -429,8 +437,8 @@ export class PurchaseService {
             .maybeSingle();
 
           const currentSaldo = Number(perfilData?.saldo_favor ?? currentUser.saldo_favor ?? 0);
-          saldoDiscount = Math.min(rawTotal, currentSaldo);
-          grandTotal = Math.max(0, rawTotal - saldoDiscount);
+          saldoDiscount = Math.min(totalAfterCoupon, currentSaldo);
+          grandTotal = Math.max(0, totalAfterCoupon - saldoDiscount);
 
           const newSaldo = currentSaldo - saldoDiscount;
           const currentPoints = Number(perfilData?.puntos_fidelidad ?? currentUser.puntos_fidelidad ?? 0);
@@ -461,6 +469,7 @@ export class PurchaseService {
           perfil_id: perfilId,
           monto_total: grandTotal,
           estado: 'Completada',
+          cupon_id: coupon?.id || null,
           fecha_compra: new Date().toISOString()
         })
         .select()
@@ -471,6 +480,18 @@ export class PurchaseService {
       }
 
       const transaccionId = txData.id;
+
+      // Marcar cupón como usado si fue aplicado
+      if (coupon?.id) {
+        try {
+          await this.supabase.client
+            .from('cupones')
+            .update({ usado: true })
+            .eq('id', coupon.id);
+        } catch (couponErr) {
+          console.warn('Error al marcar cupón como usado en base de datos:', couponErr);
+        }
+      }
 
       // 3. Insert into entradas_tickets
       const ticketsToInsert = selectedSeats.map((seat, idx) => {
@@ -528,8 +549,9 @@ export class PurchaseService {
         ? `${currentUser.nombre} ${currentUser.apellido}`
         : `${customerName} (${customerEmail})`;
 
+      const couponInfo = coupon ? ` (Cupón "${coupon.codigo}": -$${couponDiscount.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : '';
       const discountInfo = saldoDiscount > 0 ? ` (Descuento saldo a favor: $${saldoDiscount.toLocaleString('es-AR')})` : '';
-      const actionText = `Compra #${transaccionId} de ${selectedSeats.length} entradas para "${movie.title}" por $${grandTotal.toLocaleString('es-AR')}${discountInfo} realizada por ${buyerInfo}`;
+      const actionText = `Compra #${transaccionId} de ${selectedSeats.length} entradas para "${movie.title}" por $${grandTotal.toLocaleString('es-AR')}${couponInfo}${discountInfo} realizada por ${buyerInfo}`;
 
       try {
         await this.supabase.client
@@ -569,7 +591,9 @@ export class PurchaseService {
         tickets: ticketsResult,
         candyItems,
         customerName: buyerInfo,
-        customerEmail: currentUser?.email || customerEmail
+        customerEmail: currentUser?.email || customerEmail,
+        couponCode: coupon?.codigo,
+        discountAmount: couponDiscount + saldoDiscount
       };
 
       return {

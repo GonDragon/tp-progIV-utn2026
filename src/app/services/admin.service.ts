@@ -72,16 +72,13 @@ export class AdminService {
   // Discount Coupons & Promotions (Synced live with CouponService and Supabase)
   readonly discountCoupons = computed<DiscountCoupon[]>(() => {
     return this.couponService.coupons().map(c => {
-      const isWelcome = c.tipo_restriccion.toLowerCase().includes('primera') || c.tipo_restriccion.toLowerCase().includes('bienvenida');
-      const isSenior = c.tipo_restriccion.toLowerCase().includes('mayores') || c.tipo_restriccion.toLowerCase().includes('50');
       return {
         id: String(c.id),
         code: c.codigo,
         discountPercent: c.porcentaje_descuento,
-        type: isWelcome ? 'primera_compra' : (isSenior ? 'mayores_50' : 'general'),
-        minAge: isSenior ? 50 : undefined,
-        isActive: true,
-        description: isWelcome ? 'Descuento para nuevos usuarios en primera compra' : (isSenior ? 'Beneficio exclusivo mayores de 50 años' : `Restricción: ${c.tipo_restriccion}`),
+        type: 'general',
+        isActive: c.activo !== false,
+        description: `Descuento ${c.porcentaje_descuento}%`,
         usageCount: 0
       };
     });
@@ -292,26 +289,20 @@ export class AdminService {
 
   // --- COUPONS ABM ---
   addCoupon(coupon: DiscountCoupon): void {
-    const restriction = coupon.type === 'primera_compra'
-      ? 'Primera Compra'
-      : (coupon.type === 'mayores_50' ? 'Mayores 50' : 'Ninguna');
     this.couponService.createCoupon({
       codigo: coupon.code,
       porcentaje_descuento: coupon.discountPercent,
-      tipo_restriccion: restriction
+      activo: coupon.isActive
     });
   }
 
   updateCoupon(coupon: DiscountCoupon): void {
     const numId = Number(coupon.id);
     if (!isNaN(numId)) {
-      const restriction = coupon.type === 'primera_compra'
-        ? 'Primera Compra'
-        : (coupon.type === 'mayores_50' ? 'Mayores 50' : 'Ninguna');
       this.couponService.updateCoupon(numId, {
         codigo: coupon.code,
         porcentaje_descuento: coupon.discountPercent,
-        tipo_restriccion: restriction
+        activo: coupon.isActive
       });
     }
   }
