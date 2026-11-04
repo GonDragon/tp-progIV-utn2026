@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Movie, Schedule } from '../../models/movie';
 import { Seat } from '../../models/seat';
 import { SelectedCandyItem, CompletedPurchaseResult } from '../../models/purchase';
+import { Coupon } from '../../models/coupon';
 import { AuthService } from '../../services/auth';
 import { PurchaseService } from '../../services/purchase.service';
 import { StepQuantity } from './components/step-quantity/step-quantity';
@@ -135,7 +136,7 @@ export class PurchaseFlow {
     this.candyItems.set(items);
   }
 
-  async onConfirmPurchase(customer: { customerName: string; customerEmail: string }): Promise<void> {
+  async onConfirmPurchase(customer: { customerName: string; customerEmail: string; coupon?: Coupon | null }): Promise<void> {
     const m = this.movie();
     const s = this.schedule();
 
@@ -150,7 +151,8 @@ export class PurchaseFlow {
       selectedSeats: this.selectedSeats(),
       candyItems: this.candyItems(),
       customerName: customer.customerName,
-      customerEmail: customer.customerEmail
+      customerEmail: customer.customerEmail,
+      coupon: customer.coupon
     });
 
     this.isProcessing.set(false);

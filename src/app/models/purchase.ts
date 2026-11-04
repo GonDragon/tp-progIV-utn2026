@@ -1,5 +1,6 @@
 import { Movie, Schedule } from './movie';
 import { Seat } from './seat';
+import { Coupon } from './coupon';
 
 export interface SelectedCandyItem {
   id: number;
@@ -18,6 +19,7 @@ export interface PurchaseState {
   candyItems: SelectedCandyItem[];
   customerName: string;
   customerEmail: string;
+  coupon?: Coupon | null;
 }
 
 export interface CompletedPurchaseResult {
@@ -35,4 +37,6 @@ export interface CompletedPurchaseResult {
   candyItems: SelectedCandyItem[];
   customerName: string;
   customerEmail: string;
+  couponCode?: string;
+  discountAmount?: number;
 }

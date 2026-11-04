@@ -293,6 +293,232 @@ export class CouponService {
     }
   }
 
+  /**
+   * Evaluates and returns an automatic coupon for a given customer according to requirements:
+   * 1. Checks if customer made a previous transaction.
+   *    If no previous transaction exists:
+   *      - Checks if coupon with code "<idusuario>-nuevo" exists.
+   *      - If it doesn't exist, creates it with config "cuenta_nueva" value and applies it.
+   *      - If it exists and is not disabled or used, applies it.
+   * 2. Checks user's age. If user is > 50 years old and no coupon was applied for cuenta_nueva:
+   *    - Creates a coupon with config "mayores_50" value with code "<idusuario>-mayor50-<now>"
+   *      (now = unix time) and applies it.
+   */
+  async evaluateAutomaticCoupon(userId: string, fechaNacimiento?: string | null): Promise<Coupon | null> {
+    try {
+      if (!userId) return null;
+
+      const configs = await this.loadConfiguraciones();
+
+      // 1. Revisar si el cliente realizó una transacción previamente
+      const { data: txData, error: txError } = await this.supabase.client
+        .from('transacciones')
+        .select('id')
+        .eq('perfil_id', userId)
+        .limit(1);
+
+      if (txError) {
+        console.warn('Error al verificar transacciones previas del usuario:', txError.message);
+      }
+
+      const hasTransactions = Boolean(txData && txData.length > 0);
+      let appliedCoupon: Coupon | null = null;
+
+      if (!hasTransactions) {
+        const welcomeCode = `${userId}-nuevo`;
+        const { data: existingCoupon, error: couponError } = await this.supabase.client
+          .from('cupones')
+          .select('*')
+          .eq('codigo', welcomeCode)
+          .maybeSingle();
+
+        if (existingCoupon) {
+          const isActivo = existingCoupon.activo !== undefined && existingCoupon.activo !== null ? Boolean(existingCoupon.activo) : true;
+          const isUsado = Boolean(existingCoupon.usado);
+          if (isActivo && !isUsado) {
+            appliedCoupon = {
+              id: existingCoupon.id,
+              codigo: existingCoupon.codigo,
+              porcentaje_descuento: Number(existingCoupon.porcentaje_descuento),
+              activo: isActivo,
+              usado: isUsado
+            };
+          }
+        } else {
+          // Crear cupón nuevo con valor de configuracion cuenta_nueva
+          const discountPercent = Number(configs.cuenta_nueva) || 20;
+          const { data: newCouponData, error: createError } = await this.supabase.client
+            .from('cupones')
+            .insert({
+              codigo: welcomeCode,
+              porcentaje_descuento: discountPercent,
+              activo: true,
+              usado: false
+            })
+            .select()
+            .single();
+
+          if (!createError && newCouponData) {
+            appliedCoupon = {
+              id: newCouponData.id,
+              codigo: newCouponData.codigo,
+              porcentaje_descuento: Number(newCouponData.porcentaje_descuento),
+              activo: Boolean(newCouponData.activo),
+              usado: Boolean(newCouponData.usado)
+            };
+            this._coupons.update(list => [...list, appliedCoupon!]);
+            await this.auditService.log(
+              'crear_cupon',
+              'Promociones & Cupones',
+              `Creó cupón de bienvenida automático "${welcomeCode}" con ${discountPercent}% de descuento`
+            );
+          } else if (createError) {
+            console.error('Error al crear cupón de cuenta nueva:', createError.message);
+          }
+        }
+      }
+
+      // 2. Si no le correspondió cupón por cuenta_nueva, verificar si nació hace más de 50 años
+      if (!appliedCoupon) {
+        let birthDate = fechaNacimiento;
+        if (!birthDate && userId) {
+          try {
+            const { data: profile } = await this.supabase.client
+              .from('perfiles')
+              .select('fecha_nacimiento')
+              .eq('id', userId)
+              .maybeSingle();
+            if (profile?.fecha_nacimiento) {
+              birthDate = profile.fecha_nacimiento;
+            }
+          } catch (profileErr) {
+            console.warn('Error al consultar fecha_nacimiento del perfil:', profileErr);
+          }
+        }
+
+        if (birthDate && this.isBornMoreThan50YearsAgo(birthDate)) {
+          const now = Math.floor(Date.now() / 1000);
+          const seniorCode = `${userId}-mayor50-${now}`;
+          const discountPercent = Number(configs.mayores_50) || 10;
+
+          const { data: seniorCouponData, error: seniorError } = await this.supabase.client
+            .from('cupones')
+            .insert({
+              codigo: seniorCode,
+              porcentaje_descuento: discountPercent,
+              activo: true,
+              usado: false
+            })
+            .select()
+            .single();
+
+          if (!seniorError && seniorCouponData) {
+            appliedCoupon = {
+              id: seniorCouponData.id,
+              codigo: seniorCouponData.codigo,
+              porcentaje_descuento: Number(seniorCouponData.porcentaje_descuento),
+              activo: Boolean(seniorCouponData.activo),
+              usado: Boolean(seniorCouponData.usado)
+            };
+            this._coupons.update(list => [...list, appliedCoupon!]);
+            await this.auditService.log(
+              'crear_cupon',
+              'Promociones & Cupones',
+              `Creó cupón para mayor de 50 automático "${seniorCode}" con ${discountPercent}% de descuento`
+            );
+          } else if (seniorError) {
+            console.error('Error al crear cupón mayor de 50:', seniorError.message);
+          }
+        }
+      }
+
+      return appliedCoupon;
+    } catch (err) {
+      console.error('Error evaluando cupón automático:', err);
+      return null;
+    }
+  }
+
+  isBornMoreThan50YearsAgo(birthDateStr?: string | null): boolean {
+    if (!birthDateStr) return false;
+    let birthDate: Date;
+    if (typeof birthDateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(birthDateStr)) {
+      const [y, m, d] = birthDateStr.split('-').map(Number);
+      birthDate = new Date(y, m - 1, d);
+    } else {
+      birthDate = new Date(birthDateStr);
+    }
+    if (isNaN(birthDate.getTime())) return false;
+
+    const today = new Date();
+    const fiftyYearsAgo = new Date(today.getFullYear() - 50, today.getMonth(), today.getDate());
+    const calculatedAge = this.calculateAge(birthDateStr);
+    return birthDate <= fiftyYearsAgo || (calculatedAge !== null && calculatedAge > 50);
+  }
+
+  async validateCouponCode(codigo: string): Promise<{ valid: boolean; coupon?: Coupon; error?: string }> {
+    try {
+      const code = codigo.trim();
+      if (!code) {
+        return { valid: false, error: 'Ingresa un código de cupón' };
+      }
+
+      const { data, error } = await this.supabase.client
+        .from('cupones')
+        .select('*')
+        .ilike('codigo', code)
+        .maybeSingle();
+
+      if (error || !data) {
+        return { valid: false, error: 'El cupón no existe' };
+      }
+
+      const isActivo = data.activo !== undefined && data.activo !== null ? Boolean(data.activo) : true;
+      const isUsado = Boolean(data.usado);
+
+      if (!isActivo) {
+        return { valid: false, error: 'El cupón se encuentra deshabilitado' };
+      }
+
+      if (isUsado) {
+        return { valid: false, error: 'El cupón ya ha sido utilizado' };
+      }
+
+      return {
+        valid: true,
+        coupon: {
+          id: data.id,
+          codigo: data.codigo,
+          porcentaje_descuento: Number(data.porcentaje_descuento),
+          activo: isActivo,
+          usado: isUsado
+        }
+      };
+    } catch (err: any) {
+      return { valid: false, error: 'Error al validar el cupón' };
+    }
+  }
+
+  calculateAge(birthDateStr?: string | null): number | null {
+    if (!birthDateStr) return null;
+    let birthDate: Date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(birthDateStr)) {
+      const [y, m, d] = birthDateStr.split('-').map(Number);
+      birthDate = new Date(y, m - 1, d);
+    } else {
+      birthDate = new Date(birthDateStr);
+    }
+    if (isNaN(birthDate.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age >= 0 ? age : null;
+  }
+
   private async logActivity(action: string): Promise<void> {
     await this.auditService.log('crear_cupon', 'Promociones & Cupones', action);
   }

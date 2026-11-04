@@ -152,6 +152,49 @@
       }
     </div>
 
+    <!-- Discount / Coupon Section (Solo automáticos: cuenta_nueva y mayores_50) -->
+    @if (isCheckingCoupon() || appliedCoupon()) {
+      <div class="pt-3 border-t border-neutral-700/60 space-y-3">
+        <h5 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between">
+          <span>🎟️ Cupón Promocional</span>
+          @if (isCheckingCoupon()) {
+            <span class="text-[11px] text-amber-400 font-normal flex items-center gap-1">
+              <span class="inline-block w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></span>
+              Verificando promociones automáticas...
+            </span>
+          }
+        </h5>
+
+        @if (appliedCoupon()) {
+          <div class="p-3.5 rounded-xl bg-amber-950/40 border border-[#D4AF37]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm animate-fade-in shadow-md">
+            <div class="flex items-center gap-3">
+              <span class="text-xl p-2 rounded-lg bg-[#D4AF37]/20 text-[#D4AF37]">🎟️</span>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-bold text-white text-sm">Cupón Automático Aplicado</span>
+                  <span class="font-mono text-xs font-black px-2 py-0.5 rounded bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40">
+                    {{ appliedCoupon()!.codigo }}
+                  </span>
+                  <span class="text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    {{ appliedCoupon()!.porcentaje_descuento }}% OFF
+                  </span>
+                </div>
+                <span class="text-[11px] text-gray-300 mt-0.5 block">
+                  Descuento aplicado sobre el subtotal de tu compra
+                </span>
+              </div>
+            </div>
+
+            <div class="text-right">
+              <span class="font-black text-[#D4AF37] font-mono text-sm sm:text-base block">
+                -${{ couponDiscount().toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+              </span>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
     <!-- Discount / Saldo a Favor Breakdown if available and applied -->
     @if (currentUser() && availableSaldoFavor() > 0) {
       <div class="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-between text-xs sm:text-sm animate-fade-in">
@@ -172,25 +215,53 @@
       </div>
     }
 
-    <!-- Grand Total Highlight -->
-    <div class="pt-4 border-t border-neutral-700/60 flex items-center justify-between">
-      <div>
-        <span class="text-xs text-gray-400 block uppercase font-bold tracking-wider">Monto Total a Pagar</span>
-        @if (saldoFavorDiscount() > 0) {
-          <span class="text-xs text-emerald-400 font-medium">Incluye descuento por saldo a favor</span>
-        } @else {
-          <span class="text-xs text-emerald-400 font-medium">Impuestos y cargos incluidos</span>
-        }
-      </div>
-      <div class="text-right">
-        @if (saldoFavorDiscount() > 0) {
-          <div class="text-xs text-gray-400 line-through font-mono">
-            ${{ rawSubtotal().toLocaleString('es-AR') }}
+    <!-- Grand Total Highlight & Breakdown -->
+    <div class="pt-4 border-t border-neutral-700/60 space-y-2">
+      <!-- Subtotal and Deductions Breakdown -->
+      @if (couponDiscount() > 0 || saldoFavorDiscount() > 0) {
+        <div class="space-y-1 text-xs text-gray-300 pb-2 border-b border-neutral-800">
+          <div class="flex items-center justify-between">
+            <span>Subtotal General (Entradas + Candy):</span>
+            <span class="font-mono font-semibold">${{ rawSubtotal().toLocaleString('es-AR') }}</span>
           </div>
-        }
-        <span class="text-2xl sm:text-3xl font-black text-[#D4AF37] font-mono tracking-tight">
-          ${{ grandTotal().toLocaleString('es-AR') }}
-        </span>
+          @if (couponDiscount() > 0) {
+            <div class="flex items-center justify-between text-[#D4AF37]">
+              <span>Descuento por Cupón ({{ appliedCoupon()?.codigo }}):</span>
+              <span class="font-mono font-semibold">-${{ couponDiscount().toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
+            </div>
+          }
+          @if (saldoFavorDiscount() > 0) {
+            <div class="flex items-center justify-between text-emerald-400">
+              <span>Descuento por Saldo a Favor:</span>
+              <span class="font-mono font-semibold">-${{ saldoFavorDiscount().toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="flex items-center justify-between pt-1">
+        <div>
+          <span class="text-xs text-gray-400 block uppercase font-bold tracking-wider">Monto Total a Pagar</span>
+          @if (couponDiscount() > 0 && saldoFavorDiscount() > 0) {
+            <span class="text-xs text-emerald-400 font-medium">Incluye descuentos por cupón y saldo a favor</span>
+          } @else if (couponDiscount() > 0) {
+            <span class="text-xs text-[#D4AF37] font-medium">Incluye descuento promocional por cupón</span>
+          } @else if (saldoFavorDiscount() > 0) {
+            <span class="text-xs text-emerald-400 font-medium">Incluye descuento por saldo a favor</span>
+          } @else {
+            <span class="text-xs text-emerald-400 font-medium">Impuestos y cargos incluidos</span>
+          }
+        </div>
+        <div class="text-right">
+          @if (couponDiscount() > 0 || saldoFavorDiscount() > 0) {
+            <div class="text-xs text-gray-400 line-through font-mono">
+              ${{ rawSubtotal().toLocaleString('es-AR') }}
+            </div>
+          }
+          <span class="text-2xl sm:text-3xl font-black text-[#D4AF37] font-mono tracking-tight">
+            ${{ grandTotal().toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+          </span>
+        </div>
       </div>
     </div>
 
