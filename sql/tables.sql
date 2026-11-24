@@ -155,3 +155,14 @@ INSERT INTO configuraciones (nombre, valor)
 VALUES
   ('cuenta_nueva', 20.0),
   ('mayores_50', 10.0);
+
+
+CREATE TABLE IF NOT EXISTS public.sugerencia_pelicula (
+                                                        id SERIAL PRIMARY KEY,
+                                                        perfil_id UUID REFERENCES public.perfiles(id) ON DELETE SET NULL,
+  titulo VARCHAR(255) NOT NULL,
+  descripcion TEXT NOT NULL,
+  explicacion_cine TEXT NOT NULL,
+  revisado BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
