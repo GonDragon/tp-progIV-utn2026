@@ -18,6 +18,11 @@ export const routes: Routes = [
     canActivate: [perfilGuard]
   },
   {
+    path: 'sugerir-pelicula',
+    loadComponent: () => import('./pages/sugerir-pelicula/sugerir-pelicula').then(m => m.SugerirPelicula),
+    canActivate: [perfilGuard]
+  },
+  {
     path: 'dashboard',
     loadComponent: () => import('./pages/dashboard/dashboard').then(m => m.Dashboard),
     canActivate: [dashboardGuard]

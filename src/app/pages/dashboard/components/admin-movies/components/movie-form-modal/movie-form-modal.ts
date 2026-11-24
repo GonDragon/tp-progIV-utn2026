@@ -23,6 +23,7 @@ export interface MovieFormData {
 })
 export class MovieFormModal {
   readonly movie = input<Movie | null>(null);
+  readonly initialData = input<{ title?: string; synopsis?: string } | null>(null);
   readonly availableGenres = input<string[]>([]);
   readonly isSaving = input<boolean>(false);
 
@@ -40,6 +41,7 @@ export class MovieFormModal {
   constructor() {
     effect(() => {
       const current = this.movie();
+      const initial = this.initialData();
       if (current) {
         this.movieTitle = current.title;
         this.movieSynopsis = current.synopsis;
@@ -48,6 +50,14 @@ export class MovieFormModal {
         this.selectedGenres = current.genres && current.genres.length > 0 ? [...current.genres] : ['Acción'];
         this.movieImageUrl = current.imageUrl || '';
         this.movieRegularPrice = current.regularPrice || 5500;
+      } else if (initial) {
+        this.movieTitle = initial.title || '';
+        this.movieSynopsis = initial.synopsis || '';
+        this.movieDuration = 120;
+        this.movieAgeRestriction = 'ATP';
+        this.selectedGenres = ['Acción'];
+        this.movieImageUrl = '';
+        this.movieRegularPrice = 5500;
       } else {
         this.resetForm();
       }
@@ -55,8 +65,9 @@ export class MovieFormModal {
   }
 
   resetForm(): void {
-    this.movieTitle = '';
-    this.movieSynopsis = '';
+    const initial = this.initialData();
+    this.movieTitle = initial?.title || '';
+    this.movieSynopsis = initial?.synopsis || '';
     this.movieDuration = 120;
     this.movieAgeRestriction = 'ATP';
     this.selectedGenres = ['Acción'];

@@ -23,6 +23,15 @@
       </div>
       <button
         type="button"
+        (click)="openSuggestionsModal()"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-[#D4AF37] border border-[#D4AF37]/50 hover:border-[#D4AF37] font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer shrink-0">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+        </svg>
+        <span>Sugerencias de clientes</span>
+      </button>
+      <button
+        type="button"
         (click)="openNewMovieForm()"
         class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer shrink-0">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,10 +96,18 @@
     </div>
   }
 
+  <!-- Client Suggestions Modal -->
+  @if (showSuggestionsModal()) {
+    <app-client-suggestions-modal
+      (accept)="handleAcceptSuggestion($event)"
+      (close)="closeSuggestionsModal()" />
+  }
+
   <!-- Movie Form Modal (Create / Edit + Poster Upload to Supabase bucket 'images') -->
   @if (showMovieForm()) {
     <app-movie-form-modal
       [movie]="editingMovie()"
+      [initialData]="movieInitialData()"
       [availableGenres]="availableGenreNames()"
       [isSaving]="isSavingMovie()"
       (save)="handleSaveMovie($event)"

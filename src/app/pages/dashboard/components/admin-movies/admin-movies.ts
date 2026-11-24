@@ -3,9 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { MovieService } from '../../../../services/movie.service';
 import { AdminService } from '../../../../services/admin.service';
 import { Movie, Schedule } from '../../../../models/movie';
+import { MovieSuggestion } from '../../../../models/movie-suggestion';
 import { MovieListItem } from './components/movie-list-item/movie-list-item';
 import { MovieFormModal, MovieFormData } from './components/movie-form-modal/movie-form-modal';
 import { ScheduleModal } from './components/schedule-modal/schedule-modal';
+import { ClientSuggestionsModal } from './components/client-suggestions-modal/client-suggestions-modal';
 
 @Component({
   selector: 'app-admin-movies',
@@ -14,7 +16,8 @@ import { ScheduleModal } from './components/schedule-modal/schedule-modal';
     FormsModule,
     MovieListItem,
     MovieFormModal,
-    ScheduleModal
+    ScheduleModal,
+    ClientSuggestionsModal
   ],
   templateUrl: './admin-movies.html',
   styleUrl: './admin-movies.css'
@@ -30,11 +33,14 @@ export class AdminMovies {
   // Modal states
   readonly showMovieForm = signal(false);
   readonly editingMovie = signal<Movie | null>(null);
+  readonly movieInitialData = signal<{ title?: string; synopsis?: string } | null>(null);
   readonly isSavingMovie = signal(false);
 
   readonly showScheduleModal = signal(false);
   readonly selectedMovieForSchedule = signal<Movie | null>(null);
   readonly isSavingSchedule = signal(false);
+
+  readonly showSuggestionsModal = signal(false);
 
   // Dynamic available genres list from DB or defaults
   readonly availableGenreNames = computed(() => {
@@ -63,18 +69,39 @@ export class AdminMovies {
 
   openNewMovieForm(): void {
     this.editingMovie.set(null);
+    this.movieInitialData.set(null);
     this.showMovieForm.set(true);
   }
 
   openEditMovieForm(movie: Movie): void {
     this.editingMovie.set(movie);
+    this.movieInitialData.set(null);
     this.showMovieForm.set(true);
   }
 
   closeMovieForm(): void {
     this.showMovieForm.set(false);
     this.editingMovie.set(null);
+    this.movieInitialData.set(null);
     this.isSavingMovie.set(false);
+  }
+
+  openSuggestionsModal(): void {
+    this.showSuggestionsModal.set(true);
+  }
+
+  closeSuggestionsModal(): void {
+    this.showSuggestionsModal.set(false);
+  }
+
+  handleAcceptSuggestion(suggestion: MovieSuggestion): void {
+    this.closeSuggestionsModal();
+    this.editingMovie.set(null);
+    this.movieInitialData.set({
+      title: suggestion.titulo,
+      synopsis: suggestion.descripcion
+    });
+    this.showMovieForm.set(true);
   }
 
   async handleSaveMovie(formData: MovieFormData): Promise<void> {

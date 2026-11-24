@@ -37,6 +37,9 @@ export class Layout {
     if (url.includes('busqueda') || url.includes('buscar') || url.includes('search')) {
       return 'Búsqueda de Películas';
     }
+    if (url.includes('sugerir')) {
+      return 'Sugerir Película';
+    }
     if (url.includes('perfil') || url.includes('profile')) {
       return 'Mi Perfil';
     }
@@ -61,6 +64,15 @@ export class Layout {
 
   goToSearch(): void {
     this.router.navigate(['/busqueda']);
+  }
+
+  goToSugerir(): void {
+    const user = this.authService.currentUser();
+    if (user && user.rol === 'cliente') {
+      this.router.navigate(['/sugerir-pelicula']);
+    } else if (!user) {
+      this.router.navigate(['/login']);
+    }
   }
 
   goToProfile(): void {
