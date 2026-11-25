@@ -188,7 +188,9 @@ export class ProfileService {
         return;
       }
 
-      const QRCode = await import('qrcode');
+      const qrModule = await import('qrcode');
+      const QRCode = (qrModule as any).default ?? qrModule;
+      const toDataURL = QRCode.toDataURL || qrModule.toDataURL;
       const tickets: ActiveTicketItem[] = [];
 
       for (const row of (data || [])) {
@@ -252,7 +254,7 @@ export class ProfileService {
 
         let qrDataUrl = '';
         try {
-          qrDataUrl = await QRCode.toDataURL(row.codigo_qr, {
+          qrDataUrl = await toDataURL(row.codigo_qr, {
             margin: 1,
             width: 220,
             color: {

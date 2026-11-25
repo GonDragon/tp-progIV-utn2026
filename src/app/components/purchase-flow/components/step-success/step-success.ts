@@ -23,13 +23,15 @@ export class StepSuccess implements OnInit {
   }
 
   async generateQrs(): Promise<void> {
-    const QRCode = await import('qrcode');
+    const qrModule = await import('qrcode');
+    const QRCode = (qrModule as any).default ?? qrModule;
     const map = new Map<number, string>();
     const tickets = this.result().tickets;
 
     for (const t of tickets) {
       try {
-        const url = await QRCode.toDataURL(t.qrCode, {
+        const toDataURL = QRCode.toDataURL || qrModule.toDataURL;
+        const url = await toDataURL(t.qrCode, {
           margin: 1,
           width: 180,
           color: {
