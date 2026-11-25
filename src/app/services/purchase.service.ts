@@ -3,6 +3,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase';
 import { AuthService } from './auth';
 import { AuditService } from './audit.service';
+import { WaitlistService } from './waitlist.service';
 import { Seat, SeatType, SalaRowLayout } from '../models/seat';
 import { Movie, Schedule } from '../models/movie';
 import { SelectedCandyItem, CompletedPurchaseResult } from '../models/purchase';
@@ -44,6 +45,7 @@ export class PurchaseService {
   private readonly supabase = inject(SupabaseService);
   private readonly authService = inject(AuthService);
   private readonly auditService = inject(AuditService);
+  private readonly waitlistService = inject(WaitlistService);
 
   private readonly _isLoading = signal<boolean>(false);
   private readonly _error = signal<string | null>(null);
@@ -227,6 +229,27 @@ export class PurchaseService {
       console.warn('Error al cargar butacas reservadas:', err);
     }
     return reservedSet;
+  }
+
+  /**
+   * Calculates seat stats for a showtime and returns whether it is sold out (agotada).
+   */
+  async getShowtimeSeatStats(funcionId: number, salaId?: number): Promise<{ total: number; occupied: number; available: number; isSoldOut: boolean }> {
+    try {
+      const seats = await this.getSeatsForSala(salaId || 1);
+      const total = seats.length > 0 ? seats.length : 504;
+      const reserved = await this.getReservedSeatIds(funcionId);
+      const occupied = reserved.size;
+      const available = Math.max(0, total - occupied);
+      return {
+        total,
+        occupied,
+        available,
+        isSoldOut: available === 0
+      };
+    } catch {
+      return { total: 504, occupied: 0, available: 504, isSoldOut: false };
+    }
   }
 
   /**
@@ -563,6 +586,13 @@ export class PurchaseService {
           });
       } catch (logErr) {
         console.warn('Error registrando log de actividad:', logErr);
+      }
+
+      // Mark user waitlist entry as completed if they were in waitlist
+      if (perfilId) {
+        this.waitlistService.markWaitlistAsCompleted(funcionId, perfilId).catch(err => {
+          console.warn('Error completando registro en lista de espera:', err);
+        });
       }
 
       // Build Result

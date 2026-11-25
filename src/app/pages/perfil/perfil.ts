@@ -7,11 +7,15 @@ import { AuthService } from '../../services/auth';
 import { ReviewService } from '../../services/review.service';
 import { MovieService } from '../../services/movie.service';
 import { ActiveTicketItem, WatchedMovieItem } from '../../models/profile';
+import { UserWaitlistItem } from '../../models/waitlist';
+import { Movie, Schedule } from '../../models/movie';
+import { PurchaseFlow } from '../../components/purchase-flow/purchase-flow';
+import { CompletedPurchaseResult } from '../../models/purchase';
 
 @Component({
   selector: 'app-perfil',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, PurchaseFlow],
   templateUrl: './perfil.html',
   styleUrl: './perfil.css'
 })
@@ -25,6 +29,12 @@ export class Perfil implements OnInit {
   readonly selectedQrTicket = signal<ActiveTicketItem | null>(null);
   readonly refundFeedback = signal<{ type: 'success' | 'error'; message: string } | null>(null);
   readonly isRefundingId = signal<number | null>(null);
+
+  // Estados para lista de espera
+  readonly waitlistFeedback = signal<{ type: 'success' | 'error'; message: string } | null>(null);
+  readonly isLeavingWaitlistId = signal<number | null>(null);
+  readonly purchaseMovie = signal<Movie | null>(null);
+  readonly purchaseSchedule = signal<Schedule | null>(null);
 
   // Estados para modal de escribir reseña
   readonly selectedReviewMovie = signal<WatchedMovieItem | null>(null);
@@ -217,5 +227,52 @@ export class Perfil implements OnInit {
     } catch {
       return 'Reciente';
     }
+  }
+
+  // --- Waitlist actions ---
+  buyNotifiedWaitlist(item: UserWaitlistItem): void {
+    if (item.fullMovie && item.fullSchedule) {
+      this.purchaseMovie.set(item.fullMovie);
+      this.purchaseSchedule.set(item.fullSchedule);
+    }
+  }
+
+  onClosePurchaseFlow(): void {
+    this.purchaseMovie.set(null);
+    this.purchaseSchedule.set(null);
+  }
+
+  async onPurchaseCompleted(result: CompletedPurchaseResult): Promise<void> {
+    await this.profileService.loadProfileData();
+    await this.movieService.loadMovies();
+  }
+
+  async onLeaveWaitlist(item: UserWaitlistItem): Promise<void> {
+    const confirmLeave = confirm(`¿Estás seguro de que deseas salir de la lista de espera para "${item.movie.title}"? Perderás tu posición actual (#${item.position}).`);
+    if (!confirmLeave) return;
+
+    this.isLeavingWaitlistId.set(item.id);
+    this.waitlistFeedback.set(null);
+
+    try {
+      const res = await this.profileService.leaveWaitlist(item.funcionId);
+      if (res.success) {
+        this.waitlistFeedback.set({
+          type: 'success',
+          message: res.message
+        });
+      } else {
+        this.waitlistFeedback.set({
+          type: 'error',
+          message: res.message
+        });
+      }
+    } finally {
+      this.isLeavingWaitlistId.set(null);
+    }
+  }
+
+  dismissWaitlistFeedback(): void {
+    this.waitlistFeedback.set(null);
   }
 }

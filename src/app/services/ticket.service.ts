@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseService } from './supabase';
 import { AuthService } from './auth';
 import { AuditService } from './audit.service';
+import { WaitlistService } from './waitlist.service';
 import { TicketCandyItem, TicketDetails } from '../models/ticket';
 
 @Injectable({
@@ -11,6 +12,7 @@ export class TicketService {
   private readonly supabase = inject(SupabaseService);
   private readonly authService = inject(AuthService);
   private readonly auditService = inject(AuditService);
+  private readonly waitlistService = inject(WaitlistService);
 
   private readonly _isLoading = signal<boolean>(false);
   private readonly _currentTicket = signal<TicketDetails | null>(null);
@@ -231,6 +233,7 @@ export class TicketService {
         .select(`
           id,
           transaccion_id,
+          funcion_id,
           estado_qr,
           transacciones:transaccion_id (
             id,
@@ -342,6 +345,13 @@ export class TicketService {
         'Devoluciones y Reembolsos',
         `Se procesó la devolución total de la transacción #${transaccionId} (Boleto #${ticketId}) por $${montoTotal.toLocaleString('es-AR')}. Cliente: ${clienteNombre}. Responsable: ${staffName}.`
       );
+
+      // 6. Notify waitlist if seats were freed
+      if (ticketData.funcion_id) {
+        this.waitlistService.processWaitlistAfterSeatFreed(Number(ticketData.funcion_id)).catch(err => {
+          console.warn('Error al procesar lista de espera tras devolución de entrada:', err);
+        });
+      }
 
       const refundMsg = perfilId
         ? `Devolución exitosa de la transacción #${transaccionId}. Se reintegraron $${montoTotal.toLocaleString('es-AR')} como saldo a favor en la cuenta del cliente.`

@@ -276,3 +276,148 @@ BEGIN
     );
 END;
 $$;
+
+-- 13. LISTA DE ESPERA PARA FUNCIONES AGOTADAS
+CREATE TABLE IF NOT EXISTS public.lista_espera (
+    id SERIAL PRIMARY KEY,
+    funcion_id INT REFERENCES public.funciones(id) ON DELETE CASCADE NOT NULL,
+    perfil_id UUID REFERENCES public.perfiles(id) ON DELETE CASCADE NOT NULL,
+    estado VARCHAR(50) DEFAULT 'en_espera' NOT NULL, -- 'en_espera', 'notificado', 'comprado', 'expirado', 'cancelado'
+    fecha_inscripcion TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    notificado_en TIMESTAMP,
+    expira_en TIMESTAMP,
+    UNIQUE (funcion_id, perfil_id)
+);
+
+-- Función para contar personas activas en lista de espera por función
+CREATE OR REPLACE FUNCTION public.contar_lista_espera_funcion(p_funcion_id INT)
+RETURNS INT
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+    SELECT COUNT(*)::INT
+    FROM public.lista_espera
+    WHERE funcion_id = p_funcion_id
+      AND estado IN ('en_espera', 'notificado');
+$$;
+
+-- Función para obtener la posición de un usuario en la lista de espera de una función (1-indexed)
+CREATE OR REPLACE FUNCTION public.obtener_posicion_espera(p_funcion_id INT, p_perfil_id UUID)
+RETURNS INT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_posicion INT := NULL;
+BEGIN
+    SELECT rank_pos INTO v_posicion
+    FROM (
+        SELECT perfil_id,
+               ROW_NUMBER() OVER (ORDER BY fecha_inscripcion ASC, id ASC) AS rank_pos
+        FROM public.lista_espera
+        WHERE funcion_id = p_funcion_id
+          AND estado IN ('en_espera', 'notificado')
+    ) sub
+    WHERE sub.perfil_id = p_perfil_id;
+
+    RETURN v_posicion;
+END;
+$$;
+
+-- Función atómica para procesar expiración y notificar al siguiente en la lista de espera
+CREATE OR REPLACE FUNCTION public.procesar_siguiente_lista_espera(p_funcion_id INT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_siguiente RECORD;
+    v_pelicula_nombre VARCHAR(255);
+    v_fecha_hora TIMESTAMP;
+BEGIN
+    -- 1. Expirar registros notificados cuyo tiempo límite de 15 minutos ya caducó
+    UPDATE public.lista_espera
+    SET estado = 'expirado'
+    WHERE funcion_id = p_funcion_id
+      AND estado = 'notificado'
+      AND expira_en < CURRENT_TIMESTAMP;
+
+    -- 2. Si ya hay alguien con notificación vigente y no expirada, retornar sus datos
+    SELECT le.*, p.email, p.nombre, p.apellido
+    INTO v_siguiente
+    FROM public.lista_espera le
+    JOIN public.perfiles p ON p.id = le.perfil_id
+    WHERE le.funcion_id = p_funcion_id
+      AND le.estado = 'notificado'
+      AND le.expira_en >= CURRENT_TIMESTAMP
+    ORDER BY le.fecha_inscripcion ASC, le.id ASC
+    LIMIT 1;
+
+    IF FOUND THEN
+        SELECT p.nombre, f.fecha_hora_inicio
+        INTO v_pelicula_nombre, v_fecha_hora
+        FROM public.funciones f
+        JOIN public.peliculas p ON p.id = f.pelicula_id
+        WHERE f.id = p_funcion_id;
+
+        RETURN jsonb_build_object(
+            'success', TRUE,
+            'action', 'notificado_activo',
+            'id', v_siguiente.id,
+            'perfil_id', v_siguiente.perfil_id,
+            'email', v_siguiente.email,
+            'nombre', v_siguiente.nombre,
+            'apellido', v_siguiente.apellido,
+            'funcion_id', p_funcion_id,
+            'pelicula_nombre', v_pelicula_nombre,
+            'fecha_hora_inicio', v_fecha_hora,
+            'expira_en', v_siguiente.expira_en
+        );
+    END IF;
+
+    -- 3. Buscar al siguiente en espera
+    SELECT le.*, p.email, p.nombre, p.apellido
+    INTO v_siguiente
+    FROM public.lista_espera le
+    JOIN public.perfiles p ON p.id = le.perfil_id
+    WHERE le.funcion_id = p_funcion_id
+      AND le.estado = 'en_espera'
+    ORDER BY le.fecha_inscripcion ASC, le.id ASC
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', TRUE,
+            'action', 'sin_espera',
+            'message', 'No hay usuarios en lista de espera para esta función.'
+        );
+    END IF;
+
+    -- 4. Actualizar estado a 'notificado' con ventana de 15 minutos
+    UPDATE public.lista_espera
+    SET estado = 'notificado',
+        notificado_en = CURRENT_TIMESTAMP,
+        expira_en = CURRENT_TIMESTAMP + INTERVAL '15 minutes'
+    WHERE id = v_siguiente.id;
+
+    SELECT p.nombre, f.fecha_hora_inicio
+    INTO v_pelicula_nombre, v_fecha_hora
+    FROM public.funciones f
+    JOIN public.peliculas p ON p.id = f.pelicula_id
+    WHERE f.id = p_funcion_id;
+
+    RETURN jsonb_build_object(
+        'success', TRUE,
+        'action', 'nuevo_notificado',
+        'id', v_siguiente.id,
+        'perfil_id', v_siguiente.perfil_id,
+        'email', v_siguiente.email,
+        'nombre', v_siguiente.nombre,
+        'apellido', v_siguiente.apellido,
+        'funcion_id', p_funcion_id,
+        'pelicula_nombre', v_pelicula_nombre,
+        'fecha_hora_inicio', v_fecha_hora,
+        'expira_en', (CURRENT_TIMESTAMP + INTERVAL '15 minutes')
+    );
+END;
+$$;

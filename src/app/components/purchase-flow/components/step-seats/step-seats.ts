@@ -4,6 +4,8 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { Movie, Schedule } from '../../../../models/movie';
 import { Seat } from '../../../../models/seat';
 import { PurchaseService, SALA_ROWS_CONFIG } from '../../../../services/purchase.service';
+import { AuthService } from '../../../../services/auth';
+import { WaitlistService } from '../../../../services/waitlist.service';
 
 export interface RowViewData {
   fila: string;
@@ -24,6 +26,8 @@ export interface RowViewData {
 })
 export class StepSeats implements OnInit, OnDestroy {
   private readonly purchaseService = inject(PurchaseService);
+  private readonly authService = inject(AuthService);
+  private readonly waitlistService = inject(WaitlistService);
 
   readonly movie = input.required<Movie>();
   readonly schedule = input.required<Schedule>();
@@ -37,6 +41,15 @@ export class StepSeats implements OnInit, OnDestroy {
   readonly allSeats = signal<Seat[]>([]);
   readonly reservedSeatIds = signal<Set<number>>(new Set());
   readonly isLoadingSeats = signal<boolean>(true);
+
+  // Waitlist state
+  readonly waitlistStatus = signal<{ inWaitlist: boolean; position?: number } | null>(null);
+  readonly isJoiningWaitlist = signal<boolean>(false);
+  readonly waitlistMessage = signal<string | null>(null);
+
+  readonly isSoldOut = computed(() => {
+    return !this.isLoadingSeats() && this.allSeats().length > 0 && this.reservedSeatIds().size >= this.allSeats().length;
+  });
 
   private realtimeChannel: RealtimeChannel | null = null;
   private expirationInterval: any = null;
@@ -110,6 +123,9 @@ export class StepSeats implements OnInit, OnDestroy {
     const sched = this.schedule();
     const funcionId = Number(sched.id);
 
+    // Check user waitlist status
+    this.checkWaitlistStatus(funcionId);
+
     // Suscripción a cambios en tiempo real vía Supabase Realtime
     this.realtimeChannel = this.purchaseService.subscribeToSeatReservations(
       funcionId,
@@ -122,6 +138,45 @@ export class StepSeats implements OnInit, OnDestroy {
     this.expirationInterval = setInterval(() => {
       this.refreshReservations();
     }, 3000);
+  }
+
+  async checkWaitlistStatus(funcionId: number): Promise<void> {
+    const user = this.authService.currentUser();
+    if (!user) {
+      this.waitlistStatus.set(null);
+      return;
+    }
+    const status = await this.waitlistService.checkUserWaitlistStatus(funcionId, user.id);
+    if (status.inWaitlist) {
+      this.waitlistStatus.set({ inWaitlist: true, position: status.position });
+    } else {
+      this.waitlistStatus.set(null);
+    }
+  }
+
+  async onJoinWaitlist(): Promise<void> {
+    const user = this.authService.currentUser();
+    if (!user) {
+      this.waitlistMessage.set('Debes iniciar sesión con una cuenta de cliente para anotarte en la lista de espera.');
+      return;
+    }
+
+    const sched = this.schedule();
+    const funcionId = Number(sched.id);
+    this.isJoiningWaitlist.set(true);
+    this.waitlistMessage.set(null);
+
+    try {
+      const res = await this.waitlistService.joinWaitlist(funcionId);
+      if (res.success) {
+        this.waitlistStatus.set({ inWaitlist: true, position: res.position });
+        this.waitlistMessage.set(res.message);
+      } else {
+        this.waitlistMessage.set(res.message);
+      }
+    } finally {
+      this.isJoiningWaitlist.set(false);
+    }
   }
 
   ngOnDestroy(): void {
