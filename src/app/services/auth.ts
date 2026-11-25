@@ -31,9 +31,15 @@ export class AuthService {
           session.user.user_metadata
         );
         this._currentUser.set(profile);
-        this.pushNotificationService.requestPermissionAndSubscribe(profile.id).catch((err) => {
-          console.warn('Error al verificar/solicitar permisos push:', err);
-        });
+        if (this.pushNotificationService.getPermissionStatus() === 'granted') {
+          this.pushNotificationService.requestPermissionAndSubscribe(profile.id).then((subscribed) => {
+            if (!subscribed) {
+              console.error('[AuthService] No se pudo completar la sincronización de suscripción push para el usuario autenticado:', profile.id);
+            }
+          }).catch((err) => {
+            console.error('[AuthService] Error al verificar permisos push iniciales:', err);
+          });
+        }
       }
     } catch (e) {
       console.warn('Error al verificar la sesión inicial de Supabase:', e);
@@ -46,10 +52,18 @@ export class AuthService {
           session.user.email ?? '',
           session.user.user_metadata
         );
-        this._currentUser.set(profile);
-        this.pushNotificationService.requestPermissionAndSubscribe(profile.id).catch((err) => {
-          console.warn('Error al verificar/solicitar permisos push en auth state change:', err);
-        });
+        if (!this._currentUser()) {
+          this._currentUser.set(profile);
+        }
+        if (this.pushNotificationService.getPermissionStatus() === 'granted') {
+          this.pushNotificationService.requestPermissionAndSubscribe(profile.id).then((subscribed) => {
+            if (!subscribed) {
+              console.error('[AuthService] No se pudo sincronizar la suscripción push en auth state change para:', profile.id);
+            }
+          }).catch((err) => {
+            console.error('[AuthService] Error al actualizar permisos push en auth state change:', err);
+          });
+        }
       } else {
         this._currentUser.set(null);
       }
@@ -73,10 +87,17 @@ export class AuthService {
           data.user.email ?? email,
           data.user.user_metadata
         );
+
+        try {
+          const subscribed = await this.pushNotificationService.requestPermissionAndSubscribe(profile.id);
+          if (!subscribed) {
+            console.error('[AuthService] No se pudo completar la suscripción push tras login para:', profile.id);
+          }
+        } catch (err) {
+          console.error('[AuthService] Error al verificar/solicitar permisos push en login:', err);
+        }
+
         this._currentUser.set(profile);
-        this.pushNotificationService.requestPermissionAndSubscribe(profile.id).catch((err) => {
-          console.warn('Error al verificar/solicitar permisos push en login:', err);
-        });
         return { success: true };
       }
 
@@ -160,6 +181,15 @@ export class AuthService {
         ...profilePayload,
         created_at: new Date().toISOString()
       };
+
+      try {
+        const subscribed = await this.pushNotificationService.requestPermissionAndSubscribe(userId);
+        if (!subscribed) {
+          console.error('[AuthService] No se pudo completar la suscripción push tras registro para:', userId);
+        }
+      } catch (err) {
+        console.error('[AuthService] Error al verificar/solicitar permisos push en registro:', err);
+      }
 
       this._currentUser.set(userProfile);
 

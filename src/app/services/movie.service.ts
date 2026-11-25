@@ -1011,8 +1011,12 @@ export class MovieService {
               accion: 'reubicacion_funcion',
               tipo: 'funcion_cancelada'
             }
+          }).then((res) => {
+            if (!res.success) {
+              console.error('[MovieService] Falló el envío de notificaciones push a compradores afectados:', res.error);
+            }
           }).catch(err => {
-            console.warn('Error enviando notificaciones push a compradores afectados:', err);
+            console.error('[MovieService] Error enviando notificaciones push a compradores afectados:', err);
           });
         }
       } catch (e) {
