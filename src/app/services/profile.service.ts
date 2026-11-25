@@ -78,7 +78,7 @@ export class ProfileService {
           email: data.email || currentUser?.email || '',
           nombre: data.nombre || currentUser?.nombre || '',
           apellido: data.apellido || currentUser?.apellido || '',
-          rol: (data.rol as 'cliente' | 'empleado' | 'administrador') || 'cliente',
+          rol: (data.rol as 'cliente' | 'empleado' | 'administrador' | 'auditor') || 'cliente',
           fecha_nacimiento: data.fecha_nacimiento ?? null,
           tipo_sangre: data.tipo_sangre ?? null,
           color_ojos: data.color_ojos ?? null,

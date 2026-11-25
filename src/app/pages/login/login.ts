@@ -23,7 +23,7 @@ export class Login {
     effect(() => {
       if (this.authService.isAuthenticated()) {
         const user = this.authService.currentUser();
-        if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+        if (user && (user.rol === 'administrador' || user.rol === 'empleado' || user.rol === 'auditor')) {
           this.router.navigate(['/dashboard']);
         } else {
           this.router.navigate(['/']);
@@ -47,7 +47,7 @@ export class Login {
       const result = await this.authService.login(emailVal, passwordVal);
       if (result.success) {
         const user = this.authService.currentUser();
-        if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+        if (user && (user.rol === 'administrador' || user.rol === 'empleado' || user.rol === 'auditor')) {
           this.router.navigate(['/dashboard']);
         } else {
           this.router.navigate(['/']);
@@ -62,7 +62,7 @@ export class Login {
     }
   }
 
-  fillCredentials(role: 'admin' | 'empleado' | 'cliente'): void {
+  fillCredentials(role: 'admin' | 'empleado' | 'cliente' | 'auditor'): void {
     this.errorMessage.set(null);
     if (role === 'admin') {
       this.email.set('admin@example.com');
@@ -73,6 +73,9 @@ export class Login {
     } else if (role === 'cliente') {
       this.email.set('cliente@example.com');
       this.password.set('cli123');
+    } else if (role === 'auditor') {
+      this.email.set('auditor@example.com');
+      this.password.set('123qweQWE');
     }
   }
 

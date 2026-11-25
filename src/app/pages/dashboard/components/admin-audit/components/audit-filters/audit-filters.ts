@@ -65,6 +65,8 @@ export class AuditFilters {
     { value: 'todos', label: 'Todos los Roles' },
     { value: 'administrador', label: 'Administradores' },
     { value: 'empleado', label: 'Empleados' },
+    { value: 'auditor', label: 'Auditores' },
+    { value: 'cliente', label: 'Clientes' },
     { value: 'sistema', label: 'Sistema' }
   ];
 }

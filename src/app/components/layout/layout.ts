@@ -40,6 +40,9 @@ export class Layout {
     if (url.includes('sugerir')) {
       return 'Sugerir Película';
     }
+    if (url.includes('crear-usuario')) {
+      return 'Crear Usuario';
+    }
     if (url.includes('perfil') || url.includes('profile')) {
       return 'Mi Perfil';
     }
@@ -81,6 +84,13 @@ export class Layout {
       this.router.navigate(['/perfil']);
     } else if (!user) {
       this.router.navigate(['/login']);
+    }
+  }
+
+  goToCrearUsuario(): void {
+    const user = this.authService.currentUser();
+    if (user && user.rol === 'administrador') {
+      this.router.navigate(['/crear-usuario']);
     }
   }
 }

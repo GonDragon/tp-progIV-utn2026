@@ -43,7 +43,7 @@ export class Busqueda implements OnInit {
   constructor() {
     effect(() => {
       const user = this.authService.currentUser();
-      if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+      if (user && (user.rol === 'administrador' || user.rol === 'empleado' || user.rol === 'auditor')) {
         this.router.navigate(['/dashboard']);
       }
     });

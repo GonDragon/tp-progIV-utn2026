@@ -1,7 +1,9 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { createClient } from '@supabase/supabase-js';
 import { User } from '../models/user';
 import { SupabaseService } from './supabase';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -156,6 +158,92 @@ export class AuthService {
     }
   }
 
+  async createUserByAdmin(params: {
+    email: string;
+    password: string;
+    nombre: string;
+    apellido: string;
+    rol: 'administrador' | 'empleado' | 'auditor' | 'cliente' | 'Administrador' | 'Empleado' | 'Auditor' | 'Cliente';
+    fecha_nacimiento?: string;
+    tipo_sangre?: string;
+    color_ojos?: string;
+    dias_vacaciones?: number;
+  }): Promise<{ success: boolean; error?: string; userId?: string }> {
+    try {
+      const email = params.email.trim().toLowerCase();
+      const password = params.password;
+      const rolNormalized = params.rol.toLowerCase() as 'cliente' | 'empleado' | 'administrador' | 'auditor';
+
+      const tempClient = createClient(environment.supabaseUrl, environment.supabaseKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false
+        }
+      });
+
+      const { data, error } = await tempClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nombre: params.nombre.trim(),
+            apellido: params.apellido.trim(),
+            rol: rolNormalized,
+            fecha_nacimiento: params.fecha_nacimiento || null,
+            tipo_sangre: params.tipo_sangre || null,
+            color_ojos: params.color_ojos || null,
+            dias_vacaciones: params.dias_vacaciones !== undefined ? Number(params.dias_vacaciones) : 0
+          }
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      const userId = data.user?.id;
+      if (!userId) {
+        return { success: false, error: 'No se pudo crear la cuenta de usuario.' };
+      }
+
+      const profilePayload = {
+        id: userId,
+        email: email,
+        nombre: params.nombre.trim(),
+        apellido: params.apellido.trim(),
+        fecha_nacimiento: params.fecha_nacimiento || null,
+        tipo_sangre: params.tipo_sangre || null,
+        color_ojos: params.color_ojos || null,
+        dias_vacaciones: params.dias_vacaciones !== undefined ? Number(params.dias_vacaciones) : 0,
+        rol: rolNormalized,
+        puntos_fidelidad: 0,
+        saldo_favor: 0.00
+      };
+
+      const { error: profileError } = await this.supabaseService.client
+        .from('perfiles')
+        .upsert(profilePayload);
+
+      if (profileError) {
+        console.warn('Error al guardar datos en la tabla perfiles:', profileError.message);
+      }
+
+      try {
+        await this.supabaseService.client.from('log_actividad').insert({
+          perfil_id: this._currentUser()?.id || userId,
+          accion: `Creación de usuario por administrador (${params.rol}): ${params.nombre.trim()} ${params.apellido.trim()} (${email})`
+        });
+      } catch {
+        // non-blocking
+      }
+
+      return { success: true, userId };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Error inesperado durante la creación de usuario' };
+    }
+  }
+
   async logout(): Promise<void> {
     try {
       await this.supabaseService.client.auth.signOut();
@@ -181,7 +269,7 @@ export class AuthService {
           email: data.email || email,
           nombre: data.nombre || userMetadata['nombre'] || '',
           apellido: data.apellido || userMetadata['apellido'] || '',
-          rol: (data.rol as 'cliente' | 'empleado' | 'administrador') || (userMetadata['rol'] as any) || 'cliente',
+          rol: (data.rol as 'cliente' | 'empleado' | 'administrador' | 'auditor') || (userMetadata['rol'] as any) || 'cliente',
           fecha_nacimiento: data.fecha_nacimiento,
           tipo_sangre: data.tipo_sangre,
           color_ojos: data.color_ojos,
@@ -200,7 +288,7 @@ export class AuthService {
       email: email,
       nombre: userMetadata['nombre'] || email.split('@')[0] || 'Usuario',
       apellido: userMetadata['apellido'] || '',
-      rol: (userMetadata['rol'] as 'cliente' | 'empleado' | 'administrador') || 'cliente'
+      rol: (userMetadata['rol'] as 'cliente' | 'empleado' | 'administrador' | 'auditor') || 'cliente'
     };
   }
 
