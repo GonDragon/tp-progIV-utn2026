@@ -8,7 +8,9 @@ import { ActiveTicketItem } from '../models/profile';
 export class PdfService {
   async generateTicketPdf(purchase: CompletedPurchaseResult): Promise<void> {
     const { jsPDF } = await import('jspdf');
-    const QRCode = await import('qrcode');
+    const qrModule = await import('qrcode');
+    const QRCode = (qrModule as any).default ?? qrModule;
+    const toDataURL = QRCode.toDataURL || qrModule.toDataURL;
 
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -149,7 +151,7 @@ export class PdfService {
 
       // Generate QR Code for this specific ticket
       const qrText = ticket.qrCode;
-      const qrDataUrl = await QRCode.toDataURL(qrText, {
+      const qrDataUrl = await toDataURL(qrText, {
         margin: 1,
         width: 200,
         color: {
@@ -187,7 +189,9 @@ export class PdfService {
 
   async generateSingleTicketPdf(ticket: ActiveTicketItem): Promise<void> {
     const { jsPDF } = await import('jspdf');
-    const QRCode = await import('qrcode');
+    const qrModule = await import('qrcode');
+    const QRCode = (qrModule as any).default ?? qrModule;
+    const toDataURL = QRCode.toDataURL || qrModule.toDataURL;
 
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -316,7 +320,7 @@ export class PdfService {
 
     // Generate QR Code for this specific ticket
     const qrText = ticket.codigoQr;
-    const qrDataUrl = await QRCode.toDataURL(qrText, {
+    const qrDataUrl = await toDataURL(qrText, {
       margin: 1,
       width: 200,
       color: {
