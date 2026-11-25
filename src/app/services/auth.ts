@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { createClient } from '@supabase/supabase-js';
 import { User } from '../models/user';
 import { SupabaseService } from './supabase';
+import { PushNotificationService } from './push-notification.service';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -11,6 +12,7 @@ import { environment } from '../../environments/environment';
 export class AuthService {
   private readonly router = inject(Router);
   private readonly supabaseService = inject(SupabaseService);
+  private readonly pushNotificationService = inject(PushNotificationService);
 
   private readonly _currentUser = signal<User | null>(null);
   readonly currentUser = this._currentUser.asReadonly();
@@ -29,6 +31,9 @@ export class AuthService {
           session.user.user_metadata
         );
         this._currentUser.set(profile);
+        this.pushNotificationService.requestPermissionAndSubscribe(profile.id).catch((err) => {
+          console.warn('Error al verificar/solicitar permisos push:', err);
+        });
       }
     } catch (e) {
       console.warn('Error al verificar la sesión inicial de Supabase:', e);
@@ -42,6 +47,9 @@ export class AuthService {
           session.user.user_metadata
         );
         this._currentUser.set(profile);
+        this.pushNotificationService.requestPermissionAndSubscribe(profile.id).catch((err) => {
+          console.warn('Error al verificar/solicitar permisos push en auth state change:', err);
+        });
       } else {
         this._currentUser.set(null);
       }
@@ -66,6 +74,9 @@ export class AuthService {
           data.user.user_metadata
         );
         this._currentUser.set(profile);
+        this.pushNotificationService.requestPermissionAndSubscribe(profile.id).catch((err) => {
+          console.warn('Error al verificar/solicitar permisos push en login:', err);
+        });
         return { success: true };
       }
 
