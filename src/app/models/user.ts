@@ -3,7 +3,7 @@ export interface User {
   email: string;
   nombre: string;
   apellido: string;
-  rol: 'cliente' | 'empleado' | 'administrador';
+  rol: 'cliente' | 'empleado' | 'administrador' | 'auditor';
   fecha_nacimiento?: string | null;
   tipo_sangre?: string | null;
   color_ojos?: string | null;

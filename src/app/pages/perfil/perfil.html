@@ -422,7 +422,181 @@
       }
     </div>
 
-    <!-- 5. Historial "Mis películas" (únicamente posters y títulos de las películas que el cliente vio) -->
+    <!-- 5. Listas de Espera Activas -->
+    <div class="space-y-4 pt-4 border-t border-neutral-800">
+
+      <!-- Feedback de Lista de Espera -->
+      @if (waitlistFeedback(); as wfb) {
+        <div
+          class="p-4 rounded-2xl border flex items-center justify-between gap-3 text-sm animate-fade-in shadow-md"
+          [class]="wfb.type === 'success' ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300' : 'bg-rose-950/60 border-rose-500/50 text-rose-300'">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">{{ wfb.type === 'success' ? '✅' : '❌' }}</span>
+            <span class="font-medium">{{ wfb.message }}</span>
+          </div>
+          <button
+            type="button"
+            (click)="dismissWaitlistFeedback()"
+            class="text-gray-400 hover:text-white text-base cursor-pointer p-1">
+            ✕
+          </button>
+        </div>
+      }
+
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="p-2.5 rounded-xl bg-amber-500/10 text-[#D4AF37] border border-[#D4AF37]/20">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </span>
+          <div>
+            <h2 class="text-xl sm:text-2xl font-bold text-white tracking-wide flex items-center gap-2">
+              Listas de Espera
+              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/30">
+                {{ profileService.waitlists().length }}
+              </span>
+            </h2>
+            <p class="text-xs text-gray-400">Funciones agotadas en las que estás anotado esperando liberación de butacas</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Waitlist Grid -->
+      @if (profileService.waitlists().length > 0) {
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          @for (item of profileService.waitlists(); track item.id) {
+            <div
+              class="bg-neutral-900 border rounded-3xl p-5 flex flex-col justify-between space-y-4 shadow-xl transition-all duration-300"
+              [class.border-emerald-500]="item.isNotifiedActive"
+              [class.border-neutral-700]="!item.isNotifiedActive">
+
+              <!-- Top: Movie Info & Position Badge -->
+              <div class="flex gap-4">
+                @if (item.movie.posterUrl) {
+                  <img
+                    [src]="item.movie.posterUrl"
+                    [alt]="item.movie.title"
+                    class="w-20 h-28 object-cover rounded-xl shadow-md border border-neutral-700 shrink-0" />
+                } @else {
+                  <div class="w-20 h-28 bg-neutral-800 rounded-xl flex items-center justify-center text-gray-500 text-xs shrink-0">
+                    Sin Póster
+                  </div>
+                }
+
+                <div class="space-y-1.5 min-w-0 flex-1">
+                  <div class="flex items-center justify-between gap-1">
+                    @if (item.isNotifiedActive) {
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 uppercase animate-pulse">
+                        🔔 ¡Butaca Liberada!
+                      </span>
+                    } @else {
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-[#D4AF37] border border-[#D4AF37]/30 uppercase">
+                        En Espera
+                      </span>
+                    }
+                    <span class="text-[10px] font-mono text-gray-400">
+                      Función #{{ item.funcionId }}
+                    </span>
+                  </div>
+
+                  <h3 class="text-base font-bold text-white line-clamp-2 leading-tight">
+                    {{ item.movie.title }}
+                  </h3>
+
+                  <div class="text-[11px] text-gray-400 space-y-0.5">
+                    <p class="flex items-center gap-1">
+                      <span class="text-[#D4AF37] font-semibold">{{ item.schedule.format }}</span>
+                      <span>•</span>
+                      <span>{{ item.schedule.language }}</span>
+                      <span>•</span>
+                      <span>{{ item.movie.ageRestriction }}</span>
+                    </p>
+                    <p class="text-gray-300 font-medium">
+                      🏛️ {{ item.schedule.room }}
+                    </p>
+                    <p class="text-white font-bold">
+                      📅 {{ item.schedule.time }} hs
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Position and Status Banner -->
+              <div
+                class="p-3.5 rounded-2xl border flex items-center justify-between text-xs"
+                [class]="item.isNotifiedActive ? 'bg-emerald-950/40 border-emerald-500/30' : 'bg-neutral-800/60 border-neutral-700/60'">
+                <div>
+                  <span class="text-[10px] uppercase font-semibold block" [class]="item.isNotifiedActive ? 'text-emerald-400' : 'text-gray-400'">
+                    Tu Posición en Fila
+                  </span>
+                  <div class="flex items-baseline gap-1.5">
+                    <span class="text-xl font-black" [class]="item.isNotifiedActive ? 'text-emerald-300' : 'text-[#D4AF37]'">
+                      Posición #{{ item.position }}
+                    </span>
+                    <span class="text-[11px] text-gray-400 font-medium">
+                      de {{ item.totalInWaitlist }} en espera
+                    </span>
+                  </div>
+                </div>
+
+                @if (item.isNotifiedActive) {
+                  <div class="text-right">
+                    <span class="text-[10px] text-emerald-400 font-bold uppercase block">Tiempo para comprar</span>
+                    <span class="text-xs font-mono font-black text-white bg-emerald-900/80 px-2 py-0.5 rounded-lg border border-emerald-500/40">
+                      ⏱️ {{ item.timeRemainingMinutes || 15 }} min
+                    </span>
+                  </div>
+                }
+              </div>
+
+              <!-- Actions -->
+              <div class="space-y-2 pt-1 border-t border-neutral-800">
+                @if (item.isNotifiedActive) {
+                  <button
+                    type="button"
+                    (click)="buyNotifiedWaitlist(item)"
+                    class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-neutral-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer">
+                    <span>🎟️</span>
+                    <span>Comprar Entradas Ahora</span>
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  (click)="onLeaveWaitlist(item)"
+                  [disabled]="isLeavingWaitlistId() === item.id"
+                  class="w-full py-2 px-4 rounded-xl bg-neutral-800/80 hover:bg-rose-950/60 border border-neutral-700 hover:border-rose-500/50 text-gray-400 hover:text-rose-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50">
+                  @if (isLeavingWaitlistId() === item.id) {
+                    <div class="w-3.5 h-3.5 border-2 border-rose-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span>Saliendo...</span>
+                  } @else {
+                    <span>✕ Salir de la lista de espera</span>
+                  }
+                </button>
+              </div>
+
+            </div>
+          }
+        </div>
+      } @else {
+        <!-- Empty State -->
+        <div class="flex flex-col items-center justify-center py-10 px-4 bg-neutral-800/40 rounded-3xl border border-neutral-700/60 text-center space-y-2">
+          <div class="p-3 rounded-full bg-neutral-800 text-gray-400">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 class="text-base font-bold text-white">No estás en ninguna lista de espera</h3>
+          <p class="text-xs text-gray-400 max-w-md">
+            Cuando una función se quede sin butacas, podrás anotarte para recibir una notificación automática cuando se liberen lugares.
+          </p>
+        </div>
+      }
+
+    </div>
+
+    <!-- 6. Historial "Mis películas" (únicamente posters y títulos de las películas que el cliente vio) -->
     <div class="space-y-4 pt-4 border-t border-neutral-800">
       <div class="flex items-center gap-3">
         <span class="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
@@ -679,4 +853,13 @@
 
     </div>
   </div>
+}
+
+<!-- Flow modal para compra directa desde notificación de lista de espera -->
+@if (purchaseMovie() && purchaseSchedule()) {
+  <app-purchase-flow
+    [movie]="purchaseMovie()"
+    [schedule]="purchaseSchedule()"
+    (close)="onClosePurchaseFlow()"
+    (purchaseCompleted)="onPurchaseCompleted($event)" />
 }

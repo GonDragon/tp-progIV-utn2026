@@ -4,7 +4,9 @@ import { AuthService } from './auth';
 import { PdfService } from './pdf.service';
 import { TicketService } from './ticket.service';
 import { ReviewService } from './review.service';
+import { WaitlistService } from './waitlist.service';
 import { UserProfileData, ActiveTicketItem, WatchedMovieItem } from '../models/profile';
+import { UserWaitlistItem } from '../models/waitlist';
 
 @Injectable({
   providedIn: 'root'
@@ -15,10 +17,12 @@ export class ProfileService {
   private readonly pdfService = inject(PdfService);
   private readonly ticketService = inject(TicketService);
   private readonly reviewService = inject(ReviewService);
+  private readonly waitlistService = inject(WaitlistService);
 
   private readonly _profile = signal<UserProfileData | null>(null);
   private readonly _activeTickets = signal<ActiveTicketItem[]>([]);
   private readonly _watchedMovies = signal<WatchedMovieItem[]>([]);
+  private readonly _waitlists = signal<UserWaitlistItem[]>([]);
   private readonly _isLoading = signal<boolean>(false);
   private readonly _isDownloadingPdf = signal<number | null>(null);
   private readonly _error = signal<string | null>(null);
@@ -26,6 +30,7 @@ export class ProfileService {
   readonly profile = this._profile.asReadonly();
   readonly activeTickets = this._activeTickets.asReadonly();
   readonly watchedMovies = this._watchedMovies.asReadonly();
+  readonly waitlists = this._waitlists.asReadonly();
   readonly isLoading = this._isLoading.asReadonly();
   readonly isDownloadingPdf = this._isDownloadingPdf.asReadonly();
   readonly error = this._error.asReadonly();
@@ -36,6 +41,7 @@ export class ProfileService {
       this._profile.set(null);
       this._activeTickets.set([]);
       this._watchedMovies.set([]);
+      this._waitlists.set([]);
       return;
     }
 
@@ -51,6 +57,9 @@ export class ProfileService {
 
       // 3. Fetch watched movies history
       await this.fetchWatchedMovies(user.id);
+
+      // 4. Fetch user's active waitlists with position
+      await this.fetchWaitlists(user.id);
     } catch (err: any) {
       console.error('Error al cargar datos del perfil:', err);
       this._error.set(err.message || 'Error al cargar los datos del perfil');
@@ -78,7 +87,7 @@ export class ProfileService {
           email: data.email || currentUser?.email || '',
           nombre: data.nombre || currentUser?.nombre || '',
           apellido: data.apellido || currentUser?.apellido || '',
-          rol: (data.rol as 'cliente' | 'empleado' | 'administrador') || 'cliente',
+          rol: (data.rol as 'cliente' | 'empleado' | 'administrador' | 'auditor') || 'cliente',
           fecha_nacimiento: data.fecha_nacimiento ?? null,
           tipo_sangre: data.tipo_sangre ?? null,
           color_ojos: data.color_ojos ?? null,
@@ -394,6 +403,31 @@ export class ProfileService {
     } catch (err: any) {
       console.warn('Error processing watched movies:', err);
       this._watchedMovies.set([]);
+    }
+  }
+
+  private async fetchWaitlists(userId: string): Promise<void> {
+    try {
+      const waitlistItems = await this.waitlistService.getUserWaitlists(userId);
+      this._waitlists.set(waitlistItems);
+    } catch (err) {
+      console.warn('Error fetching waitlists:', err);
+      this._waitlists.set([]);
+    }
+  }
+
+  async leaveWaitlist(funcionId: number): Promise<{ success: boolean; message: string }> {
+    this._isLoading.set(true);
+    try {
+      const res = await this.waitlistService.leaveWaitlist(funcionId);
+      if (res.success) {
+        await this.loadProfileData();
+      }
+      return res;
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Error al salir de la lista de espera' };
+    } finally {
+      this._isLoading.set(false);
     }
   }
 

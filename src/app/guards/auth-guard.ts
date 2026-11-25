@@ -18,7 +18,19 @@ export const dashboardGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
 
   const user = authService.currentUser();
-  if (authService.isAuthenticated() && user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+  if (authService.isAuthenticated() && user && (user.rol === 'administrador' || user.rol === 'empleado' || user.rol === 'auditor')) {
+    return true;
+  }
+
+  return router.createUrlTree(['/']);
+};
+
+export const adminGuard: CanActivateFn = (route, state) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  const user = authService.currentUser();
+  if (authService.isAuthenticated() && user && user.rol === 'administrador') {
     return true;
   }
 
@@ -31,7 +43,7 @@ export const loginGuard: CanActivateFn = (route, state) => {
 
   if (authService.isAuthenticated()) {
     const user = authService.currentUser();
-    if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+    if (user && (user.rol === 'administrador' || user.rol === 'empleado' || user.rol === 'auditor')) {
       return router.createUrlTree(['/dashboard']);
     }
     return router.createUrlTree(['/']);
@@ -46,7 +58,7 @@ export const registerGuard: CanActivateFn = (route, state) => {
 
   if (authService.isAuthenticated()) {
     const user = authService.currentUser();
-    if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+    if (user && (user.rol === 'administrador' || user.rol === 'empleado' || user.rol === 'auditor')) {
       return router.createUrlTree(['/dashboard']);
     }
     return router.createUrlTree(['/']);
@@ -60,7 +72,7 @@ export const principalGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
 
   const user = authService.currentUser();
-  if (authService.isAuthenticated() && user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+  if (authService.isAuthenticated() && user && (user.rol === 'administrador' || user.rol === 'empleado' || user.rol === 'auditor')) {
     return router.createUrlTree(['/dashboard']);
   }
 
@@ -80,7 +92,7 @@ export const perfilGuard: CanActivateFn = (route, state) => {
     return true;
   }
 
-  if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+  if (user && (user.rol === 'administrador' || user.rol === 'empleado' || user.rol === 'auditor')) {
     return router.createUrlTree(['/dashboard']);
   }
 

@@ -1,5 +1,5 @@
 import { Component, inject, effect, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/auth';
 import { MovieService } from '../../services/movie.service';
 import { HighlightedMovies } from '../../components/highlighted-movies/highlighted-movies';
@@ -28,16 +28,34 @@ export class Principal {
   readonly authService = inject(AuthService);
   readonly movieService = inject(MovieService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly selectedMovie = signal<Movie | null>(null);
   readonly purchaseMovie = signal<Movie | null>(null);
   readonly purchaseSchedule = signal<Schedule | null>(null);
+  readonly relocationNotice = signal<{ movieId?: string; movieTitle?: string } | null>(null);
 
   constructor() {
     effect(() => {
       const user = this.authService.currentUser();
-      if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+      if (user && (user.rol === 'administrador' || user.rol === 'empleado' || user.rol === 'auditor')) {
         this.router.navigate(['/dashboard']);
+      }
+    });
+
+    // Check query params for relocation after cancelled function
+    this.route.queryParams.subscribe((params) => {
+      const peliculaId = params['pelicula_id'] || params['peliculaId'] || params['pelicula'];
+      const isReubicar = params['reubicar'] === 'true' || params['reubicar'] === true;
+
+      if (peliculaId) {
+        const found = this.movieService.allMovies().find((m) => String(m.id) === String(peliculaId));
+        if (found) {
+          this.selectedMovie.set(found);
+          if (isReubicar || (this.authService.currentUser()?.saldo_favor || 0) > 0) {
+            this.relocationNotice.set({ movieId: found.id, movieTitle: found.title });
+          }
+        }
       }
     });
   }

@@ -33,11 +33,12 @@ export class Dashboard {
   constructor() {
     effect(() => {
       const user = this.authService.currentUser();
-      if (!this.authService.isAuthenticated() || !user || (user.rol !== 'administrador' && user.rol !== 'empleado')) {
+      if (!this.authService.isAuthenticated() || !user || (user.rol !== 'administrador' && user.rol !== 'empleado' && user.rol !== 'auditor')) {
         this.router.navigate(['/']);
-      } else if (user.rol === 'empleado' && this.currentTab() === 'movies') {
-        // Default to QR validation for employees
-        this.currentTab.set('validation');
+      } else if (user.rol === 'empleado' && (this.currentTab() === 'movies' || this.currentTab() === 'reports' || this.currentTab() === 'audit')) {
+        this.currentTab.set('candy');
+      } else if (user.rol === 'auditor' && (this.currentTab() === 'movies' || this.currentTab() === 'candy' || this.currentTab() === 'promotions' || this.currentTab() === 'validation')) {
+        this.currentTab.set('reports');
       }
     });
   }

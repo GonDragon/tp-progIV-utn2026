@@ -155,3 +155,269 @@ INSERT INTO configuraciones (nombre, valor)
 VALUES
   ('cuenta_nueva', 20.0),
   ('mayores_50', 10.0);
+
+
+CREATE TABLE IF NOT EXISTS public.sugerencia_pelicula (
+                                                        id SERIAL PRIMARY KEY,
+                                                        perfil_id UUID REFERENCES public.perfiles(id) ON DELETE SET NULL,
+  titulo VARCHAR(255) NOT NULL,
+  descripcion TEXT NOT NULL,
+  explicacion_cine TEXT NOT NULL,
+  revisado BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+
+-- 11. PUSH NOTIFICATIONS
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+    id SERIAL PRIMARY KEY,
+    perfil_id UUID REFERENCES public.perfiles(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 12. CANCELACIÓN ATÓMICA DE FUNCIONES
+CREATE OR REPLACE FUNCTION public.cancelar_funcion(p_funcion_id INT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_pelicula_id INT;
+    v_pelicula_nombre VARCHAR(255);
+    v_fecha_hora TIMESTAMP;
+    v_afectados JSONB := '[]'::JSONB;
+    v_rec RECORD;
+    v_total_reembolsado DECIMAL(10,2) := 0.00;
+    v_total_usuarios INT := 0;
+BEGIN
+    -- 1. Verificar existencia de la función y obtener datos de la película
+    SELECT f.pelicula_id, f.fecha_hora_inicio, p.nombre
+    INTO v_pelicula_id, v_fecha_hora, v_pelicula_nombre
+    FROM funciones f
+    JOIN peliculas p ON p.id = f.pelicula_id
+    WHERE f.id = p_funcion_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'La función con ID % no existe.', p_funcion_id;
+    END IF;
+
+    -- 2. Procesar y acreditar a cada transacción no cancelada asociada a la función
+    FOR v_rec IN (
+        SELECT DISTINCT
+            t.id AS transaccion_id,
+            t.perfil_id,
+            t.monto_total,
+            p.nombre AS perfil_nombre,
+            p.apellido AS perfil_apellido
+        FROM entradas_tickets et
+        JOIN transacciones t ON t.id = et.transaccion_id
+        LEFT JOIN perfiles p ON p.id = t.perfil_id
+        WHERE et.funcion_id = p_funcion_id
+          AND t.estado <> 'Cancelada'
+    ) LOOP
+        -- Invalidar todos los tickets de la transacción
+        UPDATE entradas_tickets
+        SET estado_qr = 'Invalidado'
+        WHERE transaccion_id = v_rec.transaccion_id;
+
+        -- Marcar la transacción como cancelada
+        UPDATE transacciones
+        SET estado = 'Cancelada'
+        WHERE id = v_rec.transaccion_id;
+
+        -- Acreditar saldo a favor si la transacción tiene perfil asociado
+        IF v_rec.perfil_id IS NOT NULL THEN
+            UPDATE perfiles
+            SET saldo_favor = COALESCE(saldo_favor, 0.00) + v_rec.monto_total
+            WHERE id = v_rec.perfil_id;
+
+            -- Registrar en el log de actividad
+            INSERT INTO log_actividad (perfil_id, accion, fecha_hora)
+            VALUES (
+                v_rec.perfil_id,
+                'Reembolso automático de crédito por $' || v_rec.monto_total || ' por cancelación de la función de "' || v_pelicula_nombre || '" (ID: ' || p_funcion_id || ').',
+                CURRENT_TIMESTAMP
+            );
+
+            -- Acumular usuario afectado para el resultado
+            v_afectados := v_afectados || jsonb_build_object(
+                'perfil_id', v_rec.perfil_id,
+                'transaccion_id', v_rec.transaccion_id,
+                'monto', v_rec.monto_total,
+                'nombre', COALESCE(v_rec.perfil_nombre || ' ' || v_rec.perfil_apellido, 'Usuario')
+            );
+
+            v_total_usuarios := v_total_usuarios + 1;
+            v_total_reembolsado := v_total_reembolsado + v_rec.monto_total;
+        END IF;
+    END LOOP;
+
+    -- 3. Limpiar reservas temporales si las hubiera
+    DELETE FROM reservas_temporales
+    WHERE funcion_id = p_funcion_id;
+
+    -- 4. Eliminar la función cancelada
+    DELETE FROM funciones
+    WHERE id = p_funcion_id;
+
+    -- 5. Retornar resumen completo de la operación atómica
+    RETURN jsonb_build_object(
+        'success', TRUE,
+        'funcion_id', p_funcion_id,
+        'pelicula_id', v_pelicula_id,
+        'pelicula_nombre', v_pelicula_nombre,
+        'fecha_hora_inicio', v_fecha_hora,
+        'usuarios_afectados_count', v_total_usuarios,
+        'total_reembolsado', v_total_reembolsado,
+        'afectados', v_afectados
+    );
+END;
+$$;
+
+-- 13. LISTA DE ESPERA PARA FUNCIONES AGOTADAS
+CREATE TABLE IF NOT EXISTS public.lista_espera (
+    id SERIAL PRIMARY KEY,
+    funcion_id INT REFERENCES public.funciones(id) ON DELETE CASCADE NOT NULL,
+    perfil_id UUID REFERENCES public.perfiles(id) ON DELETE CASCADE NOT NULL,
+    estado VARCHAR(50) DEFAULT 'en_espera' NOT NULL, -- 'en_espera', 'notificado', 'comprado', 'expirado', 'cancelado'
+    fecha_inscripcion TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    notificado_en TIMESTAMP,
+    expira_en TIMESTAMP,
+    UNIQUE (funcion_id, perfil_id)
+);
+
+-- Función para contar personas activas en lista de espera por función
+CREATE OR REPLACE FUNCTION public.contar_lista_espera_funcion(p_funcion_id INT)
+RETURNS INT
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+    SELECT COUNT(*)::INT
+    FROM public.lista_espera
+    WHERE funcion_id = p_funcion_id
+      AND estado IN ('en_espera', 'notificado');
+$$;
+
+-- Función para obtener la posición de un usuario en la lista de espera de una función (1-indexed)
+CREATE OR REPLACE FUNCTION public.obtener_posicion_espera(p_funcion_id INT, p_perfil_id UUID)
+RETURNS INT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_posicion INT := NULL;
+BEGIN
+    SELECT rank_pos INTO v_posicion
+    FROM (
+        SELECT perfil_id,
+               ROW_NUMBER() OVER (ORDER BY fecha_inscripcion ASC, id ASC) AS rank_pos
+        FROM public.lista_espera
+        WHERE funcion_id = p_funcion_id
+          AND estado IN ('en_espera', 'notificado')
+    ) sub
+    WHERE sub.perfil_id = p_perfil_id;
+
+    RETURN v_posicion;
+END;
+$$;
+
+-- Función atómica para procesar expiración y notificar al siguiente en la lista de espera
+CREATE OR REPLACE FUNCTION public.procesar_siguiente_lista_espera(p_funcion_id INT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_siguiente RECORD;
+    v_pelicula_nombre VARCHAR(255);
+    v_fecha_hora TIMESTAMP;
+BEGIN
+    -- 1. Expirar registros notificados cuyo tiempo límite de 15 minutos ya caducó
+    UPDATE public.lista_espera
+    SET estado = 'expirado'
+    WHERE funcion_id = p_funcion_id
+      AND estado = 'notificado'
+      AND expira_en < CURRENT_TIMESTAMP;
+
+    -- 2. Si ya hay alguien con notificación vigente y no expirada, retornar sus datos
+    SELECT le.*, p.email, p.nombre, p.apellido
+    INTO v_siguiente
+    FROM public.lista_espera le
+    JOIN public.perfiles p ON p.id = le.perfil_id
+    WHERE le.funcion_id = p_funcion_id
+      AND le.estado = 'notificado'
+      AND le.expira_en >= CURRENT_TIMESTAMP
+    ORDER BY le.fecha_inscripcion ASC, le.id ASC
+    LIMIT 1;
+
+    IF FOUND THEN
+        SELECT p.nombre, f.fecha_hora_inicio
+        INTO v_pelicula_nombre, v_fecha_hora
+        FROM public.funciones f
+        JOIN public.peliculas p ON p.id = f.pelicula_id
+        WHERE f.id = p_funcion_id;
+
+        RETURN jsonb_build_object(
+            'success', TRUE,
+            'action', 'notificado_activo',
+            'id', v_siguiente.id,
+            'perfil_id', v_siguiente.perfil_id,
+            'email', v_siguiente.email,
+            'nombre', v_siguiente.nombre,
+            'apellido', v_siguiente.apellido,
+            'funcion_id', p_funcion_id,
+            'pelicula_nombre', v_pelicula_nombre,
+            'fecha_hora_inicio', v_fecha_hora,
+            'expira_en', v_siguiente.expira_en
+        );
+    END IF;
+
+    -- 3. Buscar al siguiente en espera
+    SELECT le.*, p.email, p.nombre, p.apellido
+    INTO v_siguiente
+    FROM public.lista_espera le
+    JOIN public.perfiles p ON p.id = le.perfil_id
+    WHERE le.funcion_id = p_funcion_id
+      AND le.estado = 'en_espera'
+    ORDER BY le.fecha_inscripcion ASC, le.id ASC
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object(
+            'success', TRUE,
+            'action', 'sin_espera',
+            'message', 'No hay usuarios en lista de espera para esta función.'
+        );
+    END IF;
+
+    -- 4. Actualizar estado a 'notificado' con ventana de 15 minutos
+    UPDATE public.lista_espera
+    SET estado = 'notificado',
+        notificado_en = CURRENT_TIMESTAMP,
+        expira_en = CURRENT_TIMESTAMP + INTERVAL '15 minutes'
+    WHERE id = v_siguiente.id;
+
+    SELECT p.nombre, f.fecha_hora_inicio
+    INTO v_pelicula_nombre, v_fecha_hora
+    FROM public.funciones f
+    JOIN public.peliculas p ON p.id = f.pelicula_id
+    WHERE f.id = p_funcion_id;
+
+    RETURN jsonb_build_object(
+        'success', TRUE,
+        'action', 'nuevo_notificado',
+        'id', v_siguiente.id,
+        'perfil_id', v_siguiente.perfil_id,
+        'email', v_siguiente.email,
+        'nombre', v_siguiente.nombre,
+        'apellido', v_siguiente.apellido,
+        'funcion_id', p_funcion_id,
+        'pelicula_nombre', v_pelicula_nombre,
+        'fecha_hora_inicio', v_fecha_hora,
+        'expira_en', (CURRENT_TIMESTAMP + INTERVAL '15 minutes')
+    );
+END;
+$$;

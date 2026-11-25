@@ -4,6 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { Movie, Schedule, Sala } from '../../models/movie';
 import { MovieService } from '../../services/movie.service';
 import { AdminService } from '../../services/admin.service';
+import { AuthService } from '../../services/auth';
+import { WaitlistService } from '../../services/waitlist.service';
+import { PurchaseService } from '../../services/purchase.service';
 
 export interface CalendarDay {
   dayNumber: number;
@@ -25,6 +28,9 @@ export interface CalendarDay {
 export class MovieScheduleCalendar {
   readonly movieService = inject(MovieService);
   readonly adminService = inject(AdminService);
+  readonly authService = inject(AuthService);
+  readonly waitlistService = inject(WaitlistService);
+  readonly purchaseService = inject(PurchaseService);
 
   readonly movie = input<Movie | null>(null);
   readonly mode = input<'client' | 'admin'>('client');
@@ -32,6 +38,14 @@ export class MovieScheduleCalendar {
   readonly scheduleSelected = output<{ movie: Movie; schedule: Schedule }>();
   readonly scheduleUpdated = output<{ movie: Movie; schedule: Schedule }>();
   readonly scheduleDeleted = output<{ movie: Movie; schedule: Schedule }>();
+
+  // Waitlist state
+  readonly waitlistCounts = signal<Map<number, number>>(new Map());
+  readonly userWaitlistStatuses = signal<Map<number, { inWaitlist: boolean; position?: number; estado?: string }>>(new Map());
+  readonly soldOutSchedules = signal<Map<number, boolean>>(new Map());
+  readonly isJoiningWaitlistId = signal<number | null>(null);
+  readonly isLeavingWaitlistId = signal<number | null>(null);
+  readonly waitlistFeedback = signal<{ funcionId: number; type: 'success' | 'error'; message: string } | null>(null);
 
   // Calendar navigation state - initialized to current month and year
   readonly selectedYear = signal<number>(new Date().getFullYear());
@@ -205,6 +219,128 @@ export class MovieScheduleCalendar {
     this.editingSchedule.set(null);
     this.deletingSchedule.set(null);
     this.deletionRefundSummary.set(null);
+    this.waitlistFeedback.set(null);
+    this.loadSchedulesData(day.schedules);
+  }
+
+  async loadSchedulesData(schedules: Schedule[]): Promise<void> {
+    const funcionIds = schedules.map(s => Number(s.id)).filter(id => !isNaN(id) && id > 0);
+    if (funcionIds.length === 0) return;
+
+    // 1. Load waitlist counts for admin and client
+    const counts = await this.waitlistService.getWaitlistCountsForFunctions(funcionIds);
+    this.waitlistCounts.set(counts);
+
+    // 2. Load user waitlist statuses if user is logged in
+    const user = this.authService.currentUser();
+    if (user) {
+      const statuses = new Map<number, { inWaitlist: boolean; position?: number; estado?: string }>();
+      for (const fId of funcionIds) {
+        const status = await this.waitlistService.checkUserWaitlistStatus(fId, user.id);
+        if (status.inWaitlist) {
+          statuses.set(fId, status);
+        }
+      }
+      this.userWaitlistStatuses.set(statuses);
+    } else {
+      this.userWaitlistStatuses.set(new Map());
+    }
+
+    // 3. Check seat availability for each schedule to detect sold out state
+    const soldOutMap = new Map<number, boolean>();
+    for (const s of schedules) {
+      const fId = Number(s.id);
+      if (!isNaN(fId)) {
+        const stats = await this.purchaseService.getShowtimeSeatStats(fId, s.salaId);
+        soldOutMap.set(fId, stats.isSoldOut);
+      }
+    }
+    this.soldOutSchedules.set(soldOutMap);
+  }
+
+  isScheduleSoldOut(sched: Schedule): boolean {
+    const fId = Number(sched.id);
+    return this.soldOutSchedules().get(fId) === true;
+  }
+
+  getWaitlistCount(sched: Schedule): number {
+    const fId = Number(sched.id);
+    return this.waitlistCounts().get(fId) || 0;
+  }
+
+  getUserWaitlistStatus(sched: Schedule): { inWaitlist: boolean; position?: number; estado?: string } | undefined {
+    const fId = Number(sched.id);
+    return this.userWaitlistStatuses().get(fId);
+  }
+
+  async onJoinWaitlist(sched: Schedule): Promise<void> {
+    const user = this.authService.currentUser();
+    if (!user) {
+      this.waitlistFeedback.set({
+        funcionId: Number(sched.id),
+        type: 'error',
+        message: 'Debes iniciar sesión con una cuenta de cliente para anotarte en la lista de espera.'
+      });
+      return;
+    }
+
+    const fId = Number(sched.id);
+    this.isJoiningWaitlistId.set(fId);
+    this.waitlistFeedback.set(null);
+
+    try {
+      const res = await this.waitlistService.joinWaitlist(fId);
+      if (res.success) {
+        this.waitlistFeedback.set({
+          funcionId: fId,
+          type: 'success',
+          message: res.message
+        });
+        if (this.selectedDay()) {
+          await this.loadSchedulesData(this.selectedDay()!.schedules);
+        }
+      } else {
+        this.waitlistFeedback.set({
+          funcionId: fId,
+          type: 'error',
+          message: res.message
+        });
+      }
+    } finally {
+      this.isJoiningWaitlistId.set(null);
+    }
+  }
+
+  async onLeaveWaitlist(sched: Schedule): Promise<void> {
+    const fId = Number(sched.id);
+    this.isLeavingWaitlistId.set(fId);
+    this.waitlistFeedback.set(null);
+
+    try {
+      const res = await this.waitlistService.leaveWaitlist(fId);
+      if (res.success) {
+        this.waitlistFeedback.set({
+          funcionId: fId,
+          type: 'success',
+          message: res.message
+        });
+        if (this.selectedDay()) {
+          await this.loadSchedulesData(this.selectedDay()!.schedules);
+        }
+      } else {
+        this.waitlistFeedback.set({
+          funcionId: fId,
+          type: 'error',
+          message: res.message
+        });
+      }
+    } finally {
+      this.isLeavingWaitlistId.set(null);
+    }
+  }
+
+  dismissWaitlistFeedback(): void {
+    this.waitlistFeedback.set(null);
   }
 
   closeDayModal(): void {
@@ -350,11 +486,11 @@ export class MovieScheduleCalendar {
 
     this.isDeletingSchedule.set(true);
     try {
-      const result = await this.movieService.removeSchedule(currentMovie.id, sched.id);
+      const result = await this.movieService.cancelSchedule(currentMovie.id, sched.id);
       this.adminService.addAuditLog(
-        'eliminar_funcion',
+        'cancelar_funcion',
         'Funciones',
-        `Eliminó la función de las ${sched.time} en ${sched.room} de "${currentMovie.title}" (Reembolsos a ${result.refundedCount} usuarios: $${result.refundedAmount.toLocaleString('es-AR')}).`
+        `Canceló la función de las ${sched.time} en ${sched.room} de "${currentMovie.title}" (Reembolsos a ${result.refundedCount} usuarios: $${result.refundedAmount.toLocaleString('es-AR')}).`
       );
 
       this.scheduleDeleted.emit({ movie: currentMovie, schedule: sched });
@@ -372,7 +508,7 @@ export class MovieScheduleCalendar {
       });
       this.deletingSchedule.set(null);
     } catch (err) {
-      console.error('Error al eliminar función con reembolso:', err);
+      console.error('Error al cancelar función con reembolso:', err);
     } finally {
       this.isDeletingSchedule.set(false);
     }

@@ -1,0 +1,177 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+  <div class="bg-neutral-900 border border-neutral-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 my-8">
+
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between border-b border-neutral-800 pb-3">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">💡</span>
+        <div>
+          <h3 class="text-lg font-bold text-white">
+            Sugerencias de Clientes
+          </h3>
+          <p class="text-xs text-gray-400">
+            Revisión de películas propuestas por la comunidad
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        (click)="onClose()"
+        class="text-gray-400 hover:text-white cursor-pointer text-lg p-1 rounded-lg hover:bg-neutral-800 transition-colors">
+        ✕
+      </button>
+    </div>
+
+    <!-- Loading State -->
+    @if (isLoading()) {
+      <div class="flex flex-col items-center justify-center py-12 text-[#D4AF37] space-y-3">
+        <div class="w-8 h-8 border-3 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-xs text-gray-300 font-medium">Cargando sugerencias sin revisar...</p>
+      </div>
+    } @else if (totalSuggestions() === 0) {
+      <!-- Empty State -->
+      <div class="text-center py-12 space-y-3">
+        <div class="text-4xl">🎉</div>
+        <h4 class="text-base font-bold text-white">¡No hay sugerencias pendientes!</h4>
+        <p class="text-xs text-gray-400 max-w-sm mx-auto">
+          Todas las sugerencias enviadas por los clientes han sido revisadas.
+        </p>
+        <div class="pt-2">
+          <button
+            type="button"
+            (click)="onClose()"
+            class="px-5 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-200 text-xs font-bold rounded-xl cursor-pointer">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    } @else {
+      <!-- Suggestion Content with Navigation Arrows -->
+      <div class="relative flex items-center gap-2 sm:gap-4">
+
+        <!-- Left Arrow (Anterior) -->
+        <button
+          type="button"
+          (click)="goToPrevious()"
+          [disabled]="!hasPrevious() || isProcessing()"
+          class="shrink-0 w-10 h-10 rounded-full bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 disabled:hover:bg-neutral-800 text-gray-200 flex items-center justify-center cursor-pointer transition-all border border-neutral-700"
+          title="Sugerencia anterior">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <!-- Current Suggestion Card -->
+        <div class="grow bg-neutral-800/80 rounded-2xl border border-neutral-700 p-5 space-y-4 min-w-0">
+          @if (currentSuggestion(); as sug) {
+            <!-- Card Header: Title + Pagination Pill -->
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-700/80 pb-3">
+              <div class="min-w-0">
+                <span class="text-[10px] uppercase tracking-wider font-bold text-[#D4AF37] block">Título Propuesto</span>
+                <h4 class="text-lg sm:text-xl font-black text-white truncate">
+                  {{ sug.titulo }}
+                </h4>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-neutral-900 border border-neutral-700 text-xs font-bold text-gray-300">
+                {{ currentIndex() + 1 }} de {{ totalSuggestions() }}
+              </span>
+            </div>
+
+            <!-- Client Info & Date -->
+            <div class="flex flex-wrap items-center justify-between text-xs text-gray-400 gap-2 bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800">
+              <div class="flex items-center gap-1.5">
+                <span>👤</span>
+                <span class="text-gray-200 font-semibold">
+                  {{ sug.perfiles ? (sug.perfiles.nombre + ' ' + sug.perfiles.apellido) : 'Cliente' }}
+                </span>
+                @if (sug.perfiles?.email) {
+                  <span class="text-gray-500 font-mono">({{ sug.perfiles?.email }})</span>
+                }
+              </div>
+              @if (sug.created_at) {
+                <span class="text-gray-500 font-mono">
+                  {{ sug.created_at | date:'dd/MM/yyyy HH:mm' }}
+                </span>
+              }
+            </div>
+
+            <!-- Description -->
+            <div class="space-y-1">
+              <span class="text-xs font-bold uppercase tracking-wider text-gray-400 block">
+                Descripción / Sinopsis:
+              </span>
+              <p class="text-xs sm:text-sm text-gray-200 bg-neutral-900/60 p-3 rounded-xl border border-neutral-800 max-h-36 overflow-y-auto whitespace-pre-line leading-relaxed">
+                {{ sug.descripcion }}
+              </p>
+            </div>
+
+            <!-- Explicación de por qué la quieren en el cine -->
+            <div class="space-y-1">
+              <span class="text-xs font-bold uppercase tracking-wider text-gray-400 block">
+                ¿Por qué en el cine?:
+              </span>
+              <p class="text-xs sm:text-sm text-amber-200/90 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20 max-h-36 overflow-y-auto whitespace-pre-line leading-relaxed">
+                {{ sug.explicacion_cine }}
+              </p>
+            </div>
+          }
+        </div>
+
+        <!-- Right Arrow (Próxima) -->
+        <button
+          type="button"
+          (click)="goToNext()"
+          [disabled]="!hasNext() || isProcessing()"
+          class="shrink-0 w-10 h-10 rounded-full bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 disabled:hover:bg-neutral-800 text-gray-200 flex items-center justify-center cursor-pointer transition-all border border-neutral-700"
+          title="Próxima sugerencia">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+      </div>
+
+      <!-- Footer Buttons: Rechazar y Aceptar -->
+      <div class="flex items-center justify-between pt-3 border-t border-neutral-800">
+        <button
+          type="button"
+          (click)="onClose()"
+          class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-semibold rounded-xl cursor-pointer">
+          Cerrar
+        </button>
+
+        <div class="flex items-center gap-3">
+          <!-- Rechazar -->
+          <button
+            type="button"
+            (click)="handleReject()"
+            [disabled]="isProcessing() || !currentSuggestion()"
+            class="px-4 py-2.5 bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span>Rechazar</span>
+          </button>
+
+          <!-- Aceptar -->
+          <button
+            type="button"
+            (click)="handleAccept()"
+            [disabled]="isProcessing() || !currentSuggestion()"
+            class="px-5 py-2.5 bg-[#D4AF37] hover:bg-[#b8972e] text-neutral-950 text-xs font-black rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5">
+            @if (isProcessing()) {
+              <div class="w-3.5 h-3.5 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></div>
+              <span>Procesando...</span>
+            } @else {
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Aceptar</span>
+            }
+          </button>
+        </div>
+      </div>
+    }
+
+  </div>
+</div>

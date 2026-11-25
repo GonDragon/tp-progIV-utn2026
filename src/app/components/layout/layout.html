@@ -91,6 +91,20 @@
         <span class="text-[10px] font-medium">Inicio</span>
       </button>
 
+      <!-- Botón Sugerir Película - Solo visible para clientes registrados -->
+      @if (authService.currentUser()?.rol === 'cliente') {
+        <button
+          (click)="goToSugerir()"
+          [class]="currentUrl().includes('sugerir')
+            ? 'flex flex-col items-center justify-center w-full h-full text-[#D4AF37] cursor-pointer'
+            : 'flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-[#D4AF37] transition-colors cursor-pointer'">
+          <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+          </svg>
+          <span class="text-[10px] font-medium text-center leading-tight">Sugerir</span>
+        </button>
+      }
+
       <!-- Botón Persona (Perfil) - Solo visible para clientes registrados -->
       @if (authService.currentUser()?.rol === 'cliente') {
         <button
@@ -102,6 +116,20 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
           </svg>
           <span class="text-[10px] font-medium">Perfil</span>
+        </button>
+      }
+
+      <!-- Botón Crear Usuario - Solo visible para Administrador -->
+      @if (authService.currentUser()?.rol === 'administrador') {
+        <button
+          (click)="goToCrearUsuario()"
+          [class]="currentUrl().includes('crear-usuario')
+            ? 'flex flex-col items-center justify-center w-full h-full text-[#D4AF37] cursor-pointer'
+            : 'flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-[#D4AF37] transition-colors cursor-pointer'">
+          <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+          </svg>
+          <span class="text-[10px] font-medium text-center leading-tight">Crear usuario</span>
         </button>
       }
 

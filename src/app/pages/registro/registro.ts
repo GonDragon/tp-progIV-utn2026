@@ -53,7 +53,7 @@ export class Registro {
     effect(() => {
       if (this.authService.isAuthenticated()) {
         const user = this.authService.currentUser();
-        if (user && (user.rol === 'administrador' || user.rol === 'empleado')) {
+        if (user && (user.rol !== 'cliente')) {
           this.router.navigate(['/dashboard']);
         } else {
           this.router.navigate(['/']);

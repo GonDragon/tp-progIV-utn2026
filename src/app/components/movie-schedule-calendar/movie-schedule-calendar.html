@@ -174,6 +174,24 @@
         </div>
       }
 
+      <!-- Waitlist Feedback Notification -->
+      @if (waitlistFeedback(); as wfb) {
+        <div
+          class="p-3 rounded-xl border text-xs flex items-center justify-between shadow-md"
+          [class]="wfb.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-rose-500/10 border-rose-500/30 text-rose-300'">
+          <div class="flex items-center gap-2">
+            <span>{{ wfb.type === 'success' ? '✅' : '❌' }}</span>
+            <span>{{ wfb.message }}</span>
+          </div>
+          <button
+            type="button"
+            (click)="dismissWaitlistFeedback()"
+            class="text-gray-400 hover:text-white text-xs font-bold px-1.5 cursor-pointer">
+            ✕
+          </button>
+        </div>
+      }
+
       <!-- Modal Body / Content -->
       <div class="overflow-y-auto space-y-4 pr-1">
 
@@ -207,9 +225,21 @@
                       <span class="text-[10px] px-2 py-0.5 rounded bg-neutral-800 text-gray-400 font-bold border border-neutral-700">
                         Finalizada / Pasada
                       </span>
+                    } @else if (isScheduleSoldOut(sched)) {
+                      <span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 font-bold border border-rose-500/30">
+                        🔴 Agotada
+                      </span>
                     } @else {
                       <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
                         Disponible
+                      </span>
+                    }
+
+                    <!-- Admin mode: Waitlist Count Badge -->
+                    @if (mode() === 'admin') {
+                      <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30 flex items-center gap-1" title="Personas en lista de espera">
+                        <span>⏳ Espera:</span>
+                        <strong class="text-white">{{ getWaitlistCount(sched) }}</strong>
                       </span>
                     }
                   </div>
@@ -243,6 +273,36 @@
                         title="Las funciones pasadas no se pueden seleccionar para compra">
                         No disponible
                       </button>
+                    } @else if (isScheduleSoldOut(sched)) {
+                      @if (getUserWaitlistStatus(sched); as userStatus) {
+                        <div class="flex items-center gap-1.5">
+                          <span class="px-3 py-1.5 bg-amber-500/20 text-[#D4AF37] border border-[#D4AF37]/40 text-xs font-bold rounded-xl flex items-center gap-1">
+                            <span>⏳ En espera (#{{ userStatus.position }})</span>
+                          </span>
+                          <button
+                            type="button"
+                            (click)="onLeaveWaitlist(sched)"
+                            [disabled]="isLeavingWaitlistId() === +sched.id"
+                            class="px-2.5 py-1.5 bg-neutral-800 hover:bg-rose-950/80 text-gray-400 hover:text-rose-300 text-xs rounded-xl border border-neutral-700 transition-colors cursor-pointer"
+                            title="Salir de la lista de espera">
+                            ✕
+                          </button>
+                        </div>
+                      } @else {
+                        <button
+                          type="button"
+                          (click)="onJoinWaitlist(sched)"
+                          [disabled]="isJoiningWaitlistId() === +sched.id"
+                          class="px-4 py-2 bg-gradient-to-r from-amber-500 to-[#D4AF37] hover:from-amber-400 hover:to-amber-500 text-neutral-950 text-xs font-black rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5">
+                          @if (isJoiningWaitlistId() === +sched.id) {
+                            <div class="w-3.5 h-3.5 border-2 border-neutral-950 border-t-transparent rounded-full animate-spin"></div>
+                            <span>Anotando...</span>
+                          } @else {
+                            <span>🔔</span>
+                            <span>Lista de espera</span>
+                          }
+                        </button>
+                      }
                     } @else {
                       <button
                         type="button"
@@ -450,7 +510,7 @@
   </div>
 }
 
-<!-- ADMIN: CONFIRM DELETE SHOWTIME MODAL (WITH REFUND NOTICE) -->
+<!-- ADMIN: CONFIRM DELETE/CANCEL SHOWTIME MODAL (WITH REFUND NOTICE) -->
 @if (deletingSchedule(); as schedToDelete) {
   <div class="fixed inset-0 z-60 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 overflow-y-auto">
     <div class="fixed inset-0" (click)="cancelDeleting()"></div>
@@ -463,7 +523,7 @@
         </div>
         <div>
           <h4 class="text-base font-bold text-white">
-            ¿Eliminar función del horario {{ schedToDelete.time }} hs?
+            ¿Cancelar función del horario {{ schedToDelete.time }} hs?
           </h4>
           <p class="text-xs text-gray-400 mt-1">
             Sala: <strong>{{ schedToDelete.room }}</strong> ({{ schedToDelete.format }} - {{ schedToDelete.language }})
@@ -471,12 +531,15 @@
         </div>
       </div>
 
-      <div class="bg-rose-950/30 border border-rose-500/30 rounded-xl p-3 text-xs text-rose-200 space-y-1">
+      <div class="bg-rose-950/30 border border-rose-500/30 rounded-xl p-3 text-xs text-rose-200 space-y-1.5">
         <p class="font-bold flex items-center gap-1">
-          <span>🔄</span> Política de Reembolso Automático:
+          <span>🔄</span> Cancelación Atómica y Reembolso de Crédito:
         </p>
         <p class="text-rose-300 leading-relaxed">
-          Al eliminar esta función, se cancelarán todas las compras asociadas y se les reintegrará automáticamente el 100% de los tickets/dinero como saldo a favor en sus cuentas a todos los usuarios que hayan adquirido boletos para esta función.
+          Al cancelar esta función, todas las entradas vendidas (incluyendo combos y candy bar asociados) pasan automáticamente como <strong>crédito / saldo a favor</strong> en la cuenta de cada usuario comprador en una transacción 100% atómica.
+        </p>
+        <p class="text-rose-200 font-medium">
+          📲 Cada comprador afectado recibirá una notificación push y se le ofrecerá reubicarse en otra función disponible de la misma película usando su crédito.
         </p>
       </div>
 
@@ -486,7 +549,7 @@
           [disabled]="isDeletingSchedule()"
           (click)="cancelDeleting()"
           class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs font-semibold rounded-xl transition-colors cursor-pointer">
-          Cancelar
+          Cerrar
         </button>
 
         <button
@@ -496,9 +559,9 @@
           class="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center gap-1.5">
           @if (isDeletingSchedule()) {
             <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            <span>Eliminando y reembolsando...</span>
+            <span>Cancelando función y acreditando...</span>
           } @else {
-            <span>Confirmar Eliminación</span>
+            <span>Confirmar Cancelación</span>
           }
         </button>
       </div>

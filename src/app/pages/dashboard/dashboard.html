@@ -19,7 +19,7 @@
         }
 
         <!-- Candy Bar & Combos -->
-        @if (authService.currentUser()?.rol === 'administrador') {
+        @if (authService.currentUser()?.rol === 'administrador' || authService.currentUser()?.rol === 'empleado') {
           <button
             type="button"
             (click)="setTab('candy')"
@@ -30,7 +30,7 @@
         }
 
         <!-- Promociones & Preventas -->
-        @if (authService.currentUser()?.rol === 'administrador') {
+        @if (authService.currentUser()?.rol === 'administrador' || authService.currentUser()?.rol === 'empleado') {
           <button
             type="button"
             (click)="setTab('promotions')"
@@ -41,7 +41,7 @@
         }
 
         <!-- Reportes & Estadísticas -->
-        @if (authService.currentUser()?.rol === 'administrador') {
+        @if (authService.currentUser()?.rol === 'administrador' || authService.currentUser()?.rol === 'auditor') {
           <button
             type="button"
             (click)="setTab('reports')"
@@ -52,7 +52,7 @@
         }
 
         <!-- Auditoría -->
-        @if (authService.currentUser()?.rol === 'administrador') {
+        @if (authService.currentUser()?.rol === 'administrador' || authService.currentUser()?.rol === 'auditor') {
           <button
             type="button"
             (click)="setTab('audit')"
@@ -63,13 +63,15 @@
         }
 
         <!-- Validación QR (Both Employee and Admin) -->
-        <button
-          type="button"
-          (click)="setTab('validation')"
-          class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer border"
-          [class]="currentTab() === 'validation' ? 'bg-[#D4AF37] text-neutral-950 border-[#D4AF37] shadow-md' : 'bg-neutral-800 text-gray-300 border-neutral-700 hover:border-gray-500'">
-          <span>📱</span> Validación Boletos (QR)
-        </button>
+        @if (authService.currentUser()?.rol === 'administrador' || authService.currentUser()?.rol === 'empleado') {
+          <button
+            type="button"
+            (click)="setTab('validation')"
+            class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 whitespace-nowrap cursor-pointer border"
+            [class]="currentTab() === 'validation' ? 'bg-[#D4AF37] text-neutral-950 border-[#D4AF37] shadow-md' : 'bg-neutral-800 text-gray-300 border-neutral-700 hover:border-gray-500'">
+            <span>📱</span> Validación Boletos (QR)
+          </button>
+        }
 
       </div>
     </div>

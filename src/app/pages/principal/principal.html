@@ -1,5 +1,35 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
 
+  <!-- Relocation / Saldo a Favor Alert Banner -->
+  @if (authService.currentUser() && (authService.currentUser()?.saldo_favor || 0) > 0) {
+    <div class="bg-gradient-to-r from-emerald-950/80 via-emerald-900/60 to-neutral-900 border border-emerald-500/40 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-3.5">
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-2xl shrink-0">
+          💰
+        </div>
+        <div>
+          <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+            <span>¡Tienes saldo a favor disponible!</span>
+            <span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-xs font-mono font-bold">
+              ${{ authService.currentUser()?.saldo_favor?.toLocaleString('es-AR', { minimumFractionDigits: 2 }) }}
+            </span>
+          </h3>
+          <p class="text-xs text-gray-300 mt-0.5">
+            Puedes utilizar tu crédito automáticamente para reubicarte o comprar entradas en cualquier función.
+          </p>
+        </div>
+      </div>
+      @if (relocationNotice()?.movieId) {
+        <button
+          type="button"
+          (click)="onMovieSelected(movieService.allMovies().find(m => m.id === relocationNotice()?.movieId)!)"
+          class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md shrink-0 flex items-center gap-1.5">
+          <span>🎬 Ver funciones de {{ relocationNotice()?.movieTitle }}</span>
+        </button>
+      }
+    </div>
+  }
+
   <!-- 1. Highlighted Movies Section (Top 3 most sold) -->
   <app-highlighted-movies
     [movies]="movieService.topSellingMovies()"

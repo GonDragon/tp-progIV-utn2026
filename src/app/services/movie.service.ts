@@ -3,6 +3,7 @@ import { Movie, Schedule, Genre, Sala } from '../models/movie';
 import { SupabaseService } from './supabase';
 import { AuditService } from './audit.service';
 import { AuthService } from './auth';
+import { PushNotificationService } from './push-notification.service';
 
 export interface PaginatedMoviesResult {
   movies: Movie[];
@@ -19,6 +20,7 @@ export class MovieService {
   private readonly supabaseService = inject(SupabaseService);
   private readonly auditService = inject(AuditService);
   private readonly authService = inject(AuthService);
+  private readonly pushNotificationService = inject(PushNotificationService);
 
   private readonly _allMovies = signal<Movie[]>([]);
   private readonly _upcomingAlerts = signal<Set<string>>(new Set());
@@ -828,8 +830,29 @@ export class MovieService {
   }
 
   async removeSchedule(movieId: string, scheduleId: string): Promise<{ success: boolean; refundedCount: number; refundedAmount: number }> {
+    return this.cancelSchedule(movieId, scheduleId);
+  }
+
+  /**
+   * Cancela una función atómicamente:
+   * - Acredita el monto total de todas las transacciones (entradas + candy) al saldo a favor de cada usuario afectado.
+   * - Invalida las entradas de las transacciones afectadas y marca las transacciones como Canceladas.
+   * - Elimina la función y limpia reservas temporales.
+   * - Envía notificaciones push a todos los compradores afectados con la opción de reubicarse en otra función.
+   */
+  async cancelSchedule(movieId: string, scheduleId: string): Promise<{
+    success: boolean;
+    refundedCount: number;
+    refundedAmount: number;
+    movieTitle?: string;
+    affectedUsers?: Array<{ perfil_id: string; monto: number; nombre: string }>;
+  }> {
     let refundedCount = 0;
     let refundedAmount = 0;
+    let affectedProfiles: Array<{ perfil_id: string; monto: number; nombre: string }> = [];
+
+    const movie = this._allMovies().find(m => m.id === movieId);
+    const movieTitle = movie?.title || 'la película';
 
     // 1. Actualizar estado local inmediatamente
     this._allMovies.update(current =>
@@ -844,112 +867,170 @@ export class MovieService {
     const numericScheduleId = Number(scheduleId);
     if (!isNaN(numericScheduleId)) {
       try {
-        // A. Consultar boletos vendidos para esta función con sus transacciones y perfiles asociados
-        const { data: ticketsData, error: ticketsErr } = await this.supabaseService.client
-          .from('entradas_tickets')
-          .select(`
-            id,
-            transaccion_id,
-            estado_qr,
-            transacciones:transaccion_id (
-              id,
-              perfil_id,
-              monto_total,
-              estado
-            )
-          `)
-          .eq('funcion_id', numericScheduleId);
+        // A. Intentar ejecutar la función SQL atómica (RPC) en Supabase
+        const { data: rpcResult, error: rpcError } = await this.supabaseService.client.rpc('cancelar_funcion', {
+          p_funcion_id: numericScheduleId
+        });
 
-        if (ticketsErr) {
-          console.warn('Error consultando boletos asociados a la función:', ticketsErr);
-        }
-
-        // B. Reembolsar transacciones asociadas que no hayan sido canceladas previamente
-        if (ticketsData && ticketsData.length > 0) {
-          const txMap = new Map<number, { transaccionId: number; perfilId: string | null; montoTotal: number; estado: string }>();
-
-          for (const item of ticketsData) {
-            const tx = Array.isArray(item.transacciones) ? item.transacciones[0] : item.transacciones;
-            const txId = tx?.id || item.transaccion_id;
-            if (txId && !txMap.has(txId)) {
-              txMap.set(txId, {
-                transaccionId: txId,
-                perfilId: tx?.perfil_id || null,
-                montoTotal: Number(tx?.monto_total || 0),
-                estado: tx?.estado || 'Completada'
-              });
-            }
+        if (!rpcError && rpcResult && rpcResult.success) {
+          refundedCount = Number(rpcResult.usuarios_afectados_count || 0);
+          refundedAmount = Number(rpcResult.total_reembolsado || 0);
+          if (Array.isArray(rpcResult.afectados)) {
+            affectedProfiles = rpcResult.afectados;
+          }
+        } else {
+          // Fallback en caso de que la RPC no esté desplegada aún en la base de datos
+          if (rpcError) {
+            console.warn('RPC cancelar_funcion no disponible o falló, ejecutando fallback atómico:', rpcError.message);
           }
 
-          for (const tx of txMap.values()) {
-            if (tx.estado !== 'Cancelada') {
-              // 1. Invalidar entradas de la transacción
-              await this.supabaseService.client
-                .from('entradas_tickets')
-                .update({ estado_qr: 'Invalidado' })
-                .eq('transaccion_id', tx.transaccionId);
+          // Consultar boletos vendidos para esta función con sus transacciones y perfiles asociados
+          const { data: ticketsData, error: ticketsErr } = await this.supabaseService.client
+            .from('entradas_tickets')
+            .select(`
+              id,
+              transaccion_id,
+              estado_qr,
+              transacciones:transaccion_id (
+                id,
+                perfil_id,
+                monto_total,
+                estado
+              )
+            `)
+            .eq('funcion_id', numericScheduleId);
 
-              // 2. Marcar transacción como Cancelada
-              await this.supabaseService.client
-                .from('transacciones')
-                .update({ estado: 'Cancelada' })
-                .eq('id', tx.transaccionId);
+          if (ticketsErr) {
+            console.warn('Error consultando boletos asociados a la función:', ticketsErr);
+          }
 
-              // 3. Devolver saldo a favor al usuario si está registrado
-              if (tx.perfilId) {
-                const { data: perfilData } = await this.supabaseService.client
-                  .from('perfiles')
-                  .select('id, saldo_favor')
-                  .eq('id', tx.perfilId)
-                  .maybeSingle();
+          if (ticketsData && ticketsData.length > 0) {
+            const txMap = new Map<number, { transaccionId: number; perfilId: string | null; montoTotal: number; estado: string }>();
 
-                const currentSaldo = Number(perfilData?.saldo_favor || 0);
-                const nuevoSaldo = currentSaldo + tx.montoTotal;
+            for (const item of ticketsData) {
+              const tx = Array.isArray(item.transacciones) ? item.transacciones[0] : item.transacciones;
+              const txId = tx?.id || item.transaccion_id;
+              if (txId && !txMap.has(txId)) {
+                txMap.set(txId, {
+                  transaccionId: txId,
+                  perfilId: tx?.perfil_id || null,
+                  montoTotal: Number(tx?.monto_total || 0),
+                  estado: tx?.estado || 'Completada'
+                });
+              }
+            }
 
+            for (const tx of txMap.values()) {
+              if (tx.estado !== 'Cancelada') {
+                // 1. Invalidar entradas de la transacción
                 await this.supabaseService.client
-                  .from('perfiles')
-                  .update({ saldo_favor: nuevoSaldo })
-                  .eq('id', tx.perfilId);
+                  .from('entradas_tickets')
+                  .update({ estado_qr: 'Invalidado' })
+                  .eq('transaccion_id', tx.transaccionId);
 
-                const currentAuthUser = this.authService.currentUser();
-                if (currentAuthUser && currentAuthUser.id === tx.perfilId) {
-                  this.authService.updateLocalUser({ saldo_favor: nuevoSaldo });
-                }
-
+                // 2. Marcar transacción como Cancelada
                 await this.supabaseService.client
-                  .from('log_actividad')
-                  .insert({
+                  .from('transacciones')
+                  .update({ estado: 'Cancelada' })
+                  .eq('id', tx.transaccionId);
+
+                // 3. Devolver saldo a favor al usuario si está registrado
+                if (tx.perfilId) {
+                  const { data: perfilData } = await this.supabaseService.client
+                    .from('perfiles')
+                    .select('id, nombre, apellido, saldo_favor')
+                    .eq('id', tx.perfilId)
+                    .maybeSingle();
+
+                  const currentSaldo = Number(perfilData?.saldo_favor || 0);
+                  const nuevoSaldo = currentSaldo + tx.montoTotal;
+                  const nombreCompleto = perfilData ? `${perfilData.nombre || ''} ${perfilData.apellido || ''}`.trim() : 'Usuario';
+
+                  await this.supabaseService.client
+                    .from('perfiles')
+                    .update({ saldo_favor: nuevoSaldo })
+                    .eq('id', tx.perfilId);
+
+                  await this.supabaseService.client
+                    .from('log_actividad')
+                    .insert({
+                      perfil_id: tx.perfilId,
+                      accion: `Reembolso automático de crédito por $${tx.montoTotal.toLocaleString('es-AR')} por cancelación de la función #${numericScheduleId} de "${movieTitle}".`,
+                      fecha_hora: new Date().toISOString()
+                    });
+
+                  affectedProfiles.push({
                     perfil_id: tx.perfilId,
-                    accion: `Devolución automática de $${tx.montoTotal.toLocaleString('es-AR')} por cancelación/eliminación de función #${numericScheduleId} (Transacción #${tx.transaccionId}).`,
-                    fecha_hora: new Date().toISOString()
+                    monto: tx.montoTotal,
+                    nombre: nombreCompleto
                   });
 
-                refundedCount++;
-                refundedAmount += tx.montoTotal;
+                  refundedCount++;
+                  refundedAmount += tx.montoTotal;
+                }
               }
             }
           }
+
+          // C. Limpiar reservas temporales si las hubiera
+          await this.supabaseService.client
+            .from('reservas_temporales')
+            .delete()
+            .eq('funcion_id', numericScheduleId);
+
+          // D. Eliminar la función en Supabase
+          const { error } = await this.supabaseService.client
+            .from('funciones')
+            .delete()
+            .eq('id', numericScheduleId);
+
+          if (error) console.error('Error eliminando función en Supabase:', error);
         }
 
-        // C. Limpiar reservas temporales si las hubiera
-        await this.supabaseService.client
-          .from('reservas_temporales')
-          .delete()
-          .eq('funcion_id', numericScheduleId);
+        // B. Actualizar saldo local si el usuario actual es uno de los afectados
+        const currentAuthUser = this.authService.currentUser();
+        if (currentAuthUser) {
+          const userRefund = affectedProfiles.find(p => p.perfil_id === currentAuthUser.id);
+          if (userRefund) {
+            const nuevoSaldo = Number(currentAuthUser.saldo_favor || 0) + userRefund.monto;
+            this.authService.updateLocalUser({ saldo_favor: nuevoSaldo });
+          }
+        }
 
-        // D. Eliminar la función en Supabase
-        const { error } = await this.supabaseService.client
-          .from('funciones')
-          .delete()
-          .eq('id', numericScheduleId);
-
-        if (error) console.error('Error eliminando función en Supabase:', error);
+        // C. Enviar notificaciones push a cada comprador afectado con opción de reubicarse
+        const profileIds = affectedProfiles.map(p => p.perfil_id).filter(Boolean);
+        if (profileIds.length > 0) {
+          this.pushNotificationService.sendPushNotification({
+            perfil_ids: profileIds,
+            title: `⚠️ Función cancelada: ${movieTitle}`,
+            body: `Tu función ha sido cancelada. Acreditamos $${refundedAmount > 0 ? (refundedAmount / Math.max(1, profileIds.length)).toLocaleString('es-AR') : ''} como saldo a favor en tu cuenta. ¡Toca aquí para reubicarte en otra función de ${movieTitle} usando tu crédito!`,
+            url: `/?pelicula_id=${movieId}&reubicar=true`,
+            data: {
+              pelicula_id: movieId,
+              pelicula_nombre: movieTitle,
+              accion: 'reubicacion_funcion',
+              tipo: 'funcion_cancelada'
+            }
+          }).then((res) => {
+            if (!res.success) {
+              console.error('[MovieService] Falló el envío de notificaciones push a compradores afectados:', res.error);
+            }
+          }).catch(err => {
+            console.error('[MovieService] Error enviando notificaciones push a compradores afectados:', err);
+          });
+        }
       } catch (e) {
-        console.error('Error al eliminar función en Supabase:', e);
+        console.error('Error al cancelar función en Supabase:', e);
       }
     }
 
-    return { success: true, refundedCount, refundedAmount };
+    return {
+      success: true,
+      refundedCount,
+      refundedAmount,
+      movieTitle,
+      affectedUsers: affectedProfiles
+    };
   }
 
   setSearchQuery(query: string): void {
