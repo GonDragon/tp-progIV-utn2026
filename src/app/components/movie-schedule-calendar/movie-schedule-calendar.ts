@@ -350,11 +350,11 @@ export class MovieScheduleCalendar {
 
     this.isDeletingSchedule.set(true);
     try {
-      const result = await this.movieService.removeSchedule(currentMovie.id, sched.id);
+      const result = await this.movieService.cancelSchedule(currentMovie.id, sched.id);
       this.adminService.addAuditLog(
-        'eliminar_funcion',
+        'cancelar_funcion',
         'Funciones',
-        `Eliminó la función de las ${sched.time} en ${sched.room} de "${currentMovie.title}" (Reembolsos a ${result.refundedCount} usuarios: $${result.refundedAmount.toLocaleString('es-AR')}).`
+        `Canceló la función de las ${sched.time} en ${sched.room} de "${currentMovie.title}" (Reembolsos a ${result.refundedCount} usuarios: $${result.refundedAmount.toLocaleString('es-AR')}).`
       );
 
       this.scheduleDeleted.emit({ movie: currentMovie, schedule: sched });
@@ -372,7 +372,7 @@ export class MovieScheduleCalendar {
       });
       this.deletingSchedule.set(null);
     } catch (err) {
-      console.error('Error al eliminar función con reembolso:', err);
+      console.error('Error al cancelar función con reembolso:', err);
     } finally {
       this.isDeletingSchedule.set(false);
     }

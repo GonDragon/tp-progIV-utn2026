@@ -80,9 +80,6 @@ export class PushNotificationService {
    * Realiza la suscripción push mediante SwPush o el PushManager nativo del Service Worker
    */
   async subscribeToPush(perfilId?: string): Promise<PushSubscription | null> {
-    if (!this.isSupported()) {
-      return null;
-    }
 
     try {
       let subscription: PushSubscription | null = null;
